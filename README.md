@@ -1,4 +1,4 @@
-# [archibald 1.0.0-beta](https://github.com/julesricheux/archibald/) :sailboat:✏️
+# [archibald 1.0.0](https://github.com/julesricheux/archibald/) :sailboat:✏️
 
 archibald is a performance prediction package for sailboats and ships in the preliminary design stage. It is written in Python 3 and aimed in particular at naval architecture students.
 
