@@ -1,0 +1,29 @@
+PLOP
+G 0
+
+LOAD .\data\airfoils\thick_sections\naca0018.dat
+PPAR
+N 200
+t 0.5
+r 0.2
+
+
+OPER
+VISC 8565421.986778857
+VPAR
+n 9
+xtr
+0.1
+0.1
+
+ITER 200
+A 3.302760307343227
+A 5.554558605774353
+PACC
+.\temp\xfoil\n169_pctc.out
+
+A 7.528665428019017
+PACC
+
+
+quit

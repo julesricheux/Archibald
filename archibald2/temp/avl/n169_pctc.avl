@@ -1,0 +1,154 @@
+n169_pctc
+#Mach
+0.0
+#IYsym IZsym Zsym
+1 0 0.0
+#Sref   Cref    Bref
+45.58  7.20  6.33
+#Xref   Yref    Zref
+0.0     0.0     0.0
+
+#===================================================================
+SURFACE
+star_fore
+#Nchordwise Cspace Nspanwise Sspace
+3 0 10 0
+
+ANGLE
+-10.0
+#===================================================================
+#Xle Yle Zle Chord Ainc Nspanwise Sspace
+
+SECTION
+-97.17163480880028 6.30591234919884 -9.978443034765707 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.1907528042203 5.038392279008118 -9.869209582784782 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.20987079964033 3.770872208817397 -9.759976130803858 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.22851084517484 2.535040140381443 -9.653473515122453 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.24762884059484 1.2675200701907219 -9.544240063141526 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.26674683601486 -0.0 -9.435006611160603 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+#===================================================================
+#===================================================================
+SURFACE
+port_fore
+#Nchordwise Cspace Nspanwise Sspace
+3 0 10 0
+
+ANGLE
+-10.0
+#===================================================================
+#Xle Yle Zle Chord Ainc Nspanwise Sspace
+
+SECTION
+-97.17163480880028 6.30591234919884 9.978443034765707 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.15223980711822 5.038392279008118 9.869258426462602 1.7999993545800237 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.13284480543615 3.770872208817397 9.760073818159503 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.11393467879616 2.5350401403814433 9.653618825063978 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.0945396771141 1.2675200701907219 9.544434216760873 1.7999993545800237 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-97.07514467543201 -0.0 9.435249608457777 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+#===================================================================
+#===================================================================
+SURFACE
+star_aft
+#Nchordwise Cspace Nspanwise Sspace
+3 0 10 0
+
+ANGLE
+-15.0
+#===================================================================
+#Xle Yle Zle Chord Ainc Nspanwise Sspace
+
+SECTION
+-74.28291629909441 6.30591234919884 -9.978443034765707 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.31148186741025 5.038392279008118 -9.871291492138726 1.799999354579981 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.34004743572612 3.770872208817397 -9.764139949511751 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.36789886483407 2.535040140381443 -9.659667195450442 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.39646443314992 1.2675200701907219 -9.55251565282346 1.799999354579981 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.42503000146577 -0.0 -9.445364110196486 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+#===================================================================
+#===================================================================
+SURFACE
+port_aft
+#Nchordwise Cspace Nspanwise Sspace
+3 0 10 0
+
+ANGLE
+-15.0
+#===================================================================
+#Xle Yle Zle Chord Ainc Nspanwise Sspace
+
+SECTION
+-74.28291629909441 6.30591234919884 9.978443034765707 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.25407903561597 5.038392279008118 9.871364292638125 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.22524177213757 3.770872208817397 9.764285550510543 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.19712544024613 2.5350401403814433 9.65988377693615 1.7999993545800095 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.16828817676769 1.2675200701907219 9.552805034808568 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+SECTION
+-74.13945091328927 -0.0 9.445726292680991 1.7999993545799953 -0.0 1 0
+AFILE
+c:\users\jrich\documents\archibald-main\archibald\data\airfoils\thick_sections\naca0018.dat
+#===================================================================
