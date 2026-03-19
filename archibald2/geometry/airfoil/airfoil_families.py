@@ -1,4 +1,5 @@
-import aerosandbox.numpy as np
+import archibald2.numpy as np
+from archibald2.optimization import Opti
 from scipy.special import comb
 import re
 from typing import Union
@@ -9,11 +10,11 @@ _default_n_points_per_side = 200
 
 
 def get_NACA_coordinates(
-        name: str = None,
-        n_points_per_side: int = _default_n_points_per_side,
-        max_camber: float = None,
-        camber_loc: float = None,
-        thickness: float = None,
+    name: str = None,
+    n_points_per_side: int = _default_n_points_per_side,
+    max_camber: float = None,
+    camber_loc: float = None,
+    thickness: float = None,
 ) -> np.ndarray:
     """
     Returns the coordinates of a 4-series NACA airfoil.
@@ -46,17 +47,18 @@ def get_NACA_coordinates(
     params_specified = [
         (max_camber is not None),
         (camber_loc is not None),
-        (thickness is not None)
+        (thickness is not None),
     ]
 
     if name_specified:
         if any(params_specified):
             raise ValueError(
-                "Cannot specify both `name` and (`max_camber`, `camber_loc`, `thickness`) parameters - must be one or the other.")
+                "Cannot specify both `name` and (`max_camber`, `camber_loc`, `thickness`) parameters - must be one or the other."
+            )
 
         name = name.lower().strip()
 
-        if not "naca" in name:
+        if "naca" not in name:
             raise ValueError("Not a NACA airfoil - name must start with 'naca'!")
 
         nacanumber = name.split("naca")[1]
@@ -64,7 +66,9 @@ def get_NACA_coordinates(
             raise ValueError("Couldn't parse the number of the NACA airfoil!")
 
         if not len(nacanumber) == 4:
-            raise NotImplementedError("Only 4-digit NACA airfoils are currently supported!")
+            raise NotImplementedError(
+                "Only 4-digit NACA airfoils are currently supported!"
+            )
 
         # Parse
         max_camber = int(nacanumber[0]) * 0.01
@@ -74,19 +78,24 @@ def get_NACA_coordinates(
     else:
         if not all(params_specified):
             raise ValueError(
-                "Must specify either `name` or all three (`max_camber`, `camber_loc`, `thickness`) parameters.")
+                "Must specify either `name` or all three (`max_camber`, `camber_loc`, `thickness`) parameters."
+            )
 
     # Referencing https://en.wikipedia.org/wiki/NACA_airfoil#Equation_for_a_cambered_4-digit_NACA_airfoil
     # from here on out
 
     # Make uncambered coordinates
     x_t = np.cosspace(0, 1, n_points_per_side)  # Generate some cosine-spaced points
-    y_t = 5 * thickness * (
-            + 0.2969 * x_t ** 0.5
+    y_t = (
+        5
+        * thickness
+        * (
+            +0.2969 * x_t**0.5
             - 0.1260 * x_t
-            - 0.3516 * x_t ** 2
-            + 0.2843 * x_t ** 3
-            - 0.1015 * x_t ** 4  # 0.1015 is original, #0.1036 for sharp TE
+            - 0.3516 * x_t**2
+            + 0.2843 * x_t**3
+            - 0.1015 * x_t**4  # 0.1015 is original, #0.1036 for sharp TE
+        )
     )
 
     if camber_loc == 0:
@@ -95,15 +104,17 @@ def get_NACA_coordinates(
     # Get camber
     y_c = np.where(
         x_t <= camber_loc,
-        max_camber / camber_loc ** 2 * (2 * camber_loc * x_t - x_t ** 2),
-        max_camber / (1 - camber_loc) ** 2 * ((1 - 2 * camber_loc) + 2 * camber_loc * x_t - x_t ** 2)
+        max_camber / camber_loc**2 * (2 * camber_loc * x_t - x_t**2),
+        max_camber
+        / (1 - camber_loc) ** 2
+        * ((1 - 2 * camber_loc) + 2 * camber_loc * x_t - x_t**2),
     )
 
     # Get camber slope
     dycdx = np.where(
         x_t <= camber_loc,
-        2 * max_camber / camber_loc ** 2 * (camber_loc - x_t),
-        2 * max_camber / (1 - camber_loc) ** 2 * (camber_loc - x_t)
+        2 * max_camber / camber_loc**2 * (camber_loc - x_t),
+        2 * max_camber / (1 - camber_loc) ** 2 * (camber_loc - x_t),
     )
     theta = np.arctan(dycdx)
 
@@ -126,14 +137,14 @@ def get_NACA_coordinates(
 
 
 def get_kulfan_coordinates(
-        lower_weights: np.ndarray = -0.2 * np.ones(8),
-        upper_weights: np.ndarray = 0.2 * np.ones(8),
-        leading_edge_weight: float = 0.,
-        TE_thickness: float = 0.,
-        n_points_per_side: int = _default_n_points_per_side,
-        N1: float = 0.5,
-        N2: float = 1.0,
-        **deprecated_kwargs
+    lower_weights: np.ndarray = -0.2 * np.ones(8),
+    upper_weights: np.ndarray = 0.2 * np.ones(8),
+    leading_edge_weight: float = 0.0,
+    TE_thickness: float = 0.0,
+    n_points_per_side: int = _default_n_points_per_side,
+    N1: float = 0.5,
+    N2: float = 1.0,
+    **deprecated_kwargs,
 ) -> np.ndarray:
     """
     Given a set of Kulfan parameters, computes the coordinates of the resulting airfoil.
@@ -206,10 +217,11 @@ def get_kulfan_coordinates(
     """
     if len(deprecated_kwargs) > 0:
         import warnings
+
         warnings.warn(
             "The following arguments are deprecated and will be removed in a future version:\n"
             f"{deprecated_kwargs}",
-            DeprecationWarning
+            DeprecationWarning,
         )
 
         if deprecated_kwargs.get("enforce_continuous_LE_radius", False):
@@ -235,8 +247,9 @@ def get_kulfan_coordinates(
             return np.tile(np.reshape(vector, (dims[0], 1)), (1, dims[1]))
 
         S_matrix = (
-                tall(K) * wide(x) ** tall(np.arange(N + 1)) *
-                wide(1 - x) ** tall(N - np.arange(N + 1))
+            tall(K)
+            * wide(x) ** tall(np.arange(N + 1))
+            * wide(1 - x) ** tall(N - np.arange(N + 1))
         )  # Bernstein polynomial coefficients * weight matrix
         S_x = np.sum(tall(w) * S_matrix, axis=0)
 
@@ -263,18 +276,22 @@ def get_kulfan_coordinates(
 
 
 def get_kulfan_parameters(
-        coordinates: np.ndarray,
-        n_weights_per_side: int = 8,
-        N1: float = 0.5,
-        N2: float = 1.0,
-        n_points_per_side: int = _default_n_points_per_side,
-        normalize_coordinates: bool = True,
-        use_leading_edge_modification: bool = True,
-        method: str = "least_squares",
+    coordinates: np.ndarray,
+    n_weights_per_side: int = 8,
+    N1: float = 0.5,
+    N2: float = 1.0,
+    n_points_per_side: int = _default_n_points_per_side,
+    normalize_coordinates: bool = True,
+    use_leading_edge_modification: bool = True,
+    method: str = "least_squares",
 ) -> Dict[str, Union[np.ndarray, float]]:
     """
     Given a set of airfoil coordinates, reconstructs the Kulfan parameters that would recreate that airfoil. Uses a
     curve fitting (optimization) process.
+    
+    MODIFIED TO BE COMPATIBLE WITH CASADI COORDINATES.
+    WARNING: lower and upper coordinates must have the same number of points
+    WARNING: 
 
     This function is the inverse of `get_kulfan_coordinates()`.
 
@@ -357,126 +374,49 @@ def get_kulfan_parameters(
 
         These can be passed directly into `get_kulfan_coordinates()` to reconstruct the airfoil.
     """
-    from aerosandbox.geometry.airfoil import Airfoil
-
-    if method == "opti":
-
-        target_airfoil = Airfoil(
-            name="Target Airfoil",
-            coordinates=coordinates
-        ).repanel(
-            n_points_per_side=n_points_per_side
-        )
-
-        if normalize_coordinates:
-            target_airfoil = target_airfoil.normalize()
-
-        x = np.cosspace(0, 1, n_points_per_side)
-        target_thickness = target_airfoil.local_thickness(x_over_c=x)
-        target_camber = target_airfoil.local_camber(x_over_c=x)
-
-        target_y_upper = target_camber + target_thickness / 2
-        target_y_lower = target_camber - target_thickness / 2
-
-        # Class function
-        C = (x) ** N1 * (1 - x) ** N2
-
-        def shape_function(w):
-            # Shape function (Bernstein polynomials)
-            N = np.length(w) - 1  # Order of Bernstein polynomials
-
-            K = comb(N, np.arange(N + 1))  # Bernstein polynomial coefficients
-
-            dims = (np.length(w), np.length(x))
-
-            def wide(vector):
-                return np.tile(np.reshape(vector, (1, dims[1])), (dims[0], 1))
-
-            def tall(vector):
-                return np.tile(np.reshape(vector, (dims[0], 1)), (1, dims[1]))
-
-            S_matrix = (
-                    tall(K) * wide(x) ** tall(np.arange(N + 1)) *
-                    wide(1 - x) ** tall(N - np.arange(N + 1))
-            )  # Bernstein polynomial coefficients * weight matrix
-            S_x = np.sum(tall(w) * S_matrix, axis=0)
-
-            # Calculate y output
-            y = C * S_x
-            return y
-
-        opti = asb.Opti()
-        lower_weights = opti.variable(init_guess=0, n_vars=n_weights_per_side)
-        upper_weights = opti.variable(init_guess=0, n_vars=n_weights_per_side)
-        TE_thickness = opti.variable(init_guess=0, lower_bound=0)
-        if use_leading_edge_modification:
-            leading_edge_weight = opti.variable(init_guess=0)
-        else:
-            leading_edge_weight = 0
-
-        y_lower = shape_function(lower_weights)
-        y_upper = shape_function(upper_weights)
-
-        # Add trailing-edge (TE) thickness
-        y_lower -= x * TE_thickness / 2
-        y_upper += x * TE_thickness / 2
-
-        # Add Kulfan's leading-edge-modification (LEM)
-        y_lower += leading_edge_weight * (x) * (1 - x) ** (np.length(lower_weights) + 0.5)
-        y_upper += leading_edge_weight * (x) * (1 - x) ** (np.length(upper_weights) + 0.5)
-
-        opti.minimize(
-            np.sum((y_lower - target_y_lower) ** 2) +
-            np.sum((y_upper - target_y_upper) ** 2)
-        )
-
-        sol = opti.solve(
-            verbose=False
-        )
-
-        return {
-            "lower_weights"      : sol.value(lower_weights),
-            "upper_weights"      : sol.value(upper_weights),
-            "TE_thickness"       : sol.value(TE_thickness),
-            "leading_edge_weight": sol.value(leading_edge_weight),
-        }
-
-    elif method == "least_squares":
-
+    from archibald2.geometry.airfoil import Airfoil
+    
+    if method == "least_squares":
         """
-        
-        The goal here is to set up this fitting problem as a least-squares problem (likely an overconstrained one, 
-        but keeping it general for now. This will then be solved with np.linalg.lstsq(A, b), where A will (likely) 
+
+        The goal here is to set up this fitting problem as a least-squares problem (likely an overconstrained one,
+        but keeping it general for now. This will then be solved with np.linalg.lstsq(A, b), where A will (likely)
         not be square.
-        
+
         The columns of the A matrix will correspond to our unknowns, which are going to be a 1D vector `x` packed in as:
             * upper_weights from 0 to n_weights_per_side - 1
             * lower_weights from 0 to n_weights_per_side - 1
             * leading_edge_weight
             * trailing_edge_thickness
-            
+
         See `get_kulfan_coordinates()` for more details on the meaning of these variables.
-        
-        The rows of the A matrix will correspond to each row of the given airfoil coordinates (i.e., a single vertex 
+
+        The rows of the A matrix will correspond to each row of the given airfoil coordinates (i.e., a single vertex
         on the airfoil). The idea here is to express each vertex as a linear combination of the unknowns, and then
         solve for the unknowns that minimize the error between the given airfoil coordinates and the reconstructed
         airfoil coordinates.
-        
+
         """
 
-        if normalize_coordinates:
-            coordinates = Airfoil(
-                name="Target Airfoil",
-                coordinates=coordinates
-            ).normalize().coordinates
+        # if normalize_coordinates:
+        #     coordinates = (
+        #         Airfoil(name="Target Airfoil", coordinates=coordinates)
+        #         .normalize()
+        #         .coordinates
+        # #     )
+        
+        # coordinates = np.concatenate((wide(x),wide(camber)+wide(thickness)/2)).T
 
         n_coordinates = np.length(coordinates)
 
         x = coordinates[:, 0]
         y = coordinates[:, 1]
 
-        LE_index = np.argmin(x)
-        is_upper = np.arange(len(x)) <= LE_index
+        # LE_index = np.argmin(x)
+        LE_index = n_coordinates//2
+        # is_upper = np.arange(len(x)) <= LE_index
+        # is_upper = np.arange(x.shape[0]) <= LE_index
+        is_upper = np.arange(n_coordinates) <= LE_index
 
         # Class function
         C = (x) ** N1 * (1 - x) ** N2
@@ -487,67 +427,170 @@ def get_kulfan_parameters(
         K = comb(N, np.arange(N + 1))  # Bernstein polynomial coefficients
 
         dims = (n_weights_per_side, n_coordinates)
-
-        def wide(vector):
+        
+        def wwide(vector):
             return np.tile(np.reshape(vector, (1, dims[1])), (dims[0], 1))
 
-        def tall(vector):
+        def ttall(vector):
             return np.tile(np.reshape(vector, (dims[0], 1)), (1, dims[1]))
+        
 
         S_matrix = (
-                tall(K) * wide(x) ** tall(np.arange(N + 1)) *
-                wide(1 - x) ** tall(N - np.arange(N + 1))
+            ttall(K)
+            * wwide(x) ** ttall(np.arange(N + 1))
+            * wwide(1 - x) ** ttall(N - np.arange(N + 1))
         )  # Bernstein polynomial coefficients * weight matrix
 
         leading_edge_weight_row = x * np.maximum(1 - x, 0) ** (n_weights_per_side + 0.5)
 
-        trailing_edge_thickness_row = np.where(
-            is_upper,
-            x / 2,
-            -x / 2
-        )
+        trailing_edge_thickness_row = np.where(is_upper, x / 2, -x / 2)
 
-        A = np.concatenate([
-            np.where(wide(is_upper), 0, wide(C) * S_matrix).T,
-            np.where(wide(is_upper), wide(C) * S_matrix, 0).T,
-            np.reshape(leading_edge_weight_row, (n_coordinates, 1)),
-            np.reshape(trailing_edge_thickness_row, (n_coordinates, 1)),
-        ], axis=1)
+        A = np.concatenate(
+            [
+                np.where(wwide(is_upper), 0, wwide(C) * S_matrix).T,
+                np.where(wwide(is_upper), wwide(C) * S_matrix, 0).T,
+                np.reshape(leading_edge_weight_row, (n_coordinates, 1)),
+                np.reshape(trailing_edge_thickness_row, (n_coordinates, 1)),
+            ],
+            axis=1,
+        )
 
         b = y
 
         # Solve least-squares problem
-        x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        # x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        x = np.linalg.least_squares(A, b, rcond=None)
+        
+        # def least_squares(A, b):
+        #     """
+        #     Solve Ax ≈ b in least-squares sense.
+        #     Works for both NumPy and CasADi.
+        #     """
+        #     AtA = A.T @ A
+        #     Atb = A.T @ b
+        #     return np.linalg.solve(AtA, Atb)
+        
+        # x = least_squares(A, b)
 
         lower_weights = x[:n_weights_per_side]
-        upper_weights = x[n_weights_per_side:2 * n_weights_per_side]
+        upper_weights = x[n_weights_per_side : 2 * n_weights_per_side]
         leading_edge_weight = x[-2]
         trailing_edge_thickness = x[-1]
 
-        # If you got a negative trailing-edge thickness, then resolve the problem with a TE_thickness = 0 constraint.
-        if trailing_edge_thickness < 0:
+        # # If you got a negative trailing-edge thickness, then resolve the problem with a TE_thickness = 0 constraint.
+        # if trailing_edge_thickness < 0:
 
-            x, _, _, _ = np.linalg.lstsq(A[:, :-1], b, rcond=None)
+        #     x, _, _, _ = np.linalg.lstsq(A[:, :-1], b, rcond=None)
 
-            lower_weights = x[:n_weights_per_side]
-            upper_weights = x[n_weights_per_side:2 * n_weights_per_side]
-            leading_edge_weight = x[-1]
-            trailing_edge_thickness = 0
+        #     lower_weights = x[:n_weights_per_side]
+        #     upper_weights = x[n_weights_per_side : 2 * n_weights_per_side]
+        #     leading_edge_weight = x[-1]
+        #     trailing_edge_thickness = 0
 
         return {
-            "lower_weights"      : lower_weights,
-            "upper_weights"      : upper_weights,
-            "TE_thickness"       : trailing_edge_thickness,
+            "lower_weights": lower_weights,
+            "upper_weights": upper_weights,
+            "TE_thickness": trailing_edge_thickness,
             "leading_edge_weight": leading_edge_weight,
         }
+    
+    # elif method=='opti': # TODO finish me
+        
+    #     x = ...
+    #     camber = ...
+    #     thickness = ...
+        
+    #     # target_airfoil = Airfoil(
+    #     #     name="Target Airfoil", coordinates=coordinates
+    #     # ).repanel(n_points_per_side=n_points_per_side)
+    
+    #     # if normalize_coordinates:
+    #     #     target_airfoil = target_airfoil.normalize()
+    
+    #     # x = np.cosspace(0, 1, n_points_per_side)
+    #     target_thickness = thickness
+    #     target_camber = camber
+    
+    #     target_y_upper = target_camber + target_thickness / 2
+    #     target_y_lower = target_camber - target_thickness / 2
+    
+    #     # Class function
+    #     C = (x) ** N1 * (1 - x) ** N2
+    
+    #     def shape_function(w):
+    #         # Shape function (Bernstein polynomials)
+    #         N = np.length(w) - 1  # Order of Bernstein polynomials
+    
+    #         K = comb(N, np.arange(N + 1))  # Bernstein polynomial coefficients
+    
+    #         dims = (np.length(w), np.length(x))
+    
+    #         def wwide(vector):
+    #             return np.tile(np.reshape(vector, (1, dims[1])), (dims[0], 1))
+    
+    #         def ttall(vector):
+    #             return np.tile(np.reshape(vector, (dims[0], 1)), (1, dims[1]))
+    
+    #         S_matrix = (
+    #             tall(K)
+    #             * wide(x) ** tall(np.arange(N + 1))
+    #             * wide(1 - x) ** tall(N - np.arange(N + 1))
+    #         )  # Bernstein polynomial coefficients * weight matrix
+    #         S_x = np.sum(tall(w) * S_matrix, axis=0)
+    
+    #         # Calculate y output
+    #         y = C * wide(S_x)
+    #         return y
+    
+    #     # opti = Opti()
+    #     lower_weights = opti.variable(init_guess=0, n_vars=n_weights_per_side)
+    #     upper_weights = opti.variable(init_guess=0, n_vars=n_weights_per_side)
+    #     TE_thickness = opti.variable(init_guess=0, lower_bound=0)
+    #     if use_leading_edge_modification:
+    #         leading_edge_weight = opti.variable(init_guess=0)
+    #     else:
+    #         leading_edge_weight = 0
+    
+    #     y_lower = shape_function(lower_weights)
+    #     y_upper = shape_function(upper_weights)
+    
+    #     # Add trailing-edge (TE) thickness
+    #     y_lower -= x * TE_thickness / 2
+    #     y_upper += x * TE_thickness / 2
+    
+    #     # Add Kulfan's leading-edge-modification (LEM)
+    #     y_lower += (
+    #         leading_edge_weight * (x) * (1 - x) ** (np.length(lower_weights) + 0.5)
+    #     )
+    #     y_upper += (
+    #         leading_edge_weight * (x) * (1 - x) ** (np.length(upper_weights) + 0.5)
+    #     )
+    
+    #     opti.minimize(
+    #         np.sum((y_lower - target_y_lower) ** 2)
+    #         + np.sum((y_upper - target_y_upper) ** 2)
+    #     )
+    
+    #     sol = opti.solve(verbose=False)
+    
+    #     # kp = {
+    #     #     "lower_weights": lower_weights,
+    #     #     "upper_weights": upper_weights,
+    #     #     "TE_thickness": TE_thickness,
+    #     #     "leading_edge_weight": leading_edge_weight,
+    #     # }
+    #     kp = {
+    #         "lower_weights": sol(lower_weights),
+    #         "upper_weights": sol(upper_weights),
+    #         "TE_thickness": sol(TE_thickness),
+    #         "leading_edge_weight": sol(leading_edge_weight),
+    #     }
 
     else:
         raise ValueError(f"Invalid method '{method}'.")
 
 
-def get_coordinates_from_raw_dat(
-        raw_text: List[str]
-) -> np.ndarray:
+def get_coordinates_from_raw_dat(raw_text: List[str]) -> np.ndarray:
     """
     Returns a Nx2 ndarray of airfoil coordinates from the raw text of a airfoil *.dat file.
 
@@ -572,7 +615,7 @@ def get_coordinates_from_raw_dat(
     def parse_line(line: str) -> Optional[List[float]]:
         # Given a single line of a `*.dat` file, tries to parse it into a list of two floats [x, y].
         # If not possible, returns None.
-        line_split = re.split(r'[;|,|\s|\t]', line)
+        line_split = re.split(r"[;|,|\s|\t]", line)
         line_items = [s for s in line_split if s != ""]
         if len(line_items) == 2 and all([is_number(item) for item in line_items]):
             return line_items
@@ -592,9 +635,7 @@ def get_coordinates_from_raw_dat(
     return coordinates
 
 
-def get_file_coordinates(
-        filepath: Union[str, os.PathLike]
-):
+def get_file_coordinates(filepath: Union[str, os.PathLike]):
     possible_errors = (FileNotFoundError, UnicodeDecodeError)
 
     if isinstance(filepath, np.ndarray):
@@ -603,7 +644,7 @@ def get_file_coordinates(
     try:
         with open(filepath, "r") as f:
             raw_text = f.readlines()
-    except possible_errors as e:
+    except possible_errors:
         try:
             with open(f"{filepath}.dat", "r") as f:
                 raw_text = f.readlines()
@@ -618,9 +659,7 @@ def get_file_coordinates(
         raise ValueError("File was found, but could not read any coordinates!")
 
 
-def get_UIUC_coordinates(
-        name: str = 'dae11'
-) -> np.ndarray:
+def get_UIUC_coordinates(name: str = "dae11") -> np.ndarray:
     """
     Returns the coordinates of a specified airfoil in the UIUC airfoil database.
     Args:
@@ -628,14 +667,14 @@ def get_UIUC_coordinates(
 
     Returns: The coordinates of the airfoil as a Nx2 ndarray [x, y]
     """
-    from aerosandbox import _asb_root
+    from archibald2 import _archibald_root
 
-    airfoil_database_root = _asb_root / "geometry" / "airfoil" / "airfoil_database"
+    airfoil_database_root = _archibald_root / "geometry" / "airfoil" / "airfoil_database"
 
     try:
         with open(airfoil_database_root / name) as f:
             raw_text = f.readlines()
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         try:
             with open(airfoil_database_root / f"{name}.dat") as f:
                 raw_text = f.readlines()
@@ -647,11 +686,12 @@ def get_UIUC_coordinates(
     return get_coordinates_from_raw_dat(raw_text)
 
 
-if __name__ == '__main__':
-    import aerosandbox as asb
-    import aerosandbox.numpy as np
 
-    af = asb.Airfoil("e377").normalize()
+if __name__ == "__main__":
+    import archibald2 as arb
+    import archibald2.numpy as np
+
+    af = arb.Airfoil("e376").normalize()
     af.draw(backend="plotly")
 
     kulfan_params = get_kulfan_parameters(
@@ -659,11 +699,9 @@ if __name__ == '__main__':
         n_weights_per_side=8,
     )
 
-    af_reconstructed = asb.Airfoil(
+    af_reconstructed = arb.Airfoil(
         name="Reconstructed Airfoil",
-        coordinates=get_kulfan_coordinates(
-            **kulfan_params
-        ),
+        coordinates=get_kulfan_coordinates(**kulfan_params),
     )
     af_reconstructed.draw(backend="plotly")
 

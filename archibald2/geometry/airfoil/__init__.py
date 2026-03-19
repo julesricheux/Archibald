@@ -1,2 +1,2 @@
-from aerosandbox.geometry.airfoil.airfoil import Airfoil
-from aerosandbox.geometry.airfoil.kulfan_airfoil import KulfanAirfoil
+from archibald2.geometry.airfoil.airfoil import Airfoil
+from archibald2.geometry.airfoil.kulfan_airfoil import KulfanAirfoil
