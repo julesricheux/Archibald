@@ -10,7 +10,9 @@ import os
 from archibald2.tools.math_utils import read_coefs, build_interpolation
 import archibald2.numpy as np
 from archibald2.geometry.airfoil import Airfoil
-from archibald2.tools.math_utils import rotate_single_vector
+from archibald2.tools.math_utils import rotate_single_vector, rotate
+
+import aerosandbox as asb
 
 from typing import Union, List
 
@@ -404,7 +406,7 @@ class BSeriesPropeller(Propeller):
         
         return chordLaw, sweepLaw, pitchLaw, thicknessLaw
     
-    """
+    # EXPERIMENTAL
     def build_blade_sections(self, r, thicknessLaw=None, chordLaw=None):
         if thicknessLaw is None:
             if not chordLaw is None:
@@ -414,7 +416,7 @@ class BSeriesPropeller(Propeller):
         return b_series_sections(r, self.thickness_law(r),
                                  self._geometryData['V1'], self._geometryData['V2'], disp=False)
     
-    
+    # EXPERIMENTAL
     def write_sections_polars(self, r=None, sections=None, thicknessLaw=None, chordLaw=None, suffix=''):
         if r or sections:
             if sections is None:
@@ -424,7 +426,7 @@ class BSeriesPropeller(Propeller):
         else:
             print("Could not write sections polars. No radius nor sections were specified.")
     
-    
+    # EXPERIMENTAL
     def write_pyBEMT_input(self, nSections=10,
                            directory='./pyBEMT/pybemt/airfoils/', generator=False):
         
@@ -484,7 +486,7 @@ class BSeriesPropeller(Propeller):
             
         return filename
        
-    
+    # EXPERIMENTAL
     def build_aerosanbox_geometry(self, nSections=10):
         
         r = np.linspace(0.20, .99, nSections)
@@ -498,7 +500,8 @@ class BSeriesPropeller(Propeller):
         rHub = 0.4
         nHub = nSections
 
-        sections = self.build_blade_sections(r)
+        # sections = self.build_blade_sections(r)
+        sections = [asb.Airfoil('naca2402')] * nSections
 
         twists = (90. - self._P) * pitchFac
 
@@ -551,7 +554,7 @@ class BSeriesPropeller(Propeller):
             )
         
         return propeller
-    """ 
+    
         
     def compute_Kt(self, J):
         """
@@ -698,6 +701,72 @@ class BSeriesPropeller(Propeller):
         Cp = Cq * n * 2*np.pi
         
         return Cth, Cq, Cp
+    
+    # def compute_forces(self,
+    #                    op_point,
+    #                    hull = None,
+    #                    ):
+    #     if hull:
+    #                       rpm: float,
+    #                       op_point: OperatingPoint = OperatingPoint(),
+    #                       recompute_statics: bool = True,
+    #                       full_output: bool = False,
+    #                       shaft_efficiency: float = 0.98,
+    #                       ):
+
+    #     if self.propeller:
+    #     if self.hull:
+    #         if recompute_statics:
+    #             self.hull.compute_statics(op_point)
+    #         w, t, etaR = self.hull.compute_propulsion_coefficients(op_point.stw, self.propeller.blade_area_ratio)
+    #     else:
+    #         w, t, etaR = 0., 0., 1.
+        
+    #     etaS = shaft_efficiency
+    #     etaH = (1-t)/(1-w)
+        
+    #     leeway = op_point.leeway
+        
+    #     n = rpm / 60. # rps
+    #     V = op_point._stw # m/s
+    #     D = self.propeller.diameter # m
+    #     J = (1 - w) * V / (n*D)
+        
+    #     Kt, Kq, eta0 = self.propeller.compute_performance(J)
+        
+    #     T, Q, P, n = self.propeller.compute_forces(
+    #         J,
+    #         op_point.environment.water.density,
+    #         rpm=rpm
+    #     )
+        
+    #     F = np.sum(T*(1-t)*etaR)
+        
+    #     center = self.propeller.center
+    #     axis = tall(self.propeller.axis)
+        
+    #     prop = {
+    #         'J': J,
+    #         'Kt': Kt,
+    #         'Kq': Kq,
+    #         'eta0': eta0,
+    #         'etaH': etaH,
+    #         'etaS': etaS,
+    #         'etaR': etaR,
+    #         'T': T,
+    #         'Q': Q,
+    #         'P': P,
+    #         'n': n,
+    #         'w': w,
+    #         't': t,
+    #         'F_b': F * np.array([1.,0.,0.]),
+    #         'M_b': np.zeros(3),
+    #         'F_ab': F * axis,
+    #         'M_ab': np.cross(center, F * axis)
+    #     }
+        
+    #     Fprop = prop['F_ab']
+    #     Mprop = prop['M_ab']
 
 
 if __name__=="__main__":

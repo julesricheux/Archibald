@@ -1,5 +1,5 @@
 import pytest
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 
 def test_euler_angles_equivalence_to_general_3D():

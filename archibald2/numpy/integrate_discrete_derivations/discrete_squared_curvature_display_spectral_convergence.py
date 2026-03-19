@@ -1,6 +1,6 @@
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 import sympy as s
-from aerosandbox.numpy.integrate_discrete import integrate_discrete_squared_curvature
+from archibald2.numpy.integrate_discrete import integrate_discrete_squared_curvature
 
 n_samples = 10000
 
@@ -34,7 +34,7 @@ periods = np.geomspace(2, n_samples, 1001)
 exacts = s.lambdify(k, exact)((n_samples - 1) / periods)
 
 import matplotlib.pyplot as plt
-import aerosandbox.tools.pretty_plots as p
+import archibald2.tools.pretty_plots as p
 
 fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 for method in ["cubic", "simpson", "hybrid_simpson_cubic"]:

@@ -1,7 +1,7 @@
 import inspect
 from typing import List, Union, Tuple, Optional, Set, Any
 from pathlib import Path
-from aerosandbox.tools.string_formatting import has_balanced_parentheses
+from archibald2.tools.string_formatting import has_balanced_parentheses
 import numpy as np
 
 
@@ -363,8 +363,8 @@ def codegen(
         _required_imports = set()
 
     import_aliases = {
-        "aerosandbox": "asb",
-        "aerosandbox.numpy": "np",
+        "archibald2": "asb",
+        "archibald2.numpy": "np",
         "numpy": "np",
     }
 

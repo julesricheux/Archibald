@@ -1,5 +1,5 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 import pytest
 
 rtol = 0.10
@@ -52,7 +52,7 @@ def test_90_deg_crossflow():
 
     print(aero)
 
-    from aerosandbox.library.aerodynamics.viscous import Cd_cylinder
+    from archibald2.library.aerodynamics.viscous import Cd_cylinder
 
     CD_expected = Cd_cylinder(Re_D=op_point.reynolds(diameter), mach=op_point.mach())
     print(CD_expected)

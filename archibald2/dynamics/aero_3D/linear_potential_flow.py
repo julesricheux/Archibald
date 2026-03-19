@@ -1,8 +1,8 @@
-import aerosandbox.numpy as np
-from aerosandbox import ExplicitAnalysis, AeroSandboxObject
-from aerosandbox.geometry import *
-from aerosandbox.performance import OperatingPoint
-from aerosandbox.aerodynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import (
+import archibald2.numpy as np
+from archibald2 import ExplicitAnalysis, AeroSandboxObject
+from archibald2.geometry import *
+from archibald2.performance import OperatingPoint
+from archibald2.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import (
     calculate_induced_velocity_horseshoe,
 )
 from typing import Dict, Any, List, Union, Tuple
@@ -501,7 +501,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
 if __name__ == "__main__":
     ### Import Vanilla Airplane
-    import aerosandbox as asb
+    import archibald2 as asb
 
     from pathlib import Path
 

@@ -1,13 +1,13 @@
-from aerosandbox import ExplicitAnalysis
-from aerosandbox.geometry import *
-from aerosandbox.performance import OperatingPoint
-import aerosandbox.library.aerodynamics as aero
-import aerosandbox.numpy as np
-from aerosandbox.aerodynamics.aero_3D.aero_buildup_submodels.fuselage_aerodynamics_utilities import *
-from aerosandbox.library.aerodynamics import transonic
-import aerosandbox.library.aerodynamics as aerolib
+from archibald2 import ExplicitAnalysis
+from archibald2.geometry import *
+from archibald2.performance import OperatingPoint
+import archibald2.library.aerodynamics as aero
+import archibald2.numpy as np
+from archibald2.dynamics.aero_3D.aero_buildup_submodels.fuselage_aerodynamics_utilities import *
+from archibald2.library.aerodynamics import transonic
+import archibald2.library.aerodynamics as aerolib
 from typing import Union, List, Dict
-from aerosandbox.aerodynamics.aero_3D.aero_buildup_submodels.softmax_scalefree import (
+from archibald2.dynamics.aero_3D.aero_buildup_submodels.softmax_scalefree import (
     softmax_scalefree,
 )
 from dataclasses import dataclass
@@ -19,7 +19,7 @@ class AeroBuildup(ExplicitAnalysis):
 
     Example usage:
 
-    >>> import aerosandbox as asb
+    >>> import archibald2 as asb
     >>> ab = asb.AeroBuildup(  # This sets up the analysis, but doesn't execute calculation
     >>>     airplane=my_airplane,  # type: asb.Airplane
     >>>     op_point=my_operating_point,  # type: asb.OperatingPoint
@@ -49,7 +49,7 @@ class AeroBuildup(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: Airplane,
+        airplane: LiftingSet,
         op_point: OperatingPoint,
         xyz_ref: Union[np.ndarray, List[float]] = None,
         model_size: str = "small",
@@ -1228,11 +1228,11 @@ class AeroBuildup(ExplicitAnalysis):
 
 
 if __name__ == "__main__":
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.conventional import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
         airplane,
     )
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     aero = AeroBuildup(
         airplane=airplane,

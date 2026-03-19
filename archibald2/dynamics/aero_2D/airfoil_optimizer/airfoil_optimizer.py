@@ -1,6 +1,6 @@
-import aerosandbox.numpy as np
-from aerosandbox.geometry import Airfoil
-from aerosandbox.geometry.airfoil.airfoil_families import get_kulfan_coordinates
+import archibald2.numpy as np
+from archibald2.geometry import Airfoil
+from archibald2.geometry.airfoil.airfoil_families import get_kulfan_coordinates
 from scipy import optimize
 import matplotlib.pyplot as plt
 

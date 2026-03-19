@@ -1,6 +1,6 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
-from aerosandbox.numpy.integrate import solve_ivp
+import archibald2 as asb
+import archibald2.numpy as np
+from archibald2.numpy.integrate import solve_ivp
 import pytest
 
 
@@ -82,7 +82,7 @@ def test_racecar_adaptive_ode(plot=False):
 
         if i % 5 == 0:
             import matplotlib.pyplot as plt
-            import aerosandbox.tools.pretty_plots as p
+            import archibald2.tools.pretty_plots as p
 
             fig, ax = plt.subplots()
             ax.plot(soli(t), soli(v), label="speed")
@@ -105,7 +105,7 @@ def test_racecar_adaptive_ode(plot=False):
 
     if plot:
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         fig, ax = plt.subplots()
         ax.plot(sol(t), sol(v), label="speed")

@@ -1,7 +1,7 @@
 import numpy as _onp
 import casadi as _cas
-from aerosandbox.numpy.arithmetic_monadic import sum, abs
-from aerosandbox.numpy.determine_type import is_casadi_type
+from archibald2.numpy.arithmetic_monadic import sum, abs
+from archibald2.numpy.determine_type import is_casadi_type
 from numpy.linalg import *
 
 
@@ -54,6 +54,26 @@ def solve(A, b):  # TODO get this working
 
     else:
         return _cas.solve(A, b)
+    
+    
+# def lstsq(A, b):
+def least_squares(A, b, rcond=None):
+    """
+    Solve Ax ≈ b in least-squares sense.
+    Works for both NumPy and CasADi.
+    Args:
+        A: Square matrix.
+        b: Vector.
+
+    Returns: The solution vector x.
+    """
+    if not is_casadi_type([A, b]):
+        return _onp.linalg.lstsq(A, b, rcond=None)[0]
+
+    else:
+        AtA = A.T @ A
+        Atb = A.T @ b
+        return solve(AtA, Atb)
 
 
 def inv(A):

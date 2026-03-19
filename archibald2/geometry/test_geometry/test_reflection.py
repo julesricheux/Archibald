@@ -1,5 +1,5 @@
-from aerosandbox.geometry.common import reflect_over_XZ_plane
-import aerosandbox.numpy as np
+from archibald2.geometry.common import reflect_over_XZ_plane
+import archibald2.numpy as np
 import pytest
 import casadi as cas
 

@@ -1,7 +1,7 @@
 from typing import Union
 import casadi as _cas
 import numpy as _onp
-from aerosandbox.numpy.array import length, concatenate
+from archibald2.numpy.array import length, concatenate
 
 
 def integrate_discrete_intervals(
@@ -679,7 +679,7 @@ def integrate_discrete_squared_curvature(
         return res
 
     elif method in ["hybrid_simpson_cubic"]:
-        from aerosandbox.numpy.calculus import gradient
+        from archibald2.numpy.calculus import gradient
 
         dfdx = gradient(f, x, edge_order=2)
 
@@ -699,7 +699,7 @@ def integrate_discrete_squared_curvature(
 
 
 if __name__ == "__main__":
-    import aerosandbox.numpy as np
+    import archibald2.numpy as np
     from scipy import integrate, interpolate
     import sympy as s
 

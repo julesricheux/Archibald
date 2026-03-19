@@ -25,7 +25,7 @@ if __root_dir not in sys.path:
 from archibald2.common import AeroSandboxObject
 from archibald2.geometry.common import *
 from typing import List, Dict, Any, Tuple, Union, Optional, Callable
-from archibald2.geometry.airfoil import Airfoil
+from aerosandbox import Airfoil
 from archibald2.numpy import pi
 import archibald2.numpy as np
 import archibald2.geometry.mesh_utilities as mesh_utils
@@ -896,7 +896,7 @@ class Wing(AeroSandboxObject):
         Meshes the outer mold line surface of the wing.
 
         Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
-        `aerosandbox.geometry.mesh_utilities`.
+        `archibald2.geometry.mesh_utilities`.
 
         Order of faces:
 
@@ -1062,7 +1062,7 @@ class Wing(AeroSandboxObject):
         Meshes the mean camber line of the wing as a thin-sheet body.
 
         Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
-        `aerosandbox.geometry.mesh_utilities`.
+        `archibald2.geometry.mesh_utilities`.
 
         Order of faces:
             * On the right wing (or, if `Wing.symmetric` is `False`, just the wing itself):
@@ -1262,7 +1262,7 @@ class Wing(AeroSandboxObject):
         Returns: Same return as Airplane.draw()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(wings=[self]).draw(*args, **kwargs)
 
     def draw_wireframe(self, *args, **kwargs):
@@ -1276,7 +1276,7 @@ class Wing(AeroSandboxObject):
         Returns: Same return as Airplane.draw_wireframe()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(wings=[self]).draw_wireframe(*args, **kwargs)
 
     def draw_three_view(self, *args, **kwargs):
@@ -1290,7 +1290,7 @@ class Wing(AeroSandboxObject):
         Returns: Same return as Airplane.draw_three_view()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(wings=[self]).draw_three_view(*args, **kwargs)
 
     def subdivide_sections(self,
@@ -1518,7 +1518,7 @@ class WingXSec(AeroSandboxObject):
 
                     * That direction vector is now the twist axis.
 
-            airfoil: Airfoil associated with this cross-section. [aerosandbox.Airfoil]
+            airfoil: Airfoil associated with this cross-section. [archibald2.Airfoil]
 
             control_surfaces: A list of control surfaces in the form of ControlSurface objects.
 
@@ -1771,10 +1771,15 @@ class LiftingDevice(Wing):
                  deflection_center: Union[np.ndarray, List] = None,
                  symmetric: bool = False,
                  color: Optional[Union[str, Tuple[float]]] = None,
-                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
+                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None,
+                 is_soft: bool = False,
                  ):
         
-        self.n = len(xyz_le)
+        if xyz_le is not None:
+            self.n = len(xyz_le)
+        else:
+            self.n = 0
+            xyz_le = np.zeros((3, 1))
         
         if canting_axis is None:
             canting_axis = np.array([1., 0., 0.])
@@ -1790,7 +1795,8 @@ class LiftingDevice(Wing):
             deflection_axis = np.array([0., 0., 1.])
         if deflection_center is None:
             deflection_center = xyz_le[0, :] * 0.75 + (xyz_le[0, :] + np.array([0., 0., chords[0]])) * 0.25
-
+            
+        self.is_soft = is_soft
             
         self.canting = canting
         self.canting_offset = 0.
@@ -1999,7 +2005,8 @@ class Sail(LiftingDevice):
                  deflection_center: Union[np.ndarray, List] = None,
                  symmetric: bool = False,
                  color: Optional[Union[str, Tuple[float]]] = None,
-                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
+                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None,
+                 is_soft: bool = True,
                  ):
         
         self.sheeting = sheeting
@@ -2020,7 +2027,8 @@ class Sail(LiftingDevice):
                          deflection_center,
                          symmetric,
                          color,
-                         analysis_specific_options
+                         analysis_specific_options,
+                         is_soft,
                          )
         
         self.build_xsecs()
@@ -2087,7 +2095,8 @@ class Fin(LiftingDevice):
                  deflection_center: Union[np.ndarray, List] = None,
                  symmetric: bool = False,
                  color: Optional[Union[str, Tuple[float]]] = None,
-                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
+                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None,
+                 is_soft: bool = False,
                  ):
         
         super().__init__(name,
@@ -2106,7 +2115,8 @@ class Fin(LiftingDevice):
                          deflection_center,
                          symmetric,
                          color,
-                         analysis_specific_options
+                         analysis_specific_options,
+                         is_soft,
                          )
         
         

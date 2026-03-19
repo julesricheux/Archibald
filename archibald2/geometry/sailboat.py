@@ -106,7 +106,7 @@ class Sailboat():
         if cog is None:
             cog = xyz_ref.copy()
             
-        self.xyz_ref = np.array(xyz_ref)
+        self.xyz_ref = np.array(xyz_ref) * np.array([[-1., 1., 1.]])
         
         self.rig = rig
         self.rig_0 = copy.copy(rig)
@@ -132,8 +132,8 @@ class Sailboat():
         # TODO: better define what is hull and what is mesh (should mesh even exist? only for non watertight meshes?)
         
         self.displacement = displacement
-        self.mesh = [DifferentiableMesh(m.vertices*np.array([[-1., 1., 1.]]), m.faces) for m in mesh]
-        self.cog = cog
+        self.mesh = [DifferentiableMesh(m.vertices * np.array([[-1., 1., 1.]]), m.faces) for m in mesh]
+        self.cog = cog * np.array([[-1., 1., 1.]])
         
         self.mesh_0 = copy.copy(self.mesh)
         self.cog_0 = copy.copy(cog)
@@ -153,7 +153,7 @@ class Sailboat():
                   ):
         """
         Returns a surface mesh of the Airplane, in (points, faces) format. For reference on this format,
-        see the documentation in `aerosandbox.geometry.mesh_utilities`.
+        see the documentation in `archibald2.geometry.mesh_utilities`.
 
         Args:
 
@@ -206,11 +206,13 @@ class Sailboat():
         Cancel all transformations on sailboat geometry
 
         """
-        for sail in self.rig.wings:
-            sail.reset()
-            
-        for fin in self.app.wings:
-            fin.reset()
+        if self.rig:
+            for sail in self.rig.wings:
+                sail.reset()
+        
+        if self.app:
+            for fin in self.app.wings:
+                fin.reset()
             
         if self.propeller:
             self.propeller.reset()
@@ -218,11 +220,13 @@ class Sailboat():
         self.mesh = self.mesh_0.copy()
         
         if update_geometry:
-            for sail in self.rig.wings:
-                sail.build_xsecs()
+            if self.rig:
+                for sail in self.rig.wings:
+                    sail.build_xsecs()
                 
-            for fin in self.app.wings:
-                fin.build_xsecs()
+            if self.app:
+                for fin in self.app.wings:
+                    fin.build_xsecs()
     
     def _build_rotation_matrices(self,
                                 heel: float = 0.0,
@@ -238,7 +242,8 @@ class Sailboat():
                                               np.array([1.,0.,0.]))
         
         self._trimRot = np.rotation_matrix_3D(np.deg2rad(trim),
-                                              np.array([0., np.cosd(heel), np.sind(heel)]))
+                                              # np.array([0., np.cosd(heel), np.sind(heel)]))
+                                               np.array([0., 1., 0.]))
         
         self._leewayRot = np.rotation_matrix_3D(np.deg2rad(leeway),
                                                 np.array([0.,0.,1.]))
@@ -256,11 +261,13 @@ class Sailboat():
         else:
             self.cog = np.add(self.cog, np.array([-dx, dy, dz]))
         
-        for sail in self.rig.wings:
-            sail.translate(np.array([dx, dy, dz]))
-            
-        for fin in self.app.wings:
-            fin.translate(np.array([dx, dy, dz]))
+        if self.rig:
+            for sail in self.rig.wings:
+                sail.translate(np.array([dx, dy, dz]))
+        
+        if self.app:
+            for fin in self.app.wings:
+                fin.translate(np.array([dx, dy, dz]))
             
         for m in self.mesh:
             m.vertices = np.add(m.vertices, wide(np.array([-dx, dy, dz])))
@@ -289,25 +296,27 @@ class Sailboat():
             
         self.cog = np.sum(wide(self.cog) @ matrix, axis=0)
         
-        for sail in self.rig.wings:
-            sail.global_rotation(angle,
-                                 axis,
-                                 center,
-                                 matrix,
-                                 offset_canting,
-                                 offset_raking,
-                                 offset_deflection,
-                                 update_geometry)
+        if self.rig:
+            for sail in self.rig.wings:
+                sail.global_rotation(angle,
+                                     axis,
+                                     center,
+                                     matrix,
+                                     offset_canting,
+                                     offset_raking,
+                                     offset_deflection,
+                                     update_geometry)
         
-        for fin in self.app.wings:
-            fin.global_rotation(angle,
-                                axis,
-                                center,
-                                matrix,
-                                offset_canting,
-                                offset_raking,
-                                offset_deflection,
-                                update_geometry)
+        if self.app:
+            for fin in self.app.wings:
+                fin.global_rotation(angle,
+                                    axis,
+                                    center,
+                                    matrix,
+                                    offset_canting,
+                                    offset_raking,
+                                    offset_deflection,
+                                    update_geometry)
         
         for m in self.mesh:
             m.vertices = rotate_points(m.vertices, matrix, center)
@@ -350,11 +359,13 @@ class Sailboat():
                                 dy=dy,
                                 dz=dz)
         
-        for sail in self.rig.wings:
-            sail.build_xsecs()
-            
-        for fin in self.app.wings:
-            fin.build_xsecs()
+        if self.rig:
+            for sail in self.rig.wings:
+                sail.build_xsecs()
+                
+        if self.app:  
+            for fin in self.app.wings:
+                fin.build_xsecs()
             
     def compute_weight(self,
                        op_point: OperatingPoint = OperatingPoint()
@@ -365,8 +376,8 @@ class Sailboat():
         weight = self.displacement
         g = op_point.environment.gravity
         
-        center = self.cog
-        center[1] *= -1 # TODO: find why lateral inversion is necessary. Heel rotation seems not to be consistent
+        center = self.cog * np.array([-1., -1., 1.])
+        # center[1] *= -1 # TODO: find why lateral inversion is necessary. Heel rotation seems not to be consistent
         
         Fw = np.array([0.,
                        0.,
@@ -380,35 +391,42 @@ class Sailboat():
                            op_point: OperatingPoint = OperatingPoint(),
                            nSpanwise: int = 1,
                            nChordwise: int = 3,
+                           alpha_stall: float = 15.,
+                           model_size: str = "medium",
                            run_symmetric: bool = False,
                            to_symmetrize: Union[np.ndarray, List[bool], List[int]] = None,
                            Zsym: float = 0.0,
                            full_output: bool = False,
                            ):
-        
-        if to_symmetrize is None:
-            if run_symmetric:
-                to_symmetrize=np.ones(len(self.app.wings))
-            else:
-                to_symmetrize=np.zeros(len(self.app.wings))
-        
-        vlmApp = HydroVortexLatticeMethod(
-            airplane=self.app,
-            op_point=op_point,
-            spanwise_resolution=nSpanwise,
-            chordwise_resolution=nChordwise,
-            chordwise_spacing_function=np.cosspace,
-            align_trailing_vortices_with_wind=True,
-            IZsym=run_symmetric,
-            to_sym=to_symmetrize,
-            Zsym=Zsym,
-        )
-
-        hydro = vlmApp.run()
-        self.hydroVLMdata = vlmApp
-
-        Fapp = hydro['F_ab']
-        Mapp = hydro['M_ab']
+        if self.app:
+            if to_symmetrize is None:
+                if run_symmetric:
+                    to_symmetrize=np.ones(len(self.app.wings))
+                else:
+                    to_symmetrize=np.zeros(len(self.app.wings))
+            
+            vlmApp = HydroVortexLatticeMethod(
+                airplane=self.app,
+                op_point=op_point,
+                spanwise_resolution=nSpanwise,
+                chordwise_resolution=nChordwise,
+                chordwise_spacing_function=np.cosspace,
+                align_trailing_vortices_with_wind=True,
+                IZsym=run_symmetric,
+                to_sym=to_symmetrize,
+                Zsym=Zsym,
+            )
+    
+            hydro = vlmApp.run(alpha_stall, model_size)
+            self.hydroVLMdata = vlmApp
+    
+            Fapp = hydro['F_ab']
+            Mapp = hydro['M_ab']
+            
+        else:
+            Fapp = np.zeros(3)
+            Mapp = np.zeros(3)
+            hydro = {}
         
         if full_output:
             return Fapp, Mapp, hydro
@@ -419,35 +437,42 @@ class Sailboat():
                       op_point: OperatingPoint = OperatingPoint(),
                       nSpanwise: int = 1,
                       nChordwise: int = 3,
+                      alpha_stall: float = 15.,
+                      model_size: str = "medium",
                       run_symmetric: bool = False,
                       to_symmetrize: Union[np.ndarray, List[bool], List[int]] = None,
                       Zsym: float = 0.0,
                       full_output: bool = False,
                       ):
-        
-        if to_symmetrize is None:
-            if run_symmetric:
-                to_symmetrize=np.ones(len(self.rig.wings))
-            else:
-                to_symmetrize=np.zeros(len(self.rig.wings))
-        
-        vlmRig = AeroVortexLatticeMethod(
-            airplane=self.rig,
-            op_point=op_point,
-            spanwise_resolution=nSpanwise,
-            chordwise_resolution=nChordwise,
-            chordwise_spacing_function=np.cosspace,
-            align_trailing_vortices_with_wind=True,
-            IZsym=run_symmetric,
-            to_sym=to_symmetrize,
-            Zsym=Zsym,
-        )
-
-        aero = vlmRig.run()
-        self.aeroVLMdata = vlmRig
-
-        Fsail = aero['F_ab']
-        Msail = aero['M_ab']
+        if self.rig:
+            if to_symmetrize is None:
+                if run_symmetric:
+                    to_symmetrize=np.ones(len(self.rig.wings))
+                else:
+                    to_symmetrize=np.zeros(len(self.rig.wings))
+            
+            vlmRig = AeroVortexLatticeMethod(
+                airplane=self.rig,
+                op_point=op_point,
+                spanwise_resolution=nSpanwise,
+                chordwise_resolution=nChordwise,
+                chordwise_spacing_function=np.cosspace,
+                align_trailing_vortices_with_wind=True,
+                IZsym=run_symmetric,
+                to_sym=to_symmetrize,
+                Zsym=Zsym,
+            )
+    
+            aero = vlmRig.run(alpha_stall, model_size)
+            self.aeroVLMdata = vlmRig
+    
+            Fsail = aero['F_ab']
+            Msail = aero['M_ab']
+            
+        else:
+            Fsail = np.zeros(3)
+            Msail = np.zeros(3)
+            aero = {}
         
         if full_output:
             return Fsail, Msail, aero
@@ -472,7 +497,7 @@ class Sailboat():
             etaS = shaft_efficiency
             etaH = (1-t)/(1-w)
             
-            leeway = op_point.leeway
+            # leeway = op_point.leeway
             
             n = rpm / 60. # rps
             V = op_point._stw # m/s
@@ -481,13 +506,13 @@ class Sailboat():
             
             Kt, Kq, eta0 = self.propeller.compute_performance(J)
             
-            T, Q, P, n = self.propeller.compute_forces(
+            T, Qo, Po, n = self.propeller.compute_forces(
                 J,
                 op_point.environment.water.density,
                 rpm=rpm
             )
             
-            F = np.sum(T*(1-t)*etaR)
+            F = np.sum(T*(1-t))
             
             center = self.propeller.center
             axis = tall(self.propeller.axis)
@@ -500,16 +525,22 @@ class Sailboat():
                 'etaH': etaH,
                 'etaS': etaS,
                 'etaR': etaR,
+                'eta': eta0*etaH*etaS*etaR,
                 'T': T,
-                'Q': Q,
-                'P': P,
+                'Q': Qo / etaR,
+                'P': Po / etaR,
+                'Qo': Qo,
+                'Po': Po,
+                'BHP': Po / (etaR * etaS),
                 'n': n,
                 'w': w,
                 't': t,
                 'F_b': F * np.array([1.,0.,0.]),
                 'M_b': np.zeros(3),
                 'F_ab': F * axis,
-                'M_ab': np.cross(center, F * axis)
+                'M_ab': np.cross(center, F * axis),
+                'w': w,
+                't': t,
             }
             
             Fprop = prop['F_ab']
@@ -527,6 +558,7 @@ class Sailboat():
              backend: str = "pyvista",
              thin_wings: bool = False,
              ax=None,
+             mesh_color: str = 'lightgrey',
              use_preset_view_angle: str = None,
              set_background_pane_color: Union[str, Tuple[float, float, float]] = None,
              set_background_pane_alpha: float = None,
@@ -569,7 +601,7 @@ class Sailboat():
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import aerosandbox.tools.pretty_plots as p
+            import archibald2.tools.pretty_plots as p
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
             if ax is None:
@@ -653,21 +685,109 @@ class Sailboat():
                 p.show_plot()
 
         elif backend == "plotly":
+            
+            import plotly.graph_objects as go
 
-            from aerosandbox.visualization.plotly_Figure3D import Figure3D
-            fig = Figure3D()
-            for f in faces:
-                fig.add_quad((
-                    points[f[0]],
-                    points[f[1]],
-                    points[f[2]],
-                    points[f[3]],
-                ), outline=True)
-                show_kwargs = {
-                    "show": show,
-                    **show_kwargs
-                }
-            return fig.draw(**show_kwargs)
+            def quads_to_triangles(faces):
+                """Convert Nx4 quad face array to Mx3 triangle face array (2 triangles per quad)."""
+                f0 = faces[:, [0, 1, 2]]
+                f1 = faces[:, [0, 2, 3]]
+                return np.vstack([f0, f1])
+
+            def convert_plotly_mesh(vertices, faces, color="lightgray", name="mesh"):
+                # Ensure faces are triangles for Mesh3d
+                tri_faces = quads_to_triangles(faces)
+                x, y, z = vertices.T
+                i, j, k = tri_faces.T
+
+                return go.Mesh3d(
+                    x=x, y=y, z=z,
+                    i=i, j=j, k=k,
+                    opacity=1.,
+                    color=color,
+                )
+
+            meshes = []
+
+            # Main mesh
+            meshes.append(convert_plotly_mesh(points, faces, color=mesh_color, name="Wings"))
+
+            # Hull parts
+            for h in self.mesh:
+                meshes.append(
+                    go.Mesh3d(
+                        x=h.vertices[:,0], y=h.vertices[:,1], z=h.vertices[:,2],
+                        i=h.faces[:,0], j=h.faces[:,1], k=h.faces[:,2],
+                        opacity=1.,
+                        color=mesh_color,
+                        name="Hull"
+                    )
+                )
+
+            # Hull diff mesh
+            meshes.append(
+                go.Mesh3d(
+                    x=self.hull.diff_mesh.vertices[:,0], y=self.hull.diff_mesh.vertices[:,1], z=self.hull.diff_mesh.vertices[:,2],
+                    i=self.hull.diff_mesh.faces[:,0], j=self.hull.diff_mesh.faces[:,1], k=self.hull.diff_mesh.faces[:,2],
+                    opacity=1.,
+                    color=mesh_color,
+                    name="Hull"
+                )
+            )
+
+            fig = go.Figure(data=meshes)
+
+            if True:
+                bounds = np.array(self.hull.diff_mesh.bounds).reshape(3, 2)
+                size = np.diff(bounds, axis=1).flatten()
+                center = np.mean(bounds, axis=1)
+                offset = 0.5
+                X, Y = np.meshgrid(
+                    np.linspace(center[0]-size[0]/2-offset, center[0]+size[0]/2+offset, 2),
+                    np.linspace(center[1]-size[1]/2-offset, center[1]+size[1]/2+offset, 2),
+                )
+                Z = np.full_like(X, 0.)
+                fig.add_trace(
+                    go.Surface(
+                        x=X, y=Y, z=Z,
+                        showscale=False,
+                        opacity=0.2,
+                        colorscale=[[0, 'slateblue'], [1, 'slateblue']],
+                        name='Water'
+                    )
+                )
+            
+            # fig.update_layout(
+            #     scene=dict(
+            #         xaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+            #         yaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+            #         zaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+            #         # xaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+            #         # yaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+            #         # zaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+            #         aspectmode='data'
+            #     ),
+            #     showlegend=False,
+            #     margin=dict(l=0, r=0, t=0, b=0),
+            #     template='plotly_dark',
+            # )
+            
+            # fig.layout.scene.camera.projection.type = "orthographic"
+            # fig.layout.scene.dragmode="pan"
+            
+            # camera = dict(
+            #     up=dict(x=0, y=0, z=1),
+            #     center=dict(x=0, y=0, z=0),
+            #     eye=dict(x=-10, y=0, z=0)
+            # )
+            
+            # fig.update_layout(scene_camera=camera)
+            
+
+            if show:
+                from plotly.offline import plot
+                plot(fig)
+            return fig
 
         elif backend == "pyvista":
 
@@ -739,7 +859,7 @@ class Sailboat():
 
         """
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         preset_view_angles = np.array([
             ["-XY", "-YZ"],
@@ -861,7 +981,7 @@ class Sailboat():
                  appVlm.vortex_strengths)
             
             # colorbar_label = "Vortex Strengths (m/s)"
-            colorbar_label = "pressure coeffcient"
+            colorbar_label = "pressure coefficient"
             # colorbar_label = "Pressure (Pa)"
             
             # P = (rigVlm.dynamic_pressure,
@@ -905,31 +1025,132 @@ class Sailboat():
 
 
         if backend == "plotly":
-            from aerosandbox.visualization.plotly_Figure3D import Figure3D
-            fig = Figure3D()
+            import plotly.graph_objects as go
 
-            for j, vlm in enumerate([rigVlm, appVlm]):
-                for i in range(len(vlm.front_left_vertices)):
-                    fig.add_quad(
-                        points=[
-                            vlm.front_left_vertices[i, :],
-                            vlm.back_left_vertices[i, :],
-                            vlm.back_right_vertices[i, :],
-                            vlm.front_right_vertices[i, :],
-                        ],
-                        intensity=c[j],
-                        outline=True,
+            def quads_to_triangles(faces):
+                """Convert Nx4 quad face array to Mx3 triangle face array (2 triangles per quad)."""
+                f0 = faces[:, [0, 1, 2]]
+                f1 = faces[:, [0, 2, 3]]
+                return np.vstack([f0, f1])
+
+            def convert_plotly_mesh(vertices, faces, color="lightgray", name="mesh"):
+                # Ensure faces are triangles for Mesh3d
+                tri_faces = quads_to_triangles(faces)
+                x, y, z = vertices.T
+                i, j, k = tri_faces.T
+
+                return go.Mesh3d(
+                    x=x, y=y, z=z,
+                    i=i, j=j, k=k,
+                    opacity=1.,
+                    color=color,
+                )
+
+            meshes = []
+            
+            for idx, vlm in enumerate([rigVlm, appVlm]):
+                ### Draw the airplane mesh
+                points = np.concatenate([
+                    vlm.front_left_vertices,
+                    vlm.back_left_vertices,
+                    vlm.back_right_vertices,
+                    vlm.front_right_vertices
+                ])
+                N = len(vlm.front_left_vertices)
+                range_N = np.arange(N)
+                faces = tall(range_N) + wide(np.array([0, 1, 2, 3]) * N)
+                
+                tri_faces = quads_to_triangles(faces)
+                x, y, z = points.T
+                i, j, k = tri_faces.T
+                
+                meshes.append(
+                    go.Mesh3d(
+                        x=x, y=y, z=z,
+                        i=i, j=j, k=k,
+                        opacity=1.,
+                        facecolor=np.vstack([c[idx], c[idx]]),
+                        colorscale=cmap,
+                        name=f"{idx*'Hydro'}{(1-idx)*'Aero'} VLM",
+                        # hoverinfo=np.vstack([c[idx], c[idx]]),
                     )
-    
+                )
+            
                 if draw_streamlines:
-                    for k in range(vlm.streamlines.shape[0]):
-                        fig.add_streamline(vlm.streamlines[k, :, :].T)
+                    for i in range(vlm.streamlines.shape[0]):
+                        meshes.append(
+                            go.Scatter3d(
+                                x=vlm.streamlines[i, 0, :],
+                                y=vlm.streamlines[i, 1, :],
+                                z=vlm.streamlines[i, 2, :],
+                                mode='lines',
+                                line=dict(color=streamlines_c, width=2),
+                                opacity=0.7,
+                                name="Streamline"
+                            )
+                        )
 
-            return fig.draw(
-                show=show,
-                colorbar_title=colorbar_label,
-                **show_kwargs,
+            # Hull parts
+            for h in self.mesh:
+                meshes.append(
+                    go.Mesh3d(
+                        x=h.vertices[:,0], y=h.vertices[:,1], z=h.vertices[:,2],
+                        i=h.faces[:,0], j=h.faces[:,1], k=h.faces[:,2],
+                        opacity=1.,
+                        color=mesh_color,
+                        name="Hull"
+                    )
+                )
+
+            # Hull diff mesh
+            meshes.append(
+                go.Mesh3d(
+                    x=self.hull.diff_mesh.vertices[:,0], y=self.hull.diff_mesh.vertices[:,1], z=self.hull.diff_mesh.vertices[:,2],
+                    i=self.hull.diff_mesh.faces[:,0], j=self.hull.diff_mesh.faces[:,1], k=self.hull.diff_mesh.faces[:,2],
+                    opacity=1.,
+                    color=mesh_color,
+                    name="Hull"
+                )
             )
+
+            fig = go.Figure(data=meshes)
+
+            if True:
+                bounds = np.array(self.hull.diff_mesh.bounds).reshape(3, 2)
+                size = np.diff(bounds, axis=1).flatten()
+                center = np.mean(bounds, axis=1)
+                offset = 0.5
+                X, Y = np.meshgrid(
+                    np.linspace(center[0]-size[0]/2-offset, center[0]+size[0]/2+offset, 2),
+                    np.linspace(center[1]-size[1]/2-offset, center[1]+size[1]/2+offset, 2),
+                )
+                Z = np.full_like(X, 0.)
+                fig.add_trace(go.Surface(
+                    x=X, y=Y, z=Z,
+                    showscale=False,
+                    opacity=0.2,
+                    colorscale=[[0, 'slateblue'], [1, 'slateblue']],
+                    name='Water'
+                ))
+            
+            fig.update_layout(
+                scene=dict(
+                    xaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+                    yaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+                    zaxis=dict(showbackground=False, showspikes = False, showticklabels=False, title=''),
+                    # xaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+                    # yaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+                    # zaxis = list(title = '', autorange = TRUE, showspikes = FALSE, showgrid = FALSE, zeroline = FALSE, showline = FALSE, autotick = TRUE, ticks = '', showticklabels = FALSE),
+                    aspectmode='data'
+                ),
+                showlegend=False,
+                margin=dict(l=0, r=0, t=0, b=0)
+            )
+
+            if show:
+                from plotly.offline import plot
+                plot(fig)
+            return fig
 
         elif backend == "pyvista":
             import pyvista as pv
@@ -971,7 +1192,7 @@ class Sailboat():
     
                 ### Draw the streamlines
                 if draw_streamlines:
-                    import aerosandbox.tools.pretty_plots as p
+                    import archibald2.tools.pretty_plots as p
                     for i in range(vlm.streamlines.shape[0]):
                         plotter.add_mesh(
                             pv.Spline(vlm.streamlines[i, :, :].T),

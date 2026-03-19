@@ -1,5 +1,5 @@
 import hashlib
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 
 def eng_string(

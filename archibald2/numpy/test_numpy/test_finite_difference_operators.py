@@ -1,5 +1,5 @@
 import pytest
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 
 def test_uniform_forward_difference_first_degree():

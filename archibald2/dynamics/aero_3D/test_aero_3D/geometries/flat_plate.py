@@ -1,4 +1,4 @@
-import aerosandbox as asb
+import archibald2 as asb
 
 airfoil = asb.Airfoil("naca0008")
 

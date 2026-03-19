@@ -1,8 +1,8 @@
-from aerosandbox.common import ExplicitAnalysis
-import aerosandbox.numpy as np
+from archibald2.common import ExplicitAnalysis
+import archibald2.numpy as np
 import subprocess
 from pathlib import Path
-from aerosandbox.geometry import Airfoil
+from archibald2.geometry import Airfoil
 from typing import Union, List, Dict
 import tempfile
 import warnings

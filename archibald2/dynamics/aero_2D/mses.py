@@ -1,9 +1,9 @@
-from aerosandbox.common import ExplicitAnalysis
-import aerosandbox.numpy as np
+from archibald2.common import ExplicitAnalysis
+import archibald2.numpy as np
 import subprocess
 from pathlib import Path
-from aerosandbox.geometry import Airfoil
-from aerosandbox.aerodynamics.aero_3D.avl import AVL
+from archibald2.geometry import Airfoil
+from archibald2.dynamics.aero_3D.avl import AVL
 from typing import Union, List
 import tempfile
 from textwrap import dedent
@@ -397,7 +397,7 @@ if __name__ == "__main__":
     matplotlib.use("WebAgg")
 
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     fig, ax = plt.subplots()
     plt.plot(res["mach"], res["CD"], ".-")

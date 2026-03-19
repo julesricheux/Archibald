@@ -1,6 +1,6 @@
-from aerosandbox.geometry.airfoil import *
-import aerosandbox as asb
-import aerosandbox.numpy as np
+from archibald2.geometry.airfoil import *
+import archibald2 as asb
+import archibald2.numpy as np
 import pytest
 
 

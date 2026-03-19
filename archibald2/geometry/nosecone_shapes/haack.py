@@ -1,4 +1,4 @@
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 
 def haack_series(
@@ -41,7 +41,7 @@ def tangent(
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     fig, ax = plt.subplots()
 

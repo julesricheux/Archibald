@@ -1,6 +1,6 @@
 # from inviscid_analysis import N, gamma
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 
 N = 1000
 ue = np.linspace(1, 1, N)
@@ -82,7 +82,7 @@ theta = sol(theta)
 H = sol(H)
 
 ### Plot
-from aerosandbox.tools.pretty_plots import plt, show_plot
+from archibald2.tools.pretty_plots import plt, show_plot
 
 fig, ax = plt.subplots()
 plt.plot(x, theta)

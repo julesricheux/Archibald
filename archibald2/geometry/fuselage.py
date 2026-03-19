@@ -372,7 +372,7 @@ class Fuselage(AeroSandboxObject):
         Meshes the fuselage as a solid (thickened) body.
 
         Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
-        `aerosandbox.geometry.mesh_utilities`.
+        `archibald2.geometry.mesh_utilities`.
 
         Args:
 
@@ -509,7 +509,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw(*args, **kwargs)
 
     def draw_wireframe(self, *args, **kwargs):
@@ -523,7 +523,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw_wireframe()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw_wireframe(*args, **kwargs)
 
     def draw_three_view(self, *args, **kwargs):
@@ -537,7 +537,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw_three_view()
 
         """
-        from aerosandbox.geometry.airplane import Airplane
+        from archibald2.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw_three_view(*args, **kwargs)
 
     def subdivide_sections(self,

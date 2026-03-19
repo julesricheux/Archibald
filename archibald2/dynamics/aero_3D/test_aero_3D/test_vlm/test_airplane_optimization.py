@@ -1,4 +1,4 @@
-import aerosandbox as asb
+import archibald2 as asb
 import pytest
 
 
@@ -37,7 +37,7 @@ def test_airplane_optimization():
     # tr = np.linspace(0.01, 1)
     # aeros = np.vectorize(get_aero)(tr)
     # import matplotlib.pyplot as plt
-    # import aerosandbox.tools.pretty_plots as p
+    # import archibald2.tools.pretty_plots as p
     # fig, ax = plt.subplots()
     # plt.plot(tr, [a['CL'] / a['CD'] for a in aeros])
     # p.show_plot()

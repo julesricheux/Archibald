@@ -1,4 +1,4 @@
-from aerosandbox.weights.mass_properties import MassProperties
+from archibald2.weights.mass_properties import MassProperties
 
 """
 Most of these relations are taken from:

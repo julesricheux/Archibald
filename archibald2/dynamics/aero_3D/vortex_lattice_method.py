@@ -21,8 +21,9 @@ __root_dir = os.path.dirname(os.path.abspath(__file__))
 if __root_dir not in sys.path:
     sys.path.append(os.path.dirname(__root_dir))
 
-from aerosandbox import ExplicitAnalysis
+from archibald2 import ExplicitAnalysis
 from archibald2.geometry import *
+from archibald2.geometry.airfoil.thin_section import leading_edge_camber
 from archibald2.performance.operating_point import OperatingPoint
 from archibald2.environment.environment import Fluid
 from archibald2.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import \
@@ -32,7 +33,7 @@ import copy
 from abc import abstractmethod
 
 from archibald2.tools.geom_utils import *
-from archibald2.tools.math_utils import rotation_matrix
+from archibald2.tools.math_utils import rotation_matrix, ramp, ReLU
 from archibald2.tools.dyn_utils import *
 from archibald2.geometry.lifting_set import LiftingSet, Rig, Appendage
 
@@ -82,6 +83,22 @@ def change_basis(x: Union[float, np.ndarray],
     z_to = m1[2,0] * x0 + m1[2,1] * y0 + m1[2,2] * z0
 
     return x_to, y_to, z_to
+
+
+def stall_factor(alpha: Union[float, np.ndarray],
+                 alpha_i: Union[float, np.ndarray],
+                 alpha_stall: Union[float, np.ndarray],
+                 ):
+    
+    alpha_corr = np.abs(alpha)
+    alpha_i_corr = ReLU(alpha_i * np.sign(alpha)) + 1e-3
+    
+    raw_fac = 1. + (alpha_stall - alpha_corr)/alpha_i_corr
+    
+    return np.fmin(1.,
+                   np.fmax(raw_fac,
+                           0.)
+                   )
 
 
 class VortexLatticeMethod(ExplicitAnalysis):
@@ -154,8 +171,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.visc_corr = 0.
         
+        self.wing_spanwise_resolution = [(len(w.xsecs)-1)*self.spanwise_resolution*(1+w.symmetric) for w in self.airplane.wings]
         # Total number of spanwise cells for all wings
-        self.total_spanwise_resolution = np.sum([(len(w.xsecs)-1)*self.spanwise_resolution*(1+w.symmetric) for w in self.airplane.wings])
+        self.total_spanwise_resolution = np.sum(self.wing_spanwise_resolution)
         
         
     def __repr__(self):
@@ -312,6 +330,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # is_leading_edge_idx = []
         # strips = []
         is_symmetric = []
+        
+        strips_vertices = []
+        
+        is_soft = []
 
         for i, wing in enumerate(self.airplane.wings):
             if self.spanwise_resolution > 1:
@@ -348,7 +370,23 @@ class VortexLatticeMethod(ExplicitAnalysis):
             #               self.chordwise_resolution)
             #     )
             
+            wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+            
+            for k in range(wing_spanwise_resolution):
+                strip_k_vertices = [
+                    points[k::wing_spanwise_resolution+1, :], # left vertices
+                    points[k+1::wing_spanwise_resolution+1, :], # right vertices
+                ]
+                
+                strips_vertices.append(strip_k_vertices)
+            
+            # split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
+            #          for i in range(self.total_spanwise_resolution)]
+            # strips_vertices.append()
+            
             is_symmetric.append([float(self.to_sym[i])] * points[faces[:, 0], :].shape[0])
+            
+            is_soft.append([wing.is_soft for k in range(len(faces))])
 
         front_left_vertices = np.concatenate(front_left_vertices)
         back_left_vertices = np.concatenate(back_left_vertices)
@@ -359,6 +397,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # is_trailing_edge_idx = np.concatenate(is_trailing_edge_idx)
         # is_leading_edge_idx = np.concatenate(is_leading_edge_idx)
         is_symmetric = np.concatenate(is_symmetric)
+        is_soft = np.concatenate(is_soft)
 
         ### Compute panel statistics
         diag1 = front_right_vertices - back_left_vertices
@@ -433,9 +472,17 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.vortex_centers = vortex_centers
         self.vortex_bound_leg = vortex_bound_leg
         self.collocation_points = collocation_points
+        
+        self.strips_vertices = strips_vertices
+        
+        self.is_soft = is_soft
+        
         self.strips_x = strips_x
         self.strips_y = strips_y
         self.strips_chords = strips_chords
+        self.strips_areas = self.sum_by_strips(tall(self.areas))
+        self.strips_centers = self.sum_by_strips(tall(self.areas) * self.vortex_centers) / tall(self.strips_areas)
+        self.strips_quarters = self.strips_centers - self.strips_x*tall(self.strips_chords)/4
         
     def get_freestream_velocity_at_points(self,
                                           points: np.ndarray,
@@ -454,6 +501,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         return freestream_velocities
         
+    
     def calculate_freestream_influences(self):
         
         freestream_velocities = self.get_freestream_velocity_at_points(self.collocation_points)
@@ -466,6 +514,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.freestream_velocities = freestream_velocities
         
         return freestream_influences
+    
     
     def calculate_vortices_influences(self):
         u_collocations_unit, v_collocations_unit, w_collocations_unit = calculate_induced_velocity_horseshoe(
@@ -533,7 +582,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
         return np.stack(split)
     
    
-    def viscous_computation(self):
+    def viscous_computation(self, alpha_stall, model_size):
+        
         # Aerodynamic forces by strips in geometry axes
 
         self.strips_forces = self.sum_by_strips(self.panels_forces)
@@ -549,25 +599,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # Aerodynamic moments by strips in geometry axes
 
         self.strips_moments = self.sum_by_strips(self.panels_moments)
-        
-        # Strips areas
-        # self.strips_areas = np.sum(
-        #     self.areas.reshape(
-        #         (self.total_spanwise_resolution, self.chordwise_resolution)
-        #         ), 
-        #     axis=1)
-        
-        self.strips_areas = self.sum_by_strips(tall(self.areas))
-        
-        # Strips centers
-
-        # self.strips_centers = self.sum_by_strips(tall(self.areas) * self.vortex_centers) / np.tile(self.strips_areas, (3,1)).T
-        self.strips_centers = self.sum_by_strips(tall(self.areas) * self.vortex_centers) / tall(self.strips_areas)
             
         # Mean freestream by strips in geometry axes
 
         self.strips_freestream = self.sum_by_strips(tall(self.areas) * self.freestream_velocities) / tall(self.strips_areas)
-        
         
         # Compute viscous forces by strip using Neuralfoil
         
@@ -585,10 +620,12 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
         ### Join strips X, Y and Z 
         
-        self.strips_freestream_axes = [np.array([[1.,0.,0.],]*3)*tall(self.strips_freestream_x[i,:]) +\
-                                       np.array([[0.,1.,0.],]*3)*tall(self.strips_y[i,:]) +\
-                                       np.array([[0.,0.,1.],]*3)*tall(self.strips_z[i,:]) \
-                                           for i in range(self.total_spanwise_resolution)]
+        self.strips_freestream_axes = [
+                np.array([[1.,0.,0.],]*3)*tall(self.strips_freestream_x[i,:]) +\
+                np.array([[0.,1.,0.],]*3)*tall(self.strips_y[i,:]) +\
+                np.array([[0.,0.,1.],]*3)*tall(self.strips_z[i,:]) \
+            for i in range(self.total_spanwise_resolution)
+        ]
         
         strips_freestream_axes_inv = [np.linalg.inv(ax) for ax in self.strips_freestream_axes]
         self.strips_freestream_axes_inv = strips_freestream_axes_inv
@@ -599,9 +636,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
             change_basis(x=self.strips_forces_in_strips_planes[i,0],
                          y=self.strips_forces_in_strips_planes[i,1],
                          z=self.strips_forces_in_strips_planes[i,2],
-                          from_axes = self.strips_freestream_axes[i],
-                           # to_axes = self.strips_freestream_axes[i],
-                          # to_axes = self.strips_freestream_axes_inv[i],
+                         from_axes = self.strips_freestream_axes[i],
+                         # to_axes = self.strips_freestream_axes[i],
+                         # to_axes = self.strips_freestream_axes_inv[i],
                          )
             for i in range(self.total_spanwise_resolution)
         ])
@@ -618,7 +655,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         stream_angle = np.arctan2(-self.strips_freestream_x[:,1], self.strips_freestream_x[:,0])
         deflection_angle = np.arctan2(-self.strips_x[:,1], self.strips_x[:,0])
         # self.alpha = np.rad2deg(stream_angle-deflection_angle)
-        self.alpha = (stream_angle-deflection_angle) * 180/np.pi
+        alpha = (stream_angle-deflection_angle) * 180/np.pi
+        
+        self.alpha = np.mod(alpha + 180., 360.) - 180.
         
         ### Separate strips freestream velocities
         strips_U = np.linalg.norm(self.strips_freestream_in_strips_planes, axis=1) # Z,X plane
@@ -640,50 +679,154 @@ class VortexLatticeMethod(ExplicitAnalysis):
             
         self.airfoils = np.array(airfoils)
         
-        ### Call Neuralfoil for each strip      
+        ### Call Neuralfoil for each strip
+        self.stall_fac = stall_factor(
+            self.alpha,
+            self.alphai,
+            alpha_stall,
+            ) # 0 when stalled, 1 when laminar
         
-        # self.nf_results = [
-        #         nf.get_aero_from_airfoil(  # You can use AeroSandbox airfoils as an entry point
-        #             airfoil=af,  # any UIUC or NACA airfoil name works
-        #             # alpha=[self.alpha[i] - self.alphai[i], self.alpha[i]], Re=self.strips_reynolds[i],
-        #             alpha=self.alpha[i], Re=self.strips_reynolds[i],
-        #             # alpha=self.alpha[i], Re=self.strips_reynolds[i],
-        #             model_size="medium",
-        #         ) for i, af in enumerate(self.airfoils)
-        #     ]
+        # when using soft wings, a negative vortex strength at the l.e. means stall
         
-        # self.strips_CL = np.array([res['CL'][0] for res in self.nf_results])
+        mean_z = np.mean(self.vortex_centers[:,2])
+        
+        le_idx = np.arange(self.is_leading_edge.shape[0])[self.is_leading_edge]
+        te_idx = np.arange(self.is_trailing_edge.shape[0])[self.is_trailing_edge]
+     
+        # TODO: find a better low-aoa / soft-wing stall criterion
+        # for the moment, funcitonnal because z_mean > 0 for sails and < 0 for appendages
+        
+        # def kC(alpha_eff, xc, mc):
+        #     k = 2.
+        #     # D = leading_edge_camber(xc, mc)
+        #     D = mc/xc
+        #     C = np.sign(D) * (alpha_eff - 0.5*180/np.pi * np.arctan(D))
+            
+        #     return k*C
+        
+        # self.alphaeff0 = self.alpha - self.alphai * self.stall_fac
+        
+        # xc = 0.4
+        
+        # self.cambers = np.array([af.max_camber() for i, af in enumerate(self.airfoils)])
+        
+        # self.insight0 = [af.max_camber() for i, af in enumerate(self.airfoils)]
+        # self.insight1 = [leading_edge_camber(xc, af.max_camber()) for i, af in enumerate(self.airfoils)]
+        # self.insight2 = [kC(self.alphaeff0[i], xc, af.max_camber()) for i, af in enumerate(self.airfoils)]
+        # self.insight3 = smooth_ramp(self.vortex_strengths[le_idx] * self.vortex_strengths[te_idx])
+        # self.insight4 = smooth_ramp(self.alphaeff0 * self.cambers)
+        
+        # self.soft_stall_fac = np.concatenate([
+        #     (np.tanh(kC(self.alphaeff0[i], xc, af.max_camber()) + 1.) + 1.)/2.
+        #     for i, af in enumerate(self.airfoils)
+        # ])
+        # self.soft_stall_fac = np.fmax(1 - self.is_soft, (
+        #     smooth_ramp(self.vortex_strengths[le_idx] * self.vortex_strengths[te_idx]) *\
+        #     smooth_ramp(self.alphaeff0 * 100*self.cambers)  # < 0 when stalled, >= 0 when laminar
+        # )) # 0 when stalled, 1 when laminar
+        
+        self.soft_stall_fac = ramp(
+        # self.soft_stall_fac = smooth_ramp(
+            self.vortex_strengths[le_idx] *\
+            mean_z *\
+            self.is_soft[le_idx], # < 0 when stalled, >= 0 when laminar
+        )# 0 when stalled, 1 when laminar
+        
+        # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.airplane.wings)))
+        # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.airplane.wings)))
+        self.vertices_soft_stall_fac = []
+        self.vertices_stall_fac = []
+        
+        # extend the stall factors to the borders of strips (useful for 3D animated display)
+        for i, wing in enumerate(self.airplane.wings):
+            wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+            
+            start = i*(wing_spanwise_resolution)
+            end = (i+1)*(wing_spanwise_resolution)
+            
+            self.vertices_soft_stall_fac.append(self.soft_stall_fac[start])
+            self.vertices_stall_fac.append(self.stall_fac[start])
+            
+            for k in range(start, end-1):
+                self.vertices_soft_stall_fac.append((self.soft_stall_fac[k] + self.soft_stall_fac[k+1]) / 2)
+                self.vertices_stall_fac.append((self.stall_fac[k] + self.stall_fac[k+1]) / 2)
+                # self.vertices_soft_stall_fac.append((self.soft_stall_fac[k, 0] + self.soft_stall_fac[k+1, 0]) / 2)
+                # self.vertices_stall_fac.append((self.stall_fac[k, 0] + self.stall_fac[k+1, 0]) / 2)
+                
+            self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1])
+            self.vertices_stall_fac.append(self.stall_fac[end-1])
+            # self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1, 0])
+            # self.vertices_stall_fac.append(self.stall_fac[end-1, 0])
+        
+        
+        self.alphaeff = self.alpha - self.alphai * self.soft_stall_fac * self.stall_fac
         
         self.nf_results = [
-                nf.get_aero_from_airfoil(  # You can use AeroSandbox airfoils as an entry point
-                    airfoil=af,  # any UIUC or NACA airfoil name works
-                    # alpha=[self.alpha[i] - self.alphai[i], self.alpha[i]], Re=self.strips_reynolds[i],
-                    alpha=self.alpha[i] - self.alphai[i], Re=self.strips_reynolds[i],
-                    # alpha=self.alpha[i], Re=self.strips_reynolds[i],
-                    model_size="medium",
+                af.get_aero_from_neuralfoil(
+                    alpha=self.alphaeff[i],
+                    Re=self.strips_reynolds[i],
+                    # model_size="xxlarge",
+                    # model_size="xlarge",
+                    # model_size="large",
+                    # model_size="medium",
+                    # model_size="small",
+                    # model_size="xsmall",
+                    # model_size="xxsmall",
+                    model_size=model_size,
+                    n_crit = 9.0,
+                    xtr_upper = 0.1,
+                    xtr_lower = 0.1,
                 ) for i, af in enumerate(self.airfoils)
             ]
         
         self.strips_CL = np.array([res['CL'][0] for res in self.nf_results])
         self.strips_CD = np.array([res['CD'][0] for res in self.nf_results])
-        self.strips_CDv = np.array([res['CD'][0] for res in self.nf_results]) * (1+self.visc_corr)
+        self.strips_CF = np.sqrt(self.strips_CL**2 + self.strips_CD**2)
         self.strips_CM = np.array([res['CM'][0] for res in self.nf_results])
         
-        self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2
+        self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2 *\
+            tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
+            
         self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2
-        self.strips_Dv = tall(self.strips_CDv) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2
         
+        self.strips_Li = tall(self.strips_forces_strips_freestream[:, 2])
+        
+        self.strips_Di = tall(self.strips_forces_strips_freestream[:, 0]) *\
+            tall(self.soft_stall_fac) *\
+            tall(ReLU(self.strips_L / self.strips_Li))
 
+        self.strips_F = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.]))) +\
+                       np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
+        
+        self.strips_M = tall(self.strips_CM) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2 * tall(self.strips_chords)
+
+
+        self.strips_coe = self.strips_quarters - self.strips_x*tall(self.strips_CM/self.strips_CF)
+        
+        
         ### Reproject strips viscous drag forces from strips freestream axes to geometry axes
         
-        self.L_vec = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.]))) +\
-                       np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
-        self.Dv_vec = np.multiply(tall(self.strips_Dv), wide(np.array([1., 0., 0.])))
+        self.L_vec = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.])))
+                       
+        self.D_vec = np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
+        
+        self.Di_vec = np.multiply(tall(self.strips_Di), wide(np.array([1., 0., 0.])))
+        
+        self.M_vec = np.multiply(tall(self.strips_M), wide(np.array([0., 0., 1.])))
                     
         visc_forces_geometry = np.array([
-            change_basis(x=self.Dv_vec[i,0],
-                          y=self.Dv_vec[i,1],
-                          z=self.Dv_vec[i,2],
+            change_basis(x=self.D_vec[i,0],
+                          y=self.D_vec[i,1],
+                          z=self.D_vec[i,2],
+                          to_axes = self.strips_freestream_axes[i],
+                          )
+            for i in range(self.total_spanwise_resolution)
+        ])
+        
+        induced_forces_geometry = np.array([
+            change_basis(x=self.Di_vec[i,0],
+                          y=self.Di_vec[i,1],
+                          z=self.Di_vec[i,2],
                           to_axes = self.strips_freestream_axes[i],
                           )
             for i in range(self.total_spanwise_resolution)
@@ -698,31 +841,38 @@ class VortexLatticeMethod(ExplicitAnalysis):
             for i in range(self.total_spanwise_resolution)
         ])
         
-        # visc_forces_geometry = np.ones((self.total_spanwise_resolution, 3))
-            
-        # visc_forces_geometry = self.Dv_vec
-        
         visc_moments_geometry = np.cross(
-            np.add(self.strips_centers, -wide(np.array(self.xyz_ref))),
+            np.add(self.strips_coe, -wide(np.array(self.xyz_ref))),
             visc_forces_geometry
         )
         
+        induced_moments_geometry = 0. # TODO: need to separate VLM lift moment from VLM induced drag moment
+        
         lift_moments_geometry = np.cross(
-            np.add(self.strips_centers, -wide(np.array(self.xyz_ref))),
+            np.add(self.strips_coe, -wide(np.array(self.xyz_ref))),
             lift_forces_geometry
         )
         
-        visc_force_geometry = np.sum(visc_forces_geometry, axis=0) # Viscous drag total force in the global geometry axes
-        visc_moment_geometry = np.sum(visc_moments_geometry, axis=0) # Viscous drag total force in the global geometry axes
+        visc_force_geometry = np.sum(visc_forces_geometry, axis=0) # NF viscous drag total force in the global geometry axes
+        visc_moment_geometry = np.sum(visc_moments_geometry, axis=0) # NF viscous drag total force in the global geometry axes
         
-        lift_force_geometry = np.sum(lift_forces_geometry, axis=0) # Viscous drag total force in the global geometry axes
-        lift_moment_geometry = np.sum(lift_moments_geometry, axis=0) # Viscous drag total force in the global geometry axes
+        induced_force_geometry = np.sum(induced_forces_geometry, axis=0) # VLM induced drag total force in the global geometry axes
+        induced_moment_geometry = np.sum(induced_moments_geometry, axis=0) # VLM induced drag total force in the global geometry axes
+        
+        lift_force_geometry = np.sum(lift_forces_geometry, axis=0) # NF lift total force in the global geometry axes
+        lift_moment_geometry = np.sum(lift_moments_geometry, axis=0) # NF lift total force in the global geometry axes
         
         self.visc_forces_geometry = visc_forces_geometry
         self.visc_force_geometry = visc_force_geometry
         
         self.visc_moments_geometry = visc_moments_geometry
         self.visc_moment_geometry = visc_moment_geometry
+        
+        self.induced_forces_geometry = induced_forces_geometry
+        self.induced_force_geometry = induced_force_geometry
+        
+        self.induced_moments_geometry = induced_moments_geometry
+        self.induced_moment_geometry = induced_moment_geometry
         
         self.lift_forces_geometry = lift_forces_geometry
         self.lift_force_geometry = lift_force_geometry
@@ -731,7 +881,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.lift_moment_geometry = lift_moment_geometry
         
 
-    def run(self) -> Dict[str, Any]:
+    def run(
+        self,
+        alpha_stall: float = 15.,
+        model_size: str = "medium",
+    ) -> Dict[str, Any]:
         """
         Computes the aerodynamic forces.
 
@@ -755,6 +909,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
             - 'Cl', the rolling coefficient [-], in body axes
             - 'Cm', the pitching coefficient [-], in body axes
             - 'Cn', the yawing coefficient [-], in body axes
+            
+        # TODO: find a more specific way to compute alpha stall
 
         Nondimensional values are nondimensionalized using reference values in the VortexLatticeMethod.airplane object.
         """
@@ -782,7 +938,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             print("Calculating vortex strengths...")
 
         self.vortex_strengths = np.linalg.solve(AIC, -freestream_influences)
-
+        
         ##### Calculate forces
         ### Calculate Near-Field Forces and Moments
         # Governing Equation: The force on a straight, small vortex filament is F = rho * cross(V, l) * gamma,
@@ -819,7 +975,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         if self.verbose:
             print("Calculating viscous forces on each strip...")
             
-        self.viscous_computation()
+        self.viscous_computation(alpha_stall, model_size)
             
         # Calculate total forces and moments
         force_geometry = np.sum(forces_geometry, axis=0)
@@ -839,6 +995,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
             from_axes="geometry",
             to_axes="wind"
         )
+        self.induced_force_wind = self.op_point.convert_axes(
+            self.induced_force_geometry[0], self.induced_force_geometry[1], self.induced_force_geometry[2],
+            from_axes="geometry",
+            to_axes="wind"
+        )
         self.lift_force_wind = self.op_point.convert_axes(
             self.lift_force_geometry[0], self.lift_force_geometry[1], self.lift_force_geometry[2],
             from_axes="geometry",
@@ -854,6 +1015,14 @@ class VortexLatticeMethod(ExplicitAnalysis):
             from_axes="geometry",
             to_axes="wind"
         )
+        
+        self.induced_moment_wind = 0.
+        
+        self.lift_moment_wind = self.op_point.convert_axes(
+            self.lift_moment_geometry[0], self.lift_moment_geometry[1], self.lift_moment_geometry[2],
+            from_axes="geometry",
+            to_axes="wind"
+        )
 
         self.force_underway = self.op_point.convert_axes(
             force_geometry[0], force_geometry[1], force_geometry[2],
@@ -862,6 +1031,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
         )
         self.visc_force_underway = self.op_point.convert_axes(
             self.visc_force_geometry[0], self.visc_force_geometry[1], self.visc_force_geometry[2],
+            from_axes="geometry",
+            to_axes="underway"
+        )
+        self.induced_force_underway = self.op_point.convert_axes(
+            self.induced_force_geometry[0], self.induced_force_geometry[1], self.induced_force_geometry[2],
             from_axes="geometry",
             to_axes="underway"
         )
@@ -880,6 +1054,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
             from_axes="geometry",
             to_axes="underway"
         )
+        
+        self.induced_moment_underway = 0.
+        
         self.lift_moment_underway = self.op_point.convert_axes(
             self.lift_moment_geometry[0], self.lift_moment_geometry[1], self.lift_moment_geometry[2],
             from_axes="geometry",
@@ -930,29 +1107,36 @@ class VortexLatticeMethod(ExplicitAnalysis):
         return {
             # "centroid": centroid_geometry,
             
-            "F_ab": self.force_underway + self.visc_force_underway,
-            "Fi_ab": self.force_underway,
+            "F_ab": self.lift_force_underway + self.visc_force_underway + self.induced_force_underway,
+            "Fvlm_ab": self.force_underway,
+            "Fnf_ab": self.lift_force_underway,
             "Fv_ab": self.visc_force_underway,
+            "Find_ab": self.induced_force_underway,
             
             # "F_g": self.force_geometry + self.visc_force_geometry,
             # "Fi_g": self.force_geometry,
             # "Fv_g": self.visc_force_geometry,
             
-            "F_w": self.force_wind + self.visc_force_wind,
-            "Fi_w": self.force_wind,
+            "F_w": self.lift_force_wind + self.visc_force_wind + self.induced_force_wind,
+            "Fvlm_w": self.force_wind,
+            "Fnf_w": self.lift_force_wind,
             "Fv_w": self.visc_force_wind,
             
-            "M_ab": self.moment_underway + self.visc_moment_underway,
-            "Mi_ab": self.moment_underway,
+            "M_ab": self.lift_moment_underway + self.visc_moment_underway + self.induced_moment_underway,
+            "Mvlm_ab": self.moment_underway,
+            "Mnf_ab": self.lift_moment_underway,
             "Mv_ab": self.visc_moment_underway,
+            "Mind_ab": self.induced_moment_underway,
             
             # "M_g": self.moment_geometry + self.visc_force_geometry,
             # "Mi_g": self.moment_geometry,
             # "Mv_g": self.visc_moment_geometry,
             
-            "M_w": self.moment_wind + self.visc_moment_wind,
-            "Mi_w": self.moment_wind,
+            "M_w": self.lift_moment_wind + self.visc_moment_wind + self.induced_moment_wind,
+            "Mvlm_w": self.moment_wind,
+            "Mnf_w": self.lift_moment_wind,
             "Mv_w": self.visc_moment_wind,
+            "Mind_w": self.induced_force_wind,
             
             "L"  : L,
             "D"  : D,
@@ -1305,7 +1489,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 self.calculate_streamlines()
 
         if backend == "plotly":
-            from aerosandbox.visualization.plotly_Figure3D import Figure3D
+            from archibald2.visualization.plotly_Figure3D import Figure3D
             fig = Figure3D()
 
             for i in range(len(self.front_left_vertices)):
@@ -1366,7 +1550,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
             ### Draw the streamlines
             if draw_streamlines:
-                import aerosandbox.tools.pretty_plots as p
+                import archibald2.tools.pretty_plots as p
                 for i in range(self.streamlines.shape[0]):
                     plotter.add_mesh(
                         pv.Spline(self.streamlines[i, :, :].T),
@@ -1548,7 +1732,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
 
         Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
 
-        """ 
+        """
         
         # TRUE WIND SPEED
         twa = self.op_point.twa
@@ -1580,44 +1764,45 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
                         z:float = None):
         return self.op_point._aws(z)
     
-    
-class RotorVortexLatticeMethod(AeroVortexLatticeMethod):
-    """
-    An explicit (linear) vortex-lattice-method aerodynamics analysis to handle rotor sails
-    """
 
-    def __init__(self,
-                 airplane: Appendage,
-                 op_point: OperatingPoint,
-                 xyz_ref: List[float] = None,
-                 IZsym: int = 0,
-                 to_sym: List[bool] = None,
-                 Zsym: float = 0.0,
-                 verbose: bool = False,
-                 spanwise_resolution: int = 10,
-                 spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
-                 chordwise_resolution: int = 10,
-                 chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
-                 vortex_core_radius: float = 1e-8,
-                 align_trailing_vortices_with_wind: bool = True,
-                 R: float = 1.,
-                 SR: float = 1.
-                 ):
+#IGNORE    
+# class RotorVortexLatticeMethod(AeroVortexLatticeMethod):
+#     """
+#     An explicit (linear) vortex-lattice-method aerodynamics analysis to handle rotor sails
+
+#     """
+#     def __init__(self,
+#                  airplane: Appendage,
+#                  op_point: OperatingPoint,
+#                  xyz_ref: List[float] = None,
+#                  IZsym: int = 0,
+#                  to_sym: List[bool] = None,
+#                  Zsym: float = 0.0,
+#                  verbose: bool = False,
+#                  spanwise_resolution: int = 10,
+#                  spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+#                  chordwise_resolution: int = 10,
+#                  chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+#                  vortex_core_radius: float = 1e-8,
+#                  align_trailing_vortices_with_wind: bool = True,
+#                  R: float = 1.,
+#                  SR: float = 1.
+#                  ):
         
-        super().__init__(airplane,
-                         op_point,
-                         xyz_ref,
-                         IZsym,
-                         to_sym,
-                         Zsym,
-                         verbose,
-                         spanwise_resolution,
-                         spanwise_spacing_function,
-                         chordwise_resolution,
-                         chordwise_spacing_function,
-                         vortex_core_radius,
-                         align_trailing_vortices_with_wind,
-                         )
+#         super().__init__(airplane,
+#                          op_point,
+#                          xyz_ref,
+#                          IZsym,
+#                          to_sym,
+#                          Zsym,
+#                          verbose,
+#                          spanwise_resolution,
+#                          spanwise_spacing_function,
+#                          chordwise_resolution,
+#                          chordwise_spacing_function,
+#                          vortex_core_radius,
+#                          align_trailing_vortices_with_wind,
+#                          )
 
 
 class HydroVortexLatticeMethod(VortexLatticeMethod):
@@ -1684,7 +1869,8 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
 
         Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
 
-        """         
+        """
+        
         freestream_velocities = np.ones(points.shape) * np.array([1., 0., 0.]) * self.op_point._stw
         
         return freestream_velocities
@@ -1698,23 +1884,25 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
     
 
 if __name__ == '__main__':
-    ### Import Vanilla Airplane
+    ### Import Vanilla Geometry
+    
+    pass
 
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.vanilla import airplane as vanilla
+#     from archibald2.dynamics.aero_3D.test_aero_3D.geometries.vanilla import airplane as vanilla
 
-    ### Do the AVL run
-    vlm = HydroVortexLatticeMethod(
-        airplane=vanilla,
-        op_point=OperatingPoint(
-            stw=10.,
-            tws0=10.,
-            twa=45.,
-        ),
-        spanwise_resolution=10,
-        chordwise_resolution=12,
-    )
+#     ### Do the AVL run
+#     vlm = HydroVortexLatticeMethod(
+#         airplane=vanilla,
+#         op_point=OperatingPoint(
+#             stw=10.,
+#             tws0=10.,
+#             twa=45.,
+#         ),
+#         spanwise_resolution=10,
+#         chordwise_resolution=12,
+#     )
 
-    res = vlm.run()
+#     res = vlm.run()
 
-#     for k, v in res.items():
-#         print(f"{str(k).rjust(10)} : {v}")
+# #     for k, v in res.items():
+# #         print(f"{str(k).rjust(10)} : {v}")

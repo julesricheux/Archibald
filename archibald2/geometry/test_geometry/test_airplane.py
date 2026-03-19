@@ -1,6 +1,6 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
-from aerosandbox.tools import units as u
+import archibald2 as asb
+import archibald2.numpy as np
+from archibald2.tools import units as u
 from typing import Union
 import pytest
 
@@ -407,7 +407,7 @@ if __name__ == '__main__':
     # import matplotlib
     # matplotlib.use("TkAgg")
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     airplane = a()
 
@@ -416,7 +416,7 @@ if __name__ == '__main__':
     # airplane.draw(backend="matplotlib", show=False)
     #
     # import matplotlib.pyplot as plt
-    # import aerosandbox.tools.pretty_plots as p
+    # import archibald2.tools.pretty_plots as p
     #
     # ax = plt.gca()
     #

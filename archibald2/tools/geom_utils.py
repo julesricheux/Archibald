@@ -15,7 +15,7 @@ Useful geometrical tools for archibald
 
 import numpy as np
 import ezdxf
-
+import math
 import scipy.interpolate as itrp
 
 
@@ -43,7 +43,7 @@ def build_bezier(ctrl, n=200):
     points = np.zeros((n, d))
     
     for i in range(m+1):
-        bernstein_i_m = np.math.comb(m, i) * tt**i * (1-tt)**(m-i)
+        bernstein_i_m = math.comb(m, i) * tt**i * (1-tt)**(m-i)
         
         points += ctrl[i] * bernstein_i_m
         

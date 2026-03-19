@@ -1,8 +1,8 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 
 import matplotlib.pyplot as plt
-import aerosandbox.tools.pretty_plots as p
+import archibald2.tools.pretty_plots as p
 
 fuselage = asb.Fuselage(
     xsecs=[

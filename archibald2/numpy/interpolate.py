@@ -1,9 +1,9 @@
 import numpy as _onp
 import casadi as _cas
-from aerosandbox.numpy.determine_type import is_casadi_type
-from aerosandbox.numpy.array import array, zeros_like
-from aerosandbox.numpy.conditionals import where
-from aerosandbox.numpy.logicals import all, any, logical_or
+from archibald2.numpy.determine_type import is_casadi_type
+from archibald2.numpy.array import array, zeros_like
+from archibald2.numpy.conditionals import where
+from archibald2.numpy.logicals import all, any, logical_or
 from typing import Tuple
 from scipy import interpolate as _interpolate
 

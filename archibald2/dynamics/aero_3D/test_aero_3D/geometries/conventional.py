@@ -1,5 +1,5 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 
 wing_airfoil = asb.Airfoil("sd7037")
 tail_airfoil = asb.Airfoil("naca0010")

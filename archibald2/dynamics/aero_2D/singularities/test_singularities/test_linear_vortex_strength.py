@@ -1,5 +1,5 @@
-from aerosandbox.aerodynamics.aero_2D.singularities import *
-import aerosandbox.numpy as np
+from archibald2.dynamics.aero_2D.singularities import *
+import archibald2.numpy as np
 from numpy import pi
 import pytest
 

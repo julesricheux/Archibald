@@ -1,4 +1,4 @@
-import aerosandbox as asb
+import archibald2 as asb
 import pytest
 
 wing_airfoil = asb.Airfoil("naca0010")  # asb.Airfoil("sd7037")

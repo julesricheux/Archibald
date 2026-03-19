@@ -1,7 +1,7 @@
-import aerosandbox.numpy as np
-from aerosandbox.common import AeroSandboxObject
+import archibald2.numpy as np
+from archibald2.common import AeroSandboxObject
 from typing import Union, Any, List
-from aerosandbox.tools.string_formatting import trim_string
+from archibald2.tools.string_formatting import trim_string
 
 
 class MassProperties(AeroSandboxObject):
@@ -490,7 +490,7 @@ class MassProperties(AeroSandboxObject):
                 return [self]
 
         if method == "optimization":
-            from aerosandbox.optimization import Opti
+            from archibald2.optimization import Opti
 
             opti = Opti()
 

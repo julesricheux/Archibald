@@ -1,5 +1,5 @@
-from aerosandbox.geometry import Airfoil
-import aerosandbox.numpy as np
+from archibald2.geometry import Airfoil
+import archibald2.numpy as np
 
 
 def airfoil_coefficients_post_stall(
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     af = Airfoil("naca0012")
     alpha = np.linspace(0, 360, 721)
     CL, CD, CM = airfoil_coefficients_post_stall(af, alpha)
-    from aerosandbox.tools.pretty_plots import plt, show_plot, set_ticks
+    from archibald2.tools.pretty_plots import plt, show_plot, set_ticks
 
     fig, ax = plt.subplots(1, 2, figsize=(8, 5))
     plt.sca(ax[0])

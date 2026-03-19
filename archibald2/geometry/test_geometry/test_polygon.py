@@ -1,6 +1,6 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
-from aerosandbox.geometry.polygon import Polygon
+import archibald2 as asb
+import archibald2.numpy as np
+from archibald2.geometry.polygon import Polygon
 import pytest
 
 

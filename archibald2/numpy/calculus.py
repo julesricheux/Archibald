@@ -1,8 +1,8 @@
 import numpy as _onp
 import casadi as _cas
-from aerosandbox.numpy.determine_type import is_casadi_type
-from aerosandbox.numpy.arithmetic_dyadic import centered_mod as _centered_mod
-from aerosandbox.numpy.array import array, concatenate, reshape
+from archibald2.numpy.determine_type import is_casadi_type
+from archibald2.numpy.arithmetic_dyadic import centered_mod as _centered_mod
+from archibald2.numpy.array import array, concatenate, reshape
 from typing import Tuple
 
 
@@ -67,7 +67,7 @@ def gradient(
             error than doing `np.gradient(np.gradient(f))`.
 
         period: The period of the data. If provided, the gradient is taken assuming the data "wraps around" at the period
-            (i.e., modulo the period). See `aerosandbox.numpy.diff()` for more information.
+            (i.e., modulo the period). See `archibald2.numpy.diff()` for more information.
 
 
     Returns: The gradient of f.
@@ -253,7 +253,7 @@ def trapz(x, modify_endpoints=False):  # TODO unify with NumPy trapz, this is di
 
 
 if __name__ == "__main__":
-    import aerosandbox.numpy as np
+    import archibald2.numpy as np
 
 
     # print(diff(cas.DM([355, 5]), period=360))

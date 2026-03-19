@@ -13,7 +13,7 @@ Citation:
 Now handle variable trailing vorticies directions to take into account vertical wind gradient.
 
 """
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 from typing import Union
 
 

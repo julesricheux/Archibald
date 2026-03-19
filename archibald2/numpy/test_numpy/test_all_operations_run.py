@@ -1,6 +1,6 @@
-from aerosandbox import Opti
+from archibald2 import Opti
 import pytest
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 ### Cause all NumPy warnings to raise exceptions, to make this bulletproof
 np.seterr(all="raise")

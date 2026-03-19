@@ -2,7 +2,7 @@ from archibald2.geometry.common import *
 from archibald2.geometry.airfoil import Airfoil, KulfanAirfoil
 from archibald2.geometry.wing import Wing, WingXSec, ControlSurface
 from archibald2.geometry.fuselage import Fuselage, FuselageXSec
-from archibald2.geometry.lifting_set import Rig, Appendage
+from archibald2.geometry.lifting_set import Rig, Appendage, LiftingSet
 import archibald2.geometry.mesh_utilities as mesh_utils
 from archibald2.geometry.propulsor import Propulsor
 from archibald2.geometry.propeller import Propeller, BSeriesPropeller

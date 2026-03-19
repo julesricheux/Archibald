@@ -14,7 +14,7 @@ Useful math tools for archibald
 #%% DEPENDENCIES
 
 import csv
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 import scipy.interpolate as itrp
 import casadi as ca
 import xarray as xr
@@ -226,33 +226,45 @@ def compute_AW(tws, twa, V):
 
 def compute_TW(aws, awa, V):
     """
-    Computes true wind from apparent wind.
+    Computes true wind from apparent wind, vectorized.
 
     Parameters
     ----------
-    tws : float. Apparent wind speed in m/s
-    twa : float. Apparent wind angle in deg
-    V : float. Boat speed in m/s
+    aws : array-like
+        Apparent wind speed [m/s]
+    awa : array-like
+        Apparent wind angle [deg]
+    V : array-like
+        Boat speed [m/s] (positive along +x, forward)
 
     Returns
     -------
-    True wind speed in m/s
-    True wind angle in deg
-
+    tws : ndarray
+        True wind speed [m/s]
+    twa : ndarray
+        True wind angle [deg] (math convention, CCW from x-axis)
     """
-    
-    if type(V)!=int and type(V)!=np.float64 and type(V)!=float:
-        V = V[0]
-    
-    AW = aws * np.array([cosd(awa), sind(awa)])
-    SW = np.array([V, 0.])
-    
-    TW = AW - SW
-    
-    tws = np.linalg.norm(TW)
-    twa = np.angle(TW[0]+1j*TW[1])
-    
-    return tws, np.rad2deg(twa)
+    aws = np.asarray(aws)
+    awa = np.asarray(awa)
+    V   = np.asarray(V)
+
+    # Apparent wind vector in boat frame (x = forward, y = starboard)
+    AWx = aws * cosd(awa)
+    AWy = aws * sind(awa)
+
+    # Ship motion vector (boat speed forward, 0 sideways)
+    SWx = V
+    SWy = 0.0
+
+    # True wind vector = apparent wind - ship velocity
+    TWx = AWx - SWx
+    TWy = AWy - SWy
+
+    # Magnitude and angle
+    tws = np.hypot(TWx, TWy)
+    twa = np.degrees(np.arctan2(TWy, TWx))  # radians → deg
+
+    return tws, twa
 
 
 def kts2ms(Vkts):
@@ -321,6 +333,13 @@ def GeLU(x):
 
     """
     return 0.5*x*(1+np.tanh(np.sqrt(2/np.pi)*(x+0.044715*x**3)))
+
+
+def smooth_ramp(x):
+    """
+    Tanh ramp.
+    """
+    return (np.tanh(2*x + 1.) + 1.) / 2.
 
 
 def ramp(x, tol=1e-3):

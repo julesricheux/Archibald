@@ -12,6 +12,6 @@ from archibald2.performance import *
 from archibald2.dynamics import *
 from archibald2.weights import *
 
-__version__ = "2.0.0dev"
+__version__ = "alpha-2.0.1"
 __meet_Archibald__ = "https://https://en.wikipedia.org/wiki/Captain_Haddock"
 __documentation__ = None # TODO

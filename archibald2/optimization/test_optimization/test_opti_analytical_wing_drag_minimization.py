@@ -1,4 +1,4 @@
-import aerosandbox as asb
+import archibald2 as asb
 from numpy import pi
 import pytest
 

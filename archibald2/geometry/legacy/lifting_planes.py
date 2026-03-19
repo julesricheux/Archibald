@@ -25,8 +25,6 @@ import numpy as np
 import os
 import archibald2
 
-ARCHIBALD_DIR = os.path.dirname(archibald.__file__)
-
 from archibald2.tools.math_utils import *
 from archibald2.tools.dyn_utils import *
 from archibald2.tools.xfoil_utils import *

@@ -1,5 +1,5 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 
 AR = 2
 taper = 0.1
@@ -35,12 +35,12 @@ aero = asb.AeroBuildup(airplane=airplane, op_point=op_point).run()
 if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     fig, ax = plt.subplots()
     plt.plot(alphas, aero["CL"], label="AeroBuildup")
 
-    from aerosandbox.tools.webplotdigitizer_reader import read_webplotdigitizer_csv
+    from archibald2.tools.webplotdigitizer_reader import read_webplotdigitizer_csv
 
     polhamus_data = read_webplotdigitizer_csv(filename="data/wpd_datasets.csv")
 

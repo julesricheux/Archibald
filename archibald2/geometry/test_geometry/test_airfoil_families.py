@@ -1,4 +1,4 @@
-from aerosandbox.geometry.airfoil.airfoil_families import *
+from archibald2.geometry.airfoil.airfoil_families import *
 import pytest
 
 

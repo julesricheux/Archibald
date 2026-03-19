@@ -1,5 +1,5 @@
-import aerosandbox.numpy as np
-from aerosandbox.optimization.opti import Opti
+import archibald2.numpy as np
+from archibald2.optimization.opti import Opti
 from abc import abstractmethod, ABC
 import copy
 from typing import Dict, Any, Union
@@ -65,7 +65,7 @@ class AeroSandboxObject(ABC):
         """
         Saves the object to a binary file, using the `dill` library.
 
-        Creates a .asb file, which is a binary file that can be loaded with `aerosandbox.load()`. This can be loaded
+        Creates a .asb file, which is a binary file that can be loaded with `archibald2.load()`. This can be loaded
             into memory in a different Python session or a different computer, and it will be exactly the same as when it
             was saved.
 
@@ -96,7 +96,7 @@ class AeroSandboxObject(ABC):
         if verbose:
             print(f"Saving {str(self)} to:\n\t{filename}...")
 
-        import aerosandbox as asb
+        import archibald2 as asb
 
         self._asb_metadata = {
             "python_version": ".".join(
@@ -310,7 +310,7 @@ def load(
         )
 
     # Check if the AeroSandbox version is different
-    import aerosandbox as asb
+    import archibald2 as asb
 
     try:
         saved_asb_version = metadata["asb_version"]

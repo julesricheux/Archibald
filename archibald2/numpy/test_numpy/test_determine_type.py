@@ -1,4 +1,4 @@
-from aerosandbox.numpy.determine_type import *
+from archibald2.numpy.determine_type import *
 import pytest
 import numpy as np
 import casadi as cas

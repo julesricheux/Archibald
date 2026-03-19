@@ -1,7 +1,7 @@
-from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.conventional import (
+from archibald2.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
     airplane,
 )
-import aerosandbox as asb
+import archibald2 as asb
 
 
 op_point = asb.OperatingPoint(velocity=25, alpha=3)

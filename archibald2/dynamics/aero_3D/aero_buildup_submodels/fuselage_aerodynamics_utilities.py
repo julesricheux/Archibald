@@ -1,4 +1,4 @@
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 
 
 def critical_mach(fineness_ratio_nose: float) -> float:

@@ -1,5 +1,5 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald2 as asb
+import archibald2.numpy as np
 import pytest
 
 
@@ -16,7 +16,7 @@ def test_racecar(N=100, plot=False):
     u = opti.variable(init_guess=np.ones(N), lower_bound=0, upper_bound=1)
     opti.constrain_derivative(u - v, variable=v, with_respect_to=t, method="cubic")
 
-    from aerosandbox.numpy.integrate_discrete import (
+    from archibald2.numpy.integrate_discrete import (
         integrate_discrete_squared_curvature,
     )
 
@@ -41,7 +41,7 @@ def test_racecar(N=100, plot=False):
 
     if plot:
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         fig, ax = plt.subplots()
         ax.plot(sol(t), sol(v), label="speed")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     u = opti.variable(init_guess=np.ones(N), lower_bound=0, upper_bound=1)
     opti.constrain_derivative(u - v, variable=v, with_respect_to=t, method="cubic")
 
-    from aerosandbox.numpy.integrate_discrete import (
+    from archibald2.numpy.integrate_discrete import (
         integrate_discrete_squared_curvature,
     )
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     print(f"error: {np.abs(1.9065661561917042 - sol(t_final))}")
 
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     fig, ax = plt.subplots()
     ax.plot(sol(t), sol(v), label="speed")

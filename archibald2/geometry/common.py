@@ -1,5 +1,5 @@
-import aerosandbox.numpy as np
-from aerosandbox.numpy.determine_type import is_casadi_type
+import archibald2.numpy as np
+from archibald2.numpy.determine_type import is_casadi_type
 
 
 def reflect_over_XZ_plane(input_vector):

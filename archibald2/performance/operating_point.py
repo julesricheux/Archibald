@@ -14,23 +14,20 @@ Citation:
 
 """
 
-import os
-import sys
-
-__root_dir = os.path.dirname(os.path.abspath(__file__))
-if __root_dir not in sys.path:
-    sys.path.append(os.path.dirname(__root_dir))
+#%% DEPENDENCIES
 
 from typing import Tuple, Union, Dict, List
 from archibald2.tools.string_formatting import trim_string
 import inspect
 
-# from archibald1.tools.math_utils import compute_AW
 from archibald2.tools.env_utils import grad_wind
 from archibald2.environment.environment import Environment
 import archibald2.tools.units as u
 
 import archibald2.numpy as np
+
+
+#%% FUNCTIONS
 
 def compute_AW(tws, twa, V):
     """
@@ -72,6 +69,8 @@ def compute_AW(tws, twa, V):
     
     return aws, awa*u.deg
 
+
+#%% CLASSES
 
 class OperatingPoint():
     def __init__(self,
@@ -591,9 +590,9 @@ class OperatingPoint():
 if __name__ == '__main__':
     # op_point = OperatingPoint()
     
-    import aerosandbox as asb
+    import archibald2 as arb
     
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     z = opti.variable(init_guess=2., lower_bound=0.)
     

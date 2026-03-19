@@ -51,6 +51,7 @@ from archibald2.tools.dyn_utils import Cf_hull
 from archibald2.tools.math_utils import set_normal, ReLU, ramp, rotate_single_vector, read_coefs, build_interpolation, wide, tall
 import archibald2.tools.units as u
 from archibald2.performance.operating_point import OperatingPoint
+import archibald2.dynamics.hydro.holtrop as holtrop
 
 import archibald2.numpy as np
 
@@ -66,6 +67,9 @@ class Hull():
                  displacement: float = 0.0,
                  cog: np.array = np.zeros(3),
                  mesh: str = None,
+                 vertices = None,
+                 faces = None,
+                 inv_x: bool = True,
                  env: Environment = Environment()):
         
         self.name = name
@@ -77,8 +81,20 @@ class Hull():
         
         if mesh and os.path.exists(mesh):
             self.mesh = trimesh.load(mesh)
+            if inv_x:
+                self.mesh.vertices *= np.array([[-1., 1., 1.]])
+                self.mesh.faces = self.mesh.faces[:, [0, 2, 1]]
             self.vertices0 = copy.copy(self.mesh.vertices)
-            self.diff_mesh = DifferentiableMesh(self.vertices0*np.array([[-1., 1., 1.]]), self.mesh.faces)
+            self.diff_mesh = DifferentiableMesh(self.vertices0, self.mesh.faces)
+            self.Loa = self.mesh.bounds[1,0] - self.mesh.bounds[0,0]
+            self.Boa = self.mesh.bounds[1,1] - self.mesh.bounds[0,1]
+            self.D = self.mesh.bounds[1,2] - self.mesh.bounds[0,2]
+        elif vertices is not None and faces is not None:
+            self.mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            if inv_x:
+                self.mesh.vertices *= np.array([[-1., 1., 1.]])
+            self.vertices0 = copy.copy(self.mesh.vertices)
+            self.diff_mesh = DifferentiableMesh(self.vertices0, self.mesh.faces)
             self.Loa = self.mesh.bounds[1,0] - self.mesh.bounds[0,0]
             self.Boa = self.mesh.bounds[1,1] - self.mesh.bounds[0,1]
             self.D = self.mesh.bounds[1,2] - self.mesh.bounds[0,2]
@@ -145,196 +161,217 @@ class Hull():
                              z: float = 0., # m
                              heel:float = 0., # degrees
                              trim: float = 0., # degrees
+                             point = None,
+                             normal = None,
                              disp: bool = False):
         
-        n = set_normal(heel, trim)
+        if point is None:
+            point = np.array([0,0,z])
+        if normal is None:
+            normal = set_normal(heel, trim)
         
-        try:
-            # Extract the immersed hull
-            underwater = self.mesh.slice_plane(plane_origin=np.array([0,0,z]), plane_normal=n, cap=True)
-            ws = self.mesh.slice_plane(plane_origin=np.array([0,0,z]), plane_normal=n, cap=False)    
-            floatation = self.mesh.section(plane_origin=np.array([0,0,z]), plane_normal=n)
-            
-            
-            # Main hyrostatics computation
-            volume = underwater.volume #volume
-            
-            uw_bounds = underwater.bounds
-            f_bounds = floatation.bounds
-            
-            if uw_bounds is None:
-                uw_bounds = np.zeros((3,3))
-            if f_bounds is None:
-                f_bounds = np.zeros((3,3))
-            
-            Lwl = (f_bounds[1,0] - f_bounds[0,0])/np.cosd(trim)
-            Bwl = (f_bounds[1,1] - f_bounds[0,1])/np.cosd(heel)
-            T = (uw_bounds[1,2] - uw_bounds[0,2])/np.cosd(heel)
-            
-            
-            # BMt computation
-            c = floatation.centroid
-            v = floatation.vertices - c
-            
-            rot_matrix_trim = tf.rotation_matrix(np.radians(-trim), np.array([0,1,0]))
-            rot_matrix_heel = tf.rotation_matrix(np.radians(-heel), np.array([1,0,0]))
-    
-            
-            section = tf.transform_points(v, rot_matrix_trim)
-            section = tf.transform_points(section, rot_matrix_heel)
-            
-            peak = section[np.argmax(section[:, 0]), :]
-            
-            section = section - peak + np.array([Lwl, 0, 0])
-    
-            # path2d = trimesh.path.path.Path2D(floatation.entities, vertices=section)
-            planar = trimesh.path.Path2D(entities=floatation.entities.copy(),
-                                         vertices=section[:, :2],
-                                         metadata=floatation.metadata.copy(),
-                                         process=False)
-            
-            if disp:
-                planar.show()
-            
-            # Half-entry angle computation
-            # x_interval = [Lwl*389/400, 399/400*Lwl]
-            # sel = (section[:, 0] >= x_interval[0]) & (section[:, 0] <= x_interval[1])
-            bow_pts = section[section[:, 0].argsort()][-10:] - np.array([Lwl, 0, 0])
-            
-            star_bow_pts = bow_pts[(bow_pts[:, 1] < 0.)]
-            port_bow_pts = bow_pts[(bow_pts[:, 1] >= 0.)]
-            
-            star_offset = star_bow_pts[np.argmax(star_bow_pts[:, 0]), :]
-            port_offset = port_bow_pts[np.argmax(port_bow_pts[:, 0]), :]
-            
-            star_bow_pts -= star_offset
-            port_bow_pts -= port_offset
-            
-            star_bow_pts = star_bow_pts[(star_bow_pts[:, 0] != 0.)]
-            port_bow_pts = port_bow_pts[(port_bow_pts[:, 0] != 0.)]
-            
-            star_ie = np.degrees(np.mean(np.arctan(star_bow_pts[:,1]/-star_bow_pts[:,0])))
-            port_ie = np.degrees(np.mean(np.arctan(port_bow_pts[:,1]/-port_bow_pts[:,0])))
-            
-            ie = (port_ie - star_ie)/2
-            
-            Ixx = 0.0
-            Iyy = 0.0
-            for poly in planar.polygons_closed:
-                Ixx += trimesh.path.polygons.second_moments(poly)[0]
-                Iyy += trimesh.path.polygons.second_moments(poly)[1]
-    
-            # Compute main properties
-            volume = underwater.volume #volume
-            cob = underwater.center_mass #center of buoyancy
-            BMt = Ixx / volume # transverse metacentric radius
-            BMl = Iyy / volume # longitudinal metacentric radius
-            
-            # RMt computation
-            yrot = np.array([0, np.cosd(heel), np.sind(heel)])
-            zrot = np.array([0 ,-np.sind(heel), np.cosd(heel)])
-            
-            metaT = cob + BMt*zrot
-            
-            # BMtvec = metaT - cob
-            
-            GMtvec = metaT - self.cog
-            GZtvec = GMtvec - np.dot(GMtvec, zrot.T) * zrot
-            
-            GMt = np.linalg.norm(GMtvec[1:]) * np.sign(np.dot(GMtvec[1:], zrot[1:]))
-            GZt = np.linalg.norm(GZtvec[1:]) * np.sign(np.dot(GZtvec[1:], yrot[1:]))
-            
-            # RMl computation
-            xrot = np.array([np.cosd(heel), 0, np.sind(heel)])
-            zrot = np.array([-np.sind(heel), 0, np.cosd(heel)])
-            
-            metaL = cob + BMl*zrot
-            
-            # BMlvec = metaL - cob
-    
-            GMlvec = metaL - self.cog
-            GZlvec = GMlvec - np.dot(GMlvec, zrot.T) * zrot
-            
-            GMl = np.linalg.norm(GMlvec[[0,2]]) * np.sign(np.dot(GMlvec[[0,2]], zrot[[0,2]]))
-            GZl = np.linalg.norm(GZlvec[[0,2]]) * np.sign(np.dot(GZlvec[[0,2]], xrot[[0,2]]))
-            
-            # Compute floatation
-            Uwa = underwater.area
-            Wsa = ws.area
-            Wpa = Uwa - Wsa
-            
-            Uw = underwater.centroid
-            Ws = ws.centroid
-            
-            cof = (Uwa * Uw - Wsa * Ws) / Wpa #center of floatation
-            
-            # Compute midship area
-            ms = underwater.section(plane_origin=cof, plane_normal=[1,0,0])
-            if ms is None:
-                Ax = 0.0
-            else:
-                ms = ms.to_planar()
-                Ax = ms[0].area
-                
-            # Compute transversal area
-            cl = underwater.section(plane_origin=cof, plane_normal=[0,1,0])
-            if cl is None:
-                Ay = 0.0
-            else:
-                cl = cl.to_planar()
-                Ay = cl[0].area
-                
-            # Compute transom area
-            xap = max(f_bounds[0,0], uw_bounds[0,0])
-            tr = underwater.section(plane_origin=[xap+min(Lwl/100, .1),0,0], plane_normal=[1,0,0])
-            if tr is None:
-                Atr = 0.0
-            else:
-                tr = tr.to_planar()
-                Atr = tr[0].area
-                Ttr=np.min(np.abs(tr[0].bounds[1]-tr[0].bounds[0]))
-                
-            # Compute transverse bulb area
-            xfp = f_bounds[1,1]
-            bt = underwater.section(plane_origin=[xfp+min(Lwl/100, .1),0,0], plane_normal=[1,0,0])
-            if bt is None:
-                Abt = 0.0
-            else:
-                bt = bt.to_planar()
-                Abt = bt[0].area
-            
-            # compute hydro coefficients
-            Cb = volume / (Lwl*Bwl*T)
-            Cp = volume / (Lwl*Ax)
-            Cwp = Wpa / (Lwl*Bwl)
-            Cx = Ax / (Bwl*T)
-            Cy = Ay / (Lwl*T)
-            
-            # lengths = np.array([BMt, GMt, GZt, BMl, GMl, GZl, Lwl, Bwl, T])
-            # areas = np.array([Wsa, Wpa, Amc, Atr, Abt])
-            # coefs = np.array([Cb, Cp, Cwp, Cm])
-            
-            lengths = {'BMt': BMt, 'GMt': GMt, 'GZt': GZt, 'BMl': BMl, 'GMl': GMl, 'GZl': GZl, 'Lwl': Lwl, 'Bwl': Bwl, 'T': T, 'Ttr': Ttr, '0L': f_bounds[0,0]}
-            areas = {'Wsa': Wsa, 'Wpa': Wpa, 'Ax': Ax, 'Ay': Ay, 'Atr': Atr, 'Abt': Abt}
-            coefs = {'Cb': Cb, 'Cp': Cp, 'Cwp': Cwp, 'Cx': Cx, 'Cy': Cy}
-            
-            self.hydrostaticData = lengths | areas | coefs
-            self.cob = cob
-            self.cof = cof
-            self.cows = ws.centroid
-            self.volume = volume
-            
-            self.hydrostaticData['immersion'] = z
-            self.hydrostaticData['heel'] = heel
-            self.hydrostaticData['trim'] = trim
-            self.hydrostaticData['ie'] = ie
-            self.hydrostaticData['areaCentroid'] = Ws
-            
-            return volume, cob, cof, lengths, areas, coefs
+        # try:
+        # Extract the immersed hull
+        underwater = self.mesh.slice_plane(plane_origin=point, plane_normal=-normal, cap=True)
+        ws = self.mesh.slice_plane(plane_origin=point, plane_normal=normal, cap=False)    
+        floatation = self.mesh.section(plane_origin=point, plane_normal=normal)
         
-        except:
-            self.hydrostaticData = {}
-            return 0., np.array([0.,0.,0.]), np.array([0.,0.,0.]), {}, {}, {}
+        
+        # Main hyrostatics computation
+        volume = underwater.volume #volume
+        
+        uw_bounds = underwater.bounds
+        f_bounds = floatation.bounds
+        
+        if uw_bounds is None:
+            uw_bounds = np.zeros((3,3))
+        if f_bounds is None:
+            f_bounds = np.zeros((3,3))
+        
+        Lwl = (f_bounds[1,0] - f_bounds[0,0])/np.cosd(trim)
+        Bwl = (f_bounds[1,1] - f_bounds[0,1])/np.cosd(heel)
+        T = (uw_bounds[1,2] - uw_bounds[0,2])/np.cosd(heel)
+        
+        
+        # BMt computation
+        c = floatation.centroid
+        v = floatation.vertices - c
+        
+        rot_matrix_trim = tf.rotation_matrix(np.radians(-trim), np.array([0,1,0]))
+        rot_matrix_heel = tf.rotation_matrix(np.radians(-heel), np.array([1,0,0]))
+
+        
+        section = tf.transform_points(v, rot_matrix_trim)
+        section = tf.transform_points(section, rot_matrix_heel)
+        
+        peak = section[np.argmax(section[:, 0]), :]
+        
+        section = section - peak + np.array([Lwl, 0, 0])
+
+        # path2d = trimesh.path.path.Path2D(floatation.entities, vertices=section)
+        planar = trimesh.path.Path2D(entities=floatation.entities.copy(),
+                                     vertices=section[:, :2],
+                                     metadata=floatation.metadata.copy(),
+                                     process=False)
+        
+        if disp:
+            planar.show()
+        
+        # Half-entry angle computation
+        # x_interval = [Lwl*389/400, 399/400*Lwl]
+        # sel = (section[:, 0] >= x_interval[0]) & (section[:, 0] <= x_interval[1])
+        bow_pts = section[section[:, 0].argsort()][-10:] - np.array([Lwl, 0, 0])
+        
+        star_bow_pts = bow_pts[(bow_pts[:, 1] < 0.)]
+        port_bow_pts = bow_pts[(bow_pts[:, 1] >= 0.)]
+        
+        star_offset = star_bow_pts[np.argmax(star_bow_pts[:, 0]), :]
+        port_offset = port_bow_pts[np.argmax(port_bow_pts[:, 0]), :]
+        
+        star_bow_pts -= star_offset
+        port_bow_pts -= port_offset
+        
+        star_bow_pts = star_bow_pts[(star_bow_pts[:, 0] != 0.)]
+        port_bow_pts = port_bow_pts[(port_bow_pts[:, 0] != 0.)]
+        
+        star_ie = np.degrees(np.mean(np.arctan(star_bow_pts[:,1]/-star_bow_pts[:,0])))
+        port_ie = np.degrees(np.mean(np.arctan(port_bow_pts[:,1]/-port_bow_pts[:,0])))
+        
+        ie = (port_ie - star_ie)/2
+        
+        Ixx = 0.0
+        Iyy = 0.0
+        for poly in planar.polygons_closed:
+            Ixx += trimesh.path.polygons.second_moments(poly)[0]
+            Iyy += trimesh.path.polygons.second_moments(poly)[1]
+
+        # Compute main properties
+        volume = underwater.volume #volume
+        cob = underwater.center_mass #center of buoyancy
+        BMt = Ixx / volume # transverse metacentric radius
+        BMl = Iyy / volume # longitudinal metacentric radius
+        
+        # RMt computation
+        yrot = np.array([0, np.cosd(heel), np.sind(heel)])
+        zrot = np.array([0 ,-np.sind(heel), np.cosd(heel)])
+        
+        metaT = cob + BMt*zrot
+        
+        # BMtvec = metaT - cob
+        
+        GMtvec = metaT - self.cog
+        GZtvec = GMtvec - np.dot(GMtvec, zrot.T) * zrot
+        
+        GMt = np.linalg.norm(GMtvec[1:]) * np.sign(np.dot(GMtvec[1:], zrot[1:]))
+        GZt = np.linalg.norm(GZtvec[1:]) * np.sign(np.dot(GZtvec[1:], yrot[1:]))
+        
+        # RMl computation
+        xrot = np.array([np.cosd(heel), 0, np.sind(heel)])
+        zrot = np.array([-np.sind(heel), 0, np.cosd(heel)])
+        
+        metaL = cob + BMl*zrot
+        
+        # BMlvec = metaL - cob
+
+        GMlvec = metaL - self.cog
+        GZlvec = GMlvec - np.dot(GMlvec, zrot.T) * zrot
+        
+        GMl = np.linalg.norm(GMlvec[[0,2]]) * np.sign(np.dot(GMlvec[[0,2]], zrot[[0,2]]))
+        GZl = np.linalg.norm(GZlvec[[0,2]]) * np.sign(np.dot(GZlvec[[0,2]], xrot[[0,2]]))
+        
+        # Compute floatation
+        Uwa = underwater.area
+        Wsa = ws.area
+        Wpa = Uwa - Wsa
+        
+        Uw = underwater.centroid
+        Ws = ws.centroid
+        
+        cof = (Uwa * Uw - Wsa * Ws) / Wpa #center of floatation
+        
+        # Compute midship area
+        ms = underwater.section(plane_origin=cof, plane_normal=[1,0,0])
+        if ms is None:
+            Ax = 0.0
+        else:
+            ms = ms.to_2D()
+            Ax = ms[0].area
+            
+        # Compute transversal area
+        cl = underwater.section(plane_origin=cof, plane_normal=[0,1,0])
+        if cl is None:
+            Ay = 0.0
+        else:
+            cl = cl.to_2D()
+            Ay = cl[0].area
+            
+        # Compute transom area
+        xap = max(f_bounds[0,0], uw_bounds[0,0])
+        tr = underwater.section(plane_origin=[xap+min(Lwl/100, .1),0,0], plane_normal=[1,0,0])
+        if tr is None:
+            Atr = 0.0
+        else:
+            tr = tr.to_2D()
+            Atr = tr[0].area
+            Ttr=np.min(np.abs(tr[0].bounds[1]-tr[0].bounds[0]))
+            
+        # Compute transverse bulb area
+        xfp = f_bounds[1,1]
+        bt = underwater.section(plane_origin=[xfp+min(Lwl/100, .1),0,0], plane_normal=[1,0,0])
+        if bt is None:
+            Abt = 0.0
+        else:
+            bt = bt.to_planar()
+            Abt = bt[0].area
+        
+        # compute hydro coefficients
+        Cb = volume / (Lwl*Bwl*T)
+        Cp = volume / (Lwl*Ax)
+        Cwp = Wpa / (Lwl*Bwl)
+        Cx = Ax / (Bwl*T)
+        Cy = Ay / (Lwl*T)
+        
+        # lengths = np.array([BMt, GMt, GZt, BMl, GMl, GZl, Lwl, Bwl, T])
+        # areas = np.array([Wsa, Wpa, Amc, Atr, Abt])
+        # coefs = np.array([Cb, Cp, Cwp, Cm])
+        
+        lengths = {'BMt': BMt, 'GMt': GMt, 'GZt': GZt, 'BMl': BMl, 'GMl': GMl, 'GZl': GZl, 'Lwl': Lwl, 'Bwl': Bwl, 'T': T, 'Ttr': Ttr, '0L': f_bounds[0,0]}
+        areas = {'Wsa': Wsa, 'Wpa': Wpa, 'Ax': Ax, 'Ay': Ay, 'Atr': Atr, 'Abt': Abt}
+        coefs = {'Cb': Cb, 'Cp': Cp, 'Cwp': Cwp, 'Cx': Cx, 'Cy': Cy}
+        
+        self.hydrostaticData = lengths | areas | coefs
+        
+        # cow = ws.centroid
+        # cdyn = cow - np.array([Lwl/4., 0., 0.]) # center of pressure condidered at 25% chord
+        # X0 = f_bounds[0,0]
+        
+        # self.cob = cob
+        # self.cof = cof
+        # self.cows = cow
+        # self.volume = volume
+        
+        # self.hydrostaticData = {}
+        
+        # self.hydrostaticData['volume'] = volume
+        
+        # points = {'cob': cob, 'cof': cof, 'cow': cow, 'cdyn': cdyn, '0L': X0}
+        # lengths = {'Lwl': Lwl, 'Bwl': Bwl, 'T': T, 'Ttr': Ttr, '0L': X0}
+        # areas = {'Wsa': Wsa, 'Wpa': Wpa, 'Ax': Ax, 'Ay': Ay, 'Atr': Atr, 'Abt': 0.}
+        # coefs = {'Cb': Cb, 'Cp': Cp, 'Cwp': Cwp, 'Cx': Cx, 'Cy': Cy}
+    
+        # self.hydrostaticData |= points | lengths | areas | coefs
+        
+        self.hydrostaticData['immersion'] = z
+        self.hydrostaticData['heel'] = heel
+        self.hydrostaticData['trim'] = trim
+        self.hydrostaticData['ie'] = ie
+        self.hydrostaticData['areaCentroid'] = Ws
+        
+        return volume, cob, cof, lengths, areas, coefs
+        
+        # except:
+        #     self.hydrostaticData = {}
+        #     return 0., np.array([0.,0.,0.]), np.array([0.,0.,0.]), {}, {}, {}
         
     def compute_aerostatics(self,
                             z: float = 0., # m
@@ -391,9 +428,9 @@ class Hull():
             self.aerostaticData = {}
             return 0., np.array([0.,0.,0.]), np.array([0.,0.,0.]), {}, {}, {}
     
-    def free_heel_trim_immersion(self, disp=False):
+    def free_heel_trim_immersion(self, heel0=0., trim0=0., z0=0., disp=False):
         
-        rho = self.environment.water.rho
+        rho = self.environment.water.density
         
         def heel_trim_immersion(X, rho):
             # initialize parameters
@@ -402,6 +439,8 @@ class Hull():
 
             # compute current hydrostatics
             volume, cob = self.compute_minimal_hydrostatics(z, heel, trim)
+            
+            print(volume)
             
             BG = self.cog - cob # CoB-CoG vector
             prod = np.cross(BG, n) # cross product to check colinearity
@@ -416,8 +455,7 @@ class Hull():
             
             return np.linalg.norm(eq)
         
-        z0 = (self.mesh.bounds[1,2] + self.mesh.bounds[0,2]) / 10
-        x0 = np.array([z0, 1., 1.])
+        x0 = np.array([z0, heel0, trim0])
         param = (rho)
         
         # limits = [(0,10), (-60, 60), (-10,10)]
@@ -428,7 +466,7 @@ class Hull():
 
         return volume, cob, cof, lengths, areas, coefs, Xopt.x
 
-    def free_trim_immersion(self, heel=0, disp=False):
+    def free_trim_immersion(self, heel=0, trim0=0., z0=0., disp=False):
         
         rho = self.environment.water.density
         
@@ -449,8 +487,7 @@ class Hull():
             
             return np.linalg.norm(eq)
         
-        z0 = (self.mesh.bounds[1,2] + self.mesh.bounds[0,2]) / 10
-        x0 = np.array([z0, 1.])
+        x0 = np.array([z0, trim0])
         param = (heel, rho)
         
         Xopt = opt.minimize(trim_immersion_eq, x0, args=param, tol=1e-5)        
@@ -459,9 +496,9 @@ class Hull():
         
         return volume, cob, cof, lengths, areas, coefs, Xopt.x
 
-    def free_heel_immersion(self, trim=0, disp=False):
+    def free_heel_immersion(self, trim=0, heel0=1., z0=0., disp=False):
         
-        rho = self.environment.water.rho
+        rho = self.environment.water.density
         
         def heel_immersion_eq(X, trim, rho):
             # initialize parameters
@@ -480,8 +517,8 @@ class Hull():
             
             return np.linalg.norm(eq)
         
-        z0 = (self.mesh.bounds[1,2] + self.mesh.bounds[0,2]) / 10
-        x0 = np.array([z0, 1.])
+        
+        x0 = np.array([z0, heel0])
         param = (trim, rho)
         
         Xopt = opt.minimize(heel_immersion_eq, x0, args=param, tol=1e-5)
@@ -490,7 +527,7 @@ class Hull():
         
         return volume, cob, cof, lengths, areas, coefs, Xopt.x
 
-    def free_immersion(self, heel=0, trim=0, disp=False):
+    def free_immersion(self, heel=0., trim=0., z0=0., disp=False):
         
         rho = self.environment.water.density
         
@@ -504,8 +541,6 @@ class Hull():
             eq = volume*rho-self.displacement
             
             return eq
-        
-        z0 = (self.mesh.bounds[1,2] + self.mesh.bounds[0,2]) / 5
         
         x0 = np.array([z0])
         param = (heel, trim, rho)
@@ -564,7 +599,7 @@ class Hull():
         Vms_ReLU = ReLU(Vms)
 
         # Transom additionnal resistance (Holtrop&Mennen, 1978)
-        Fr_T = Vms / np.sqrt(g * Ttr)
+        Fr_T = Vms / np.sqrt(g * Ttr + 1e-6)
         
         # ctr = np.max((0.2 * (1 - (0.2 * Fr_T)), 0.0))
         
@@ -587,6 +622,8 @@ class Hull():
         else:
             K = self._keunig_np
             
+        lcbfpp = 0.5
+            
         Rrh = displacement * (K[0](Fr) + volume**(1/3)/Lwl * (K[1](Fr) * lcbfpp/Lwl + \
                                                               K[2](Fr) * Cp + \
                                                               K[3](Fr) * volume**(2/3)/Wpa + \
@@ -596,6 +633,7 @@ class Hull():
                                                               K[7](Fr) * Cx)) 
             
         return (Rvh + Rrh + Rtr) * np.sign(V)
+        # return (Rvh + Rtr) * np.sign(V)
 
     def compute_resistance_holtrop(self, V, uInterval=False):
         """
@@ -624,6 +662,7 @@ class Hull():
         Lwl = self.hydrostaticData['Lwl']
         Bwl = self.hydrostaticData['Bwl']
         T = self.hydrostaticData['T']
+        Ttr = self.hydrostaticData['Ttr']
         # Ttr = lengths['Ttr']
         Cx = self.hydrostaticData['Cx']
         Cp = self.hydrostaticData['Cp']
@@ -657,235 +696,27 @@ class Hull():
         Csternchoice = 3
         Bulbchoice = 0
         
-        # print(volume)
-        
-        def compute_Rf_holtrop(Vms, Lbp, Loa, Lwl, volume, Bwl, T, Wsa, Cp, lcb, Csternchoice, nu, rho, origin, uInterval):
-            """
-            Calculate the frictional resistance of a ship using the ITTC '57 method.
-            
-            Params:
-                Vms (float): speed (m/s)
-                Lbp (float): Length between perpendiculars (m)
-                Loa (float): Length overall (m)
-                Lwl (float): Length at waterline (m)
-                T (float): Draft (m)
-                S (float): Wetted surface area (m^2)
-                V (float): Volume (m^3)
-                Csternchoice (int): Choice of stern form (1=transom, 2=V-shaped, 3=U-shaped, 4=Spoon-shaped)
-                M (float): Mass displacement (kg)
-                rho (float): Density of water (kg/m^3)
-                
-            Returns:
-                float: Frictional resistance of the ship (N)
-            """
-
-            if Csternchoice == 1:
-                Cstern = -25.
-            elif Csternchoice == 2:
-                Cstern = -10.
-            elif Csternchoice == 3:
-                Cstern = 0.
-            elif Csternchoice == 4:
-                Cstern = 10.
-            else:
-                print("Invalid choice for the stern shape")
-            
-
-            c14 = 1 + 0.011*Cstern
-            Lr = Lwl*(1 - Cp + 0.06*Cp*lcb/(4*Cp-1))
-
-            k = .93 + .487118*c14*(Bwl/Lwl)**1.06806 * (T/Lwl)**.46106 * (Lwl/Lr)**.121563 *\
-                   (Lwl**3/volume)**.36486 * (1-Cp)**(-.604247) - 1
-                   
-            sigmaK = k * 0.046 # std deviation 4.6%
-            
-            Re_ReLU = (ReLU(Vms) * Lwl) / nu
-            # ACF = 5.1e-4
-            
-            if uInterval:
-                RfMin = (1 + k - 2*sigmaK) * Cf_hull(Re_ReLU+10.) * (0.5 * rho * Wsa * (Vms ** 2))
-                RfMax = (1 + k + 2*sigmaK) * Cf_hull(Re_ReLU+10.) * (0.5 * rho * Wsa * (Vms ** 2))
-                
-                return RfMin, RfMax
-            
-            Rf = (1+k) * Cf_hull(Re_ReLU+10.) * (0.5 * rho * Wsa * (Vms ** 2))
-            
-            return Rf
-
-
-        def compute_Rw_holtrop(Vms, Lwl, Lbp, Bwl, T, volume, Abt, Cp, Cwp, Atr, lcb, hB, Cx, ie, rho, g):
-            """
-            Calculates the wave-making resistance of a ship in calm water.
-            
-            Params:
-                Vms (float): speed (m/s)
-                Lwl (float): The length of the waterline in meters.
-                Lbp (float): The length between perpendiculars in meters.
-                B (float): The beam of the ship in meters.
-                T (float): The draft of the ship in meters.
-                Abt (float): The area of the bulbous bow in square meters.
-                Cp (float): The prismatic coefficient.
-                Cwp (float): The coefficient of the waterplane area.
-                Atr (float): The transom area in square meters.
-                lcb (float): lcb in %
-                hB (float): Bulb height (m)
-                Cx (float): The midship coefficient.
-                rho (float): The density of water in kg/m^3.
-                g (float): The acceleration due to gravity in m/s^2.
-            
-            Returns:
-                float: The added resistance of the ship in calm water in (N)
-            """
-            
-            Fr = ReLU(Vms) / (np.sqrt(g * Lbp)) + 1e-1
-            
-            ### RW FOR FROUDE < 0.40
-            
-            Lr = Lwl * ((1 - Cp) - ((0.06 * Cp * lcb) / (4 * Cp - 1)))
-            
-            c7 = ca.if_else(
-                Bwl / Lbp < 0.11,
-                0.229577 * ((Bwl / Lbp) ** 0.3333),  # if B/L < 0.11
-                ca.if_else(
-                    Bwl / Lbp <= 0.25,
-                    Bwl / Lbp, # if B/L between 0.11 and 0.25
-                    0.5 - (0.0625 * (Lbp / Bwl)) # if B/L > 0.25
-                )
-            )
-            
-            c1 = 2223105 * (c7 ** 3.78613) * ((T / Bwl) ** 1.07961) * ((90 - ie) ** (-1.37565))
-            c3 = ((0.56 * Abt) ** 1.5) / ((Bwl * T) * ((0.31 * (np.sqrt(Abt))) + (T - hB)))
-            c2 = np.exp(-1.89 * (np.sqrt(c3)))
-            c5 = 1 - (0.8 * (Atr / (Bwl * T * Cx)))
-            
-            c16 = ca.if_else(
-                Cp < 0.8,
-                (8.07981 * Cp) - (13.8673 * (Cp ** 2)) + (6.984388 * (Cp ** 3)),
-                1.73014 - (0.7067 * Cp)
-            )
-            
-            m1 = (0.014047 * (Lbp / T)) - ((1.75254 * (volume ** (1 / 3))) / Lbp) - (4.79323 * (Bwl / Lbp)) - c16
-            
-            l = ca.if_else(
-                Lbp / Bwl < 12,
-                (1.446 * Cp) - (0.03 * (Lbp / Bwl)),
-                (1.446 * Cp) - 0.36
-            )
-            
-            c15 = ca.if_else(
-                (Lbp ** 3) / volume < 512,
-                -1.69385,
-                ca.if_else(
-                    (Lbp ** 3) / volume < 1726.91,
-                    -1.69385 + (((Lbp / (volume ** (1 / 3))) - 8) / 2.36),
-                    0.
-                )
-            )
-            
-            m4 = c15 * 0.4 * (np.exp(-0.034 * (Fr ** -3.29)))
-            d_ = -0.9
-            
-            Rw_to_040 = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (Fr ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-    
-            # RW FOR 0.40 < FROUDE < 0.55
-            
-            d_ = -0.9
-            rwo_ = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (0.44 ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-            rwo__ = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (0.55 ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-            
-            Rw_from_040_to_055 = rwo_ + (((10 * Fr) - 4) * ((rwo__ - rwo_) / 1.5))
-                
-            
-            # RW FOR FROUDE > 0.55
-            
-            c17 = (6919.3 * (Cx ** (-1.3346))) * ((volume / (Lbp ** 3)) ** 2.00977) * (((Lbp / Bwl) - 2) ** 1.40692)
-            m3 = (-7.2035 * ((Bwl / Lbp) ** 0.326869)) * ((T / Bwl) ** 0.605375)
-            
-            Rw_from_055 = c17 * c2 * c5 * volume * rho * g * (np.exp((m3 * (Fr ** d_) + (m4 * (np.cos(l * (Fr ** -2)))))))
-        
-            is_below_040 = ca.if_else(Fr <= 0.40, 1., 0.)
-            is_below_055 = ca.if_else(Fr <= 0.55, 1., 0.)
-            
-            return Rw_to_040 * is_below_040 +\
-                   Rw_from_040_to_055 * (1.-is_below_040) * is_below_055 +\
-                   Rw_from_055 * (1.-is_below_040) * (1.-is_below_055)
-        
-
-        def compute_Rb_holtrop(Vms, T, hB, Abt, Bulbchoice, rho, g):
-            """
-            Calculates the resistance due to bulbous bow using Holtrop's method.
-
-            Parameters:
-            hB (float): height of bulbous bow [m]
-            Bulbchoice (int): 1 for bulbous bow, 0 for no bulbous bow
-            """
-            
-            if Bulbchoice == 1:
-                Fri = Vms / (np.sqrt((g * (T - hB - (0.25 * (np.sqrt(Abt))))) + (0.15 * (Vms ** 2))))
-                pb = (0.56 * (np.sqrt(Abt))) / (T - (1.5 * hB))
-                Rb = 0.11 * (np.exp(((-3) * (pb ** (-2)))) * (Fri ** 3) * (Abt ** 1.5) * rho * g) / (1 + (Fri ** 2))
-                
-                return Rb
-            
-            elif Bulbchoice == 0:
-                return 0
-            
-            else:
-                print("Invalid choice for the bulbous bow")
-
-
-        def compute_Rtr(Vms, Atr, Bwl, Cwp, rho, g):
-            """
-            Calculate transom resistance using the Holtrop-Mennen method.
-            """
-            
-            Ttr = self.hydrostaticData['Ttr']
-            
-            # Transom additionnal resistance (Holtrop&Mennen, 1978)
-            Fr_T = Vms / np.sqrt(g * Ttr)
-            
-            # ctr = np.max((0.2 * (1 - (0.2 * Fr_T)), 0.0))
-            
-            # if Fr_T < 5:
-            ctr = 0.2 * (1 - (0.2 * Fr_T))
-            ctr_ReLu = ReLU(ctr)
-            Rtr = 0.5 * rho * (Vms ** 2) * Atr * ctr_ReLu
-            
-            return Rtr
-
-
-        def compute_Ra_holtrop(Vms, Lbp, Bwl, T, Cb, hB, rho, Wsa, Abt, uInterval):
-            """
-            Calculates the model-ship correlation resistance RA.
-            """
-            CA = 0.00675 * (Lwl +100)**(-1/3) - 0.00064
-            sigmaCA = 0.00021  # std deviation 0.00021
-                
-            if uInterval:
-                RaMin = 0.5 * rho * Wsa * (Vms ** 2) * (CA - 2*sigmaCA)
-                RaMax = 0.5 * rho * Wsa * (Vms ** 2) * (CA + 2*sigmaCA)
-                
-                return RaMin, RaMax
-            
-            Ra = 0.5 * rho * Wsa * (Vms ** 2) * CA
-            
-            return Ra
-        
         Vms = V * u.knot
         
         Vms_ReLU = ReLU(Vms)
         
-        Rf = compute_Rf_holtrop(Vms, Lbp, Loa, Lwl, volume, Bwl, T, Wsa, Cp, lcb, Csternchoice, nu, rho, origin, uInterval)
-        Rw = compute_Rw_holtrop(Vms, Lwl, Lbp, Bwl, T, Bwl, Abt, Cp, Cwp, Atr, lcb, hB, Cx, ie, rho, g)
-        Rb = compute_Rb_holtrop(Vms, T, hB, Abt, Bulbchoice, rho, g)
-        Rtr = compute_Rtr(Vms, Atr, Bwl, Cwp, rho, g)
-        Ra = compute_Ra_holtrop(Vms, Lbp, Bwl, T, Cb, hB, rho, Wsa, Abt, uInterval)
+        Lbp = 136.
+        Lwl = 136.
+        lcb = 0.5
+        
+        Rf = holtrop.compute_Rf_holtrop(Vms, Lbp, Loa, Lwl, volume, Bwl, T, Wsa, Cp, lcb, Csternchoice, nu, rho, origin, uInterval)
+        Rw = holtrop.compute_Rw_holtrop(Vms, Lwl, Lbp, Bwl, T, Bwl, Abt, Cp, Cwp, Atr, lcb, hB, Cx, ie, rho, g)
+        Rb = holtrop.compute_Rb_holtrop(Vms, T, hB, Abt, Bulbchoice, rho, g)
+        Rtr = holtrop.compute_Rtr(Vms, Ttr, Atr, Bwl, Cwp, rho, g)
+        
+        Ra = holtrop.compute_Ra_holtrop(Vms, Lwl, Bwl, T, Cb, hB, rho, Wsa, Abt, uInterval)
         
         if uInterval:
             return Rf[0] + Rw + Rb + Rtr + Ra[0], Rf[1] + Rw + Rb + Rtr + Ra[1]
         
         # print(Rf, Rw, Rb, Rtr, Ra)
         
+        # return (Rtr + Ra) * np.sign(V)
         return (Rf + Rw + Rb + Rtr + Ra) * np.sign(V)
     
     def compute_propulsion_coefficients(self, stw, Ae_Ao):
@@ -1177,8 +1008,8 @@ class Hull():
         
         rho = self.environment.water.density
         
-        center = self.hydrostaticData['cow'] + np.array([self.hydrostaticData['Lwl']/5., 0., 0.]) # center of effort approximately at 30% of the body chord
-                  
+        center = self.hydrostaticData['cdyn'] * np.array([-1., -1., 1.])
+        
         # if method == 'dsyhs':
         if False:
             """
@@ -1326,7 +1157,7 @@ class Hull():
             raise(ValueError(f'unsupported method {method} for hull resistance computation'))
             return np.zeros(3), np.zeros(3)
         
-        center = self.hydrostaticData['cow']
+        center = self.hydrostaticData['cow'] * np.array([-1., -1., 1.])
         # Cb = self.hydrostaticData['Cb']
         # Ay = self.hydrostaticData['Ay']
         
@@ -1411,7 +1242,7 @@ class Hull():
         if not(self.aerostaticData) or recompute_statics:
             self.compute_statics(op_point)
             
-        center = self.aerostaticData['caa'] + np.array([self.aerostaticData['Laa']/5., 0., 0.]) # center of effort approximately at 33% of the body chord
+        center = self.aerostaticData['cdyn'] * np.array([-1., -1., 1.])
         
         z = wide(center)[0,2]
         
@@ -1469,7 +1300,7 @@ class Hull():
         if center is None:
             center = self.cog.copy()
             
-        z = center[2]
+        z = center[2] # TODO: make the crew center move with the ship
         aws = op_point._aws(z) # in m/s
         awa = op_point.awa(z) # in degrees
 
@@ -1483,6 +1314,7 @@ class Hull():
         
         return Fcrew, Mcrew
     
+    
     def compute_statics(self,
                         op_point: OperatingPoint):
         
@@ -1491,10 +1323,10 @@ class Hull():
         antiLeewayRot = np.rotation_matrix_3D((-leeway)*np.pi/180, 'z')
         
         vertices = copy.copy(self.diff_mesh.vertices)
-        vertices[:,0] *= -1
+        # vertices[:,0] *= -1
         faces = copy.copy(self.diff_mesh.faces)
 
-        vertices = vertices @ antiLeewayRot.T
+        vertices = vertices @ antiLeewayRot
 
         point = np.array([0.0, 0.0, 0.0])
 
@@ -1617,6 +1449,8 @@ class Hull():
             waterplaneMesh = wetMesh.compress_mesh(point, '-z', dist=-initVertDist,
                                                    tol=1e-5, scale_fac=1000.)
             
+            self.waterplane = waterplaneMesh
+            
             # transomMesh = wetMesh.compress_mesh()
             
             volume = wetMesh.volume
@@ -1638,6 +1472,8 @@ class Hull():
             Lwl = wetBounds[0,1] - wetBounds[0,0]
             Bwl = wetBounds[1,1] - wetBounds[1,0]
             T = wetBounds[2,1] - wetBounds[2,0]
+            
+            cdyn = cow - np.array([Lwl/4., 0., 0.]) # center of pressure condidered at 25% chord
             
             Ax = wetMesh.frontal_area('x')
             Ay = wetMesh.frontal_area('y')
@@ -1662,21 +1498,22 @@ class Hull():
         
             Ttr = z_max - z_min
             
-            Cb = volume / (Lwl * Bwl * T + 1e-8)
-            Cp = volume / (Ax * Lwl + 1e-8)
-            Cx = Ax / (Bwl * T + 1e-8)
-            Cy = Ay / (Lwl * T + 1e-8)
-            Cwp = Wpa / (Lwl * Bwl + 1e-8)
+            Cb = np.clip(volume / (Lwl * Bwl * T + 1e-8), 0., 1.)
+            Cp = np.clip(volume / (Ax * Lwl + 1e-8), 0., 1.)
+            Cx = np.clip(Ax / (Bwl * T + 1e-8), 0., 1.)
+            Cy = np.clip(Ay / (Lwl * T + 1e-8), 0., 1.)
+            Cwp = np.clip(Wpa / (Lwl * Bwl + 1e-8), 0., 1.)
+            
+            cob = rotate_single_vector(cob, antiLeewayRot.T, np.zeros(3)) # bring back Cob in underway axes
+            cof = rotate_single_vector(cof, antiLeewayRot.T, np.zeros(3)) # bring back Cof in underway axes
+            cow = rotate_single_vector(cow, antiLeewayRot.T, np.zeros(3)) # bring back Cow in underway axes
+            cdyn = rotate_single_vector(cdyn, antiLeewayRot.T, np.zeros(3)) # bring back Cow in underway axes
             
             self.hydrostaticData = {}
             
             self.hydrostaticData['volume'] = volume
             
-            cob = rotate_single_vector(cob, antiLeewayRot.T, np.zeros(3)) # bring back Cob in underway axes
-            cof = rotate_single_vector(cof, antiLeewayRot.T, np.zeros(3)) # bring back Cof in underway axes
-            cow = rotate_single_vector(cow, antiLeewayRot.T, np.zeros(3)) # bring back Cow in underway axes
-            
-            points = {'cob': cob, 'cof': cof, 'cow': cow, '0L': X0}
+            points = {'cob': cob, 'cof': cof, 'cow': cow, 'cdyn': cdyn, '0L': X0}
             lengths = {'Lwl': Lwl, 'Bwl': Bwl, 'T': T, 'Ttr': Ttr, '0L': X0}
             areas = {'Wsa': Wsa, 'Wpa': Wpa, 'Ax': Ax, 'Ay': Ay, 'Atr': Atr, 'Abt': 0.}
             coefs = {'Cb': Cb, 'Cp': Cp, 'Cwp': Cwp, 'Cx': Cx, 'Cy': Cy}
@@ -1695,16 +1532,158 @@ class Hull():
             Dsa = dryMesh.weighted_area(weight=ramp(initFaceDist-1e-3, tol=1e-3))
             
             caa = dryMesh.area_centroid
+            cdyn = caa - np.array([Laa/4., 0., 0.]) # center of pressure condidered at 25% chord
             
             caa = rotate_single_vector(caa, antiLeewayRot.T, np.zeros(3)) # bring back Caa in underway axes
+            cdyn = rotate_single_vector(cdyn, antiLeewayRot.T, np.zeros(3))
             
-            points = {'caa': caa}
+            points = {'caa': caa, 'cdyn': cdyn}
             lengths = {'Laa': Laa, 'Taa': Taa}
             areas = {'Dsa': Dsa, 'Ax': Axaa, 'Ay': Ayaa}
             
             self.aerostaticData = {}
             
             self.aerostaticData |= points | lengths | areas
+            
+    
+    def compute_static_data(self,
+                            point,
+                            mat,
+                            xn,
+                            yn,
+                            normal,
+                            ):
+
+        vdist = self.diff_mesh.vertices_distances_to_plane(point, normal)
+        fdist = self.diff_mesh.faces_distances_to_plane(point, normal)
+        
+        dryVertFac = np.fmax(np.fmin(+vdist-0.5, 1.), 0.)
+        wetVertFac = np.fmax(np.fmin(-vdist+0.5, 1.), 0.)
+        
+        dryFaceFac = np.fmax(np.fmin(+fdist-0.5, 1.), 0.)
+        wetFaceFac = np.fmax(np.fmin(-fdist+0.5, 1.), 0.)
+        
+        # mat = np.vstack((xn, yn, normal))
+
+
+        ### HYDROSTATICS COMPUTATION
+        
+        # wetMesh = initMesh.compress_mesh(point, 'z', dist=initVertDist,
+        #                                  tol=1e-5, scale_fac=2.)
+        
+        # self.wet_mesh = wetMesh
+    
+        # dryMesh = initMesh.compress_mesh(point, '-z', dist=-initVertDist,
+        #                                  tol=1e-5, scale_fac=2.)
+        
+        # self.dry_mesh = dryMesh
+        
+        # waterplaneMesh = wetMesh.compress_mesh(point, '-z', dist=-initVertDist,
+        #                                        tol=1e-5, scale_fac=1000.)
+        
+        # self.waterplane = waterplaneMesh
+        self.waterplane = self.diff_mesh.slice_mesh(point, normal)
+        
+        self.waterplane._vertices = (self.waterplane.vertices - point) @ mat
+        self.waterplane.reset_data()
+        
+        # transomMesh = wetMesh.compress_mesh()
+        
+        volume, cob = self.diff_mesh.hydrostatics(point, normal)
+        
+        # Wsa = wetMesh.weighted_area(weight=ramp(initFaceDist))
+        cow = self.diff_mesh.weighted_area_centroid(weight=wetFaceFac)
+        
+        # Wpa = waterplaneMesh.weighted_area(weight=ramp(initFaceDist))
+        cof = self.waterplane.area_centroid
+        # cof = waterplaneMesh.area_centroid
+        
+        # dryBounds = dryMesh.bounds
+        # wetBounds = wetMesh.bounds
+        
+        bounds = self.waterplane.bounds
+        
+        X0 = bounds[0,0] + (point @ mat)[0]
+        Lwl = bounds[0,1] - bounds[0,0]
+        Bwl = bounds[1,1] - bounds[1,0]
+        T = -np.min(vdist)
+        
+        Laa = Lwl
+        
+        cdyn = cow - np.array([Lwl/4., 0., 0.]) # center of pressure condidered at 25% chord
+        
+        Ax = self.diff_mesh.frontal_area(xn, weight=wetFaceFac)
+        Ay = self.diff_mesh.frontal_area(yn, weight=wetFaceFac)
+        Wpa = self.waterplane.area
+        
+        Wsa = self.diff_mesh.weighted_area(weight=wetFaceFac)
+        
+        dl = Lwl/10.
+        
+        transom_point = np.array([1.,0.,0.])*(X0+dl)
+        self.transom_mesh = self.diff_mesh.slice_mesh(
+                point=transom_point,
+                normal=xn,
+            )
+        self.transom_mesh._vertices = (self.waterplane.vertices - point) @ mat
+        self.transom_mesh.reset_data()
+        
+        Atr = self.transom_mesh.area
+        # Atr = compute_volume_and_center_of_mass(transom, faces)[0] / dl # alternate approximate way to compute Atr
+        
+        trBounds = self.transom_mesh.bounds
+    
+        Ttr = trBounds[2,1] - trBounds[2,0]
+        
+        Atr = 0.
+        Ttr = 0.
+        
+        Cb = np.clip(volume / (Lwl * Bwl * T + 1e-8), 0., 1.)
+        Cp = np.clip(volume / (Ax * Lwl + 1e-8), 0., 1.)
+        Cx = np.clip(Ax / (Bwl * T + 1e-8), 0., 1.)
+        Cy = np.clip(Ay / (Lwl * T + 1e-8), 0., 1.)
+        Cwp = np.clip(Wpa / (Lwl * Bwl + 1e-8), 0., 1.)
+        
+        # cob = rotate_single_vector(cob, antiLeewayRot.T, np.zeros(3)) # bring back Cob in underway axes
+        # cof = rotate_single_vector(cof, antiLeewayRot.T, np.zeros(3)) # bring back Cof in underway axes
+        # cow = rotate_single_vector(cow, antiLeewayRot.T, np.zeros(3)) # bring back Cow in underway axes
+        # cdyn = rotate_single_vector(cdyn, antiLeewayRot.T, np.zeros(3)) # bring back Cow in underway axes
+        
+        self.hydrostaticData = {}
+        
+        self.hydrostaticData['volume'] = volume
+        
+        points = {'cob': cob, 'cof': cof, 'cow': cow, 'cdyn': cdyn, '0L': X0}
+        lengths = {'Lwl': Lwl, 'Bwl': Bwl, 'T': T, 'Ttr': Ttr, '0L': X0}
+        areas = {'Wsa': Wsa, 'Wpa': Wpa, 'Ax': Ax, 'Ay': Ay, 'Atr': Atr, 'Abt': 0.}
+        coefs = {'Cb': Cb, 'Cp': Cp, 'Cwp': Cwp, 'Cx': Cx, 'Cy': Cy}
+    
+        self.hydrostaticData |= points | lengths | areas | coefs
+        
+        self.hydrostaticData['ie'] = None
+        
+        ### AEROSTATICS COMPUTATION
+        
+        Taa = np.max(vdist)
+        Axaa = self.diff_mesh.frontal_area(xn, weight=dryFaceFac)
+        Ayaa = self.diff_mesh.frontal_area(yn, weight=dryFaceFac)
+        Dsa = self.diff_mesh.weighted_area(weight=dryFaceFac)
+        
+        caa = self.diff_mesh.weighted_area_centroid(weight=dryFaceFac)
+        cdyn = caa - np.array([Laa/4., 0., 0.]) # center of pressure condidered at 25% chord
+        
+        # caa = rotate_single_vector(caa, antiLeewayRot.T, np.zeros(3)) # bring back Caa in underway axes
+        # cdyn = rotate_single_vector(cdyn, antiLeewayRot.T, np.zeros(3))
+        
+        points = {'caa': caa, 'cdyn': cdyn}
+        lengths = {'Laa': Laa, 'Taa': Taa}
+        areas = {'Dsa': Dsa, 'Ax': Axaa, 'Ay': Ayaa}
+        
+        self.aerostaticData = {}
+        
+        self.aerostaticData |= points | lengths | areas
+        
+        print(self.hydrostaticData)
             
                 
     def compute_buoyancy(self,
@@ -1715,8 +1694,8 @@ class Hull():
         if not(self.hydrostaticData) or recompute_statics:
             self.compute_statics(op_point)
         
-        center = self.hydrostaticData['cob']
-        center[1] *= -1 # TODO: find why lateral inversion is necessary. Heel rotation seems not consistent
+        center = self.hydrostaticData['cob'] * np.array([-1., -1., 1.])
+        # center[1] *= -1 # TODO: find why lateral inversion is necessary. Heel rotation seems not consistent
         volume = self.hydrostaticData['volume']
         rho = op_point.environment.water.density
         g = op_point.environment.gravity
@@ -1732,13 +1711,19 @@ class Hull():
 #%% TEST
 if __name__ == '__main__':
     
-    import aerosandbox as asb
+    import archibald2 as asb
     from archibald2.performance.operating_point import OperatingPoint
     
     opti = asb.Opti()
     
-    # hullStl = 'C:/Users/jrich/Documents/archibald-main/Private/49er_data/hull.stl'
-    hullStl = 'C:/Users/jrich/Documents/archibald-main/Private/n169pctc_data/hull.stl' # path to a STL mesh of the hull
+    archibald_root = 'C:/Users/jrich/NEOLINE DEVELOPPEMENT/NeoDev - ND-DÉVELOPPEMENT - Documents/ND-DÉVELOPPEMENT/01_Développement/08_Outils'
+    # hullStl = archibald_root+'/archibald-main/Private/n136_data/n136.stl' # path to a STL mesh of the hull
+    hullStl = archibald_root+'/archibald-main/Private/n136_data/n136_quad.stl' # path to a STL mesh of the hull
+    hullMesh = trimesh.load(hullStl)
+    
+    hullMesh.fix_normals()
+    
+    diff_mesh = DifferentiableMesh(hullMesh.vertices, hullMesh.faces)
 
     rho = 1025.
     # displacement = 290. # kg
@@ -1749,14 +1734,16 @@ if __name__ == '__main__':
     tcg = 0.0
     vcg = 8.8
 
-    # dz = 0.
-    dz = opti.variable(init_guess=-5.3)
+    dz = 0.
+    # dz = opti.variable(init_guess=-5.3)
     stw = 8.
     leeway = 0.
     heel = 0.
     trim = 0.
     
-    hull = Hull('forty', displacement, np.zeros(3), hullStl)
+    hull = Hull('forty', displacement, np.zeros(3),
+                vertices=hullMesh.vertices, faces=hullMesh.faces,
+                inv_x=False)
     
     op_point = OperatingPoint(
              stw = stw,
@@ -1781,5 +1768,7 @@ if __name__ == '__main__':
     # obj = (hull.hydrostaticData['cow'][0] - 2.)**2
     opti.minimize(obj)
     
-    sol = opti.solve(max_iter = 50)
+    sol = opti.solve(
+        max_iter=50,
+        )
     

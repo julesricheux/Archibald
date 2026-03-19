@@ -1,5 +1,5 @@
-import aerosandbox as asb
-from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.conventional import (
+import archibald2 as asb
+from archibald2.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
     airplane,
 )
 

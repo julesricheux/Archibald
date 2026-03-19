@@ -1,5 +1,5 @@
-from aerosandbox import ImplicitAnalysis, Opti
-import aerosandbox.numpy as np
+from archibald2 import ImplicitAnalysis, Opti
+import archibald2.numpy as np
 
 
 class IBL2(ImplicitAnalysis):

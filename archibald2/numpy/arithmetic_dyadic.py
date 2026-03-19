@@ -1,9 +1,9 @@
 import numpy as _onp
 import casadi as _cas
 from typing import Tuple, Iterable, Union
-from aerosandbox.numpy.conditionals import where
+from archibald2.numpy.conditionals import where
 
-from aerosandbox.numpy.determine_type import is_casadi_type
+from archibald2.numpy.determine_type import is_casadi_type
 
 
 def _make_casadi_types_broadcastable(x1, x2):

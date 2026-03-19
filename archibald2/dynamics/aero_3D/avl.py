@@ -1,9 +1,9 @@
-from aerosandbox.common import ExplicitAnalysis
-import aerosandbox.numpy as np
+from archibald2.common import ExplicitAnalysis
+import archibald2.numpy as np
 import subprocess
 from pathlib import Path
-from aerosandbox.geometry import Airplane, Wing, WingXSec, Fuselage, ControlSurface
-from aerosandbox.performance import OperatingPoint
+from archibald2.geometry import LiftingSet, Rig, Appendage, Wing, WingXSec, Fuselage, ControlSurface
+from archibald2.performance import OperatingPoint
 from typing import Union, List, Dict
 import tempfile
 import warnings
@@ -38,7 +38,7 @@ class AVL(ExplicitAnalysis):
     """
 
     default_analysis_specific_options = {
-        Airplane: dict(profile_drag_coefficient=0),
+        LiftingSet: dict(profile_drag_coefficient=0),
         Wing: dict(
             wing_level_spanwise_spacing=True,
             spanwise_resolution=12,
@@ -84,7 +84,7 @@ class AVL(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: Airplane,
+        airplane: LiftingSet,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         avl_command: str = "avl",
@@ -806,9 +806,9 @@ class AVL(ExplicitAnalysis):
 if __name__ == "__main__":
 
     ### Import Vanilla Airplane
-    import aerosandbox as asb
+    import archibald2 as asb
 
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.vanilla import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.vanilla import (
         airplane as vanilla,
     )
 

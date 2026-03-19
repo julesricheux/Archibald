@@ -1,7 +1,7 @@
 import numpy as _onp
 import casadi as _cas
 from typing import List, Dict, Union, Sequence
-from aerosandbox.numpy.determine_type import is_casadi_type
+from archibald2.numpy.determine_type import is_casadi_type
 
 
 def array(array_like, dtype=None):

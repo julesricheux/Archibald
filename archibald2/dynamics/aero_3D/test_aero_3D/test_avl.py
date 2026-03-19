@@ -1,4 +1,4 @@
-import aerosandbox as asb
+import archibald2 as asb
 
 
 def is_tool(name):
@@ -16,7 +16,7 @@ avl_present = is_tool("avl")
 def test_conventional():
     if not avl_present:
         return
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.conventional import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
         airplane,
     )
 
@@ -30,7 +30,7 @@ def test_conventional():
 def test_vanilla():
     if not avl_present:
         return
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.vanilla import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.vanilla import (
         airplane,
     )
 
@@ -44,7 +44,7 @@ def test_vanilla():
 def test_flat_plate():
     if not avl_present:
         return
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.flat_plate import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.flat_plate import (
         airplane,
     )
 
@@ -58,7 +58,7 @@ def test_flat_plate():
 def test_flat_plate_mirrored():
     if not avl_present:
         return
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.flat_plate_mirrored import (
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.flat_plate_mirrored import (
         airplane,
     )
 

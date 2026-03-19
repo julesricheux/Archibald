@@ -1,4 +1,4 @@
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 import sympy as s
 
 

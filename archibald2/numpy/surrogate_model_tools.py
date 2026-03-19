@@ -1,4 +1,4 @@
-import aerosandbox.numpy as _np
+import archibald2.numpy as _np
 import casadi as _cas
 from typing import Tuple, Union
 

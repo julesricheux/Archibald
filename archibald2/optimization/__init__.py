@@ -1,1 +1,1 @@
-from aerosandbox.optimization.opti import Opti, OptiSol
+from archibald2.optimization.opti import Opti, OptiSol

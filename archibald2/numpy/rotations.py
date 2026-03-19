@@ -1,5 +1,5 @@
-from aerosandbox.numpy import sin, cos, linalg
-from aerosandbox.numpy.array import array
+from archibald2.numpy import sin, cos, linalg
+from archibald2.numpy.array import array
 import numpy as _onp
 from typing import Union, List
 

@@ -1,6 +1,6 @@
-from aerosandbox.numpy.array import *
+from archibald2.numpy.array import *
 import pytest
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 import casadi as cas
 
 

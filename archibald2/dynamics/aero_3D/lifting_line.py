@@ -1,14 +1,14 @@
-from aerosandbox import ExplicitAnalysis
-from aerosandbox.geometry import *
-from aerosandbox.performance import OperatingPoint
-from aerosandbox.aerodynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import (
+from archibald2 import ExplicitAnalysis
+from archibald2.geometry import *
+from archibald2.performance import OperatingPoint
+from archibald2.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import (
     calculate_induced_velocity_horseshoe,
 )
-from aerosandbox.aerodynamics.aero_3D.singularities.point_source import (
+from archibald2.dynamics.aero_3D.singularities.point_source import (
     calculate_induced_velocity_point_source,
 )
 from typing import Dict, List, Callable, Union
-from aerosandbox.aerodynamics.aero_3D.aero_buildup import AeroBuildup
+from archibald2.dynamics.aero_3D.aero_buildup import AeroBuildup
 from dataclasses import dataclass
 
 
@@ -46,7 +46,7 @@ class LiftingLine(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: Airplane,
+        airplane: LiftingSet,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         model_size: str = "medium",
@@ -1131,7 +1131,7 @@ class LiftingLine(ExplicitAnalysis):
                 self.calculate_streamlines()
 
         if backend == "plotly":
-            from aerosandbox.visualization.plotly_Figure3D import Figure3D
+            from archibald2.visualization.plotly_Figure3D import Figure3D
 
             fig = Figure3D()
 
@@ -1194,7 +1194,7 @@ class LiftingLine(ExplicitAnalysis):
 
             ### Draw the streamlines
             if draw_streamlines:
-                import aerosandbox.tools.pretty_plots as p
+                import archibald2.tools.pretty_plots as p
 
                 for i in range(self.streamlines.shape[0]):
                     plotter.add_mesh(
@@ -1223,7 +1223,7 @@ class LiftingLine(ExplicitAnalysis):
             #         points_1 = np.zeros((fuse.xsec_perimeter, 3))
             #         points_2 = np.zeros((fuse.xsec_perimeter, 3))
             #         for point_index in range(fuse.xsec_perimeter):
-            #             from aerosandbox.numpy import rotation_matrix_3D
+            #             from archibald2.numpy import rotation_matrix_3D
             #             rot = rotation_matrix_3D(
             #                 2 * np.pi * point_index / fuse.xsec_perimeter,
             #                 [1, 0, 0],
@@ -1266,13 +1266,13 @@ class LiftingLine(ExplicitAnalysis):
 
 
 if __name__ == "__main__":
-    import aerosandbox as asb
-    import aerosandbox.numpy as np
-    from aerosandbox.aerodynamics.aero_3D.test_aero_3D.geometries.conventional import (
+    import archibald2 as asb
+    import archibald2.numpy as np
+    from archibald2.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
         airplane,
     )
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald2.tools.pretty_plots as p
 
     airplane = asb.Airplane(
         wings=[

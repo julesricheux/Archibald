@@ -1,4 +1,4 @@
-from aerosandbox.numpy.array import array, length
+from archibald2.numpy.array import array, length
 import numpy as _onp
 
 
@@ -95,6 +95,6 @@ def finite_difference_coefficients(
 
     coefficients = array(
         [*coefficients_object_array]
-    )  # Reconstructs using aerosandbox.numpy to intelligently type
+    )  # Reconstructs using archibald2.numpy to intelligently type
 
     return coefficients

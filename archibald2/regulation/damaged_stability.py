@@ -254,7 +254,7 @@ def compute_J_b(b: float,
     Parameters:
         b (float): the mean transverse distance in metres measured at right angles to the centreline at the deepest
                    subdivision draught between the shell and an assumed vertical plane extended between the
-                   longitudinal timits used in calculating the factor p; and which is a tangent to, or common with, all
+                   longitudinal limits used in calculating the factor p; and which is a tangent to, or common with, all
                    or part of the outermost portion of the longitudinal bulkhead under consideration. This vertical
                    plane shall be so orientated that the mean transverse distance to the shell is a maximum, but
                    not more than twice the least distance between the plane and the shell. If the upper part of
@@ -427,12 +427,13 @@ def compute_J_m(L_s: float,
 
 if __name__=='__main__':
     
+    
     print(R('cargo', 169, N=24))  # Output: R value
     
     print(R('passenger', 169, N=400))  # Output: R value
     
     # Example inputs
-    print(permeability('store'))                       # Output: 0.60
+    print(permeability('store'))                        # Output: 0.60
     print(permeability('accommodation'))               # Output: 0.95
     print(permeability('cargo_dry', draught='d_s'))    # Output: 0.70
     print(permeability('cargo_roro', draught='d_l'))   # Output: 0.95

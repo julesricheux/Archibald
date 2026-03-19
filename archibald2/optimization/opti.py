@@ -219,9 +219,9 @@ class Opti(cas.Opti):
                 variable below a given value.
 
             _stacklevel: Optional and advanced, purely used for debugging. Allows users to correctly track where
-                variables are declared in the event that they are subclassing `aerosandbox.Opti`. Modifies the
+                variables are declared in the event that they are subclassing `archibald2.Opti`. Modifies the
                 stacklevel of the declaration tracked, which is then presented using
-                `aerosandbox.Opti.variable_declaration()`.
+                `archibald2.Opti.variable_declaration()`.
 
         Returns:
             The variable itself as a symbolic CasADi variable (MX type).
@@ -398,9 +398,9 @@ class Opti(cas.Opti):
                 >>> ])
 
             _stacklevel: Optional and advanced, purely used for debugging. Allows users to correctly track where
-            constraints are declared in the event that they are subclassing `aerosandbox.Opti`. Modifies the
+            constraints are declared in the event that they are subclassing `archibald2.Opti`. Modifies the
             stacklevel of the declaration tracked, which is then presented using
-            `aerosandbox.Opti.constraint_declaration()`.
+            `archibald2.Opti.constraint_declaration()`.
 
         Returns:
             The dual variable associated with the new constraint. If the `constraint` input is a list, returns
@@ -1083,9 +1083,9 @@ class Opti(cas.Opti):
                 # TODO implement explicit
 
             _stacklevel: Optional and advanced, purely used for debugging. Allows users to correctly track where
-            constraints are declared in the event that they are subclassing `aerosandbox.Opti`. Modifies the
+            constraints are declared in the event that they are subclassing `archibald2.Opti`. Modifies the
             stacklevel of the declaration tracked, which is then presented using
-            `aerosandbox.Opti.variable_declaration()` and `aerosandbox.Opti.constraint_declaration()`.
+            `archibald2.Opti.variable_declaration()` and `archibald2.Opti.constraint_declaration()`.
 
 
         Returns: A vector consisting of the derivative of the parameter `variable` with respect to `with_respect_to`.
@@ -1202,9 +1202,9 @@ class Opti(cas.Opti):
             shock capturing.)
 
             _stacklevel: Optional and advanced, purely used for debugging. Allows users to correctly track where
-            constraints are declared in the event that they are subclassing `aerosandbox.Opti`. Modifies the
+            constraints are declared in the event that they are subclassing `archibald2.Opti`. Modifies the
             stacklevel of the declaration tracked, which is then presented using
-            `aerosandbox.Opti.variable_declaration()` and `aerosandbox.Opti.constraint_declaration()`.
+            `archibald2.Opti.variable_declaration()` and `archibald2.Opti.constraint_declaration()`.
 
         Returns: None (adds constraint in-place).
 
@@ -1216,7 +1216,7 @@ class Opti(cas.Opti):
 
         # TODO scale constraints by variable scale?
         # TODO make
-        from aerosandbox.numpy.integrate_discrete import integrate_discrete_intervals
+        from archibald2.numpy.integrate_discrete import integrate_discrete_intervals
 
         integrals = integrate_discrete_intervals(
             f=derivative, x=with_respect_to, multiply_by_dx=True, method=method

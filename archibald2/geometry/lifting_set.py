@@ -194,7 +194,7 @@ class LiftingSet(AeroSandboxObject):
                   ):
         """
         Returns a surface mesh of the Airplane, in (points, faces) format. For reference on this format,
-        see the documentation in `aerosandbox.geometry.mesh_utilities`.
+        see the documentation in `archibald2.geometry.mesh_utilities`.
 
         Args:
 
@@ -282,7 +282,7 @@ class LiftingSet(AeroSandboxObject):
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import aerosandbox.tools.pretty_plots as p
+            import archibald2.tools.pretty_plots as p
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
             if ax is None:
@@ -351,7 +351,7 @@ class LiftingSet(AeroSandboxObject):
 
         elif backend == "plotly":
 
-            from aerosandbox.visualization.plotly_Figure3D import Figure3D
+            from archibald2.visualization.plotly_Figure3D import Figure3D
             fig = Figure3D()
             for f in faces:
                 fig.add_quad((
@@ -421,7 +421,7 @@ class LiftingSet(AeroSandboxObject):
             fuselage_longeron_theta = np.linspace(0, 2 * np.pi, 8 + 1)[:-1]
 
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         if ax is None:
             _, ax = p.figure3d(figsize=(8, 8), computed_zorder=False)
@@ -642,7 +642,7 @@ class LiftingSet(AeroSandboxObject):
 
         """
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         preset_view_angles = np.array([
             ["XZ", "-YZ"],
@@ -961,7 +961,7 @@ class LiftingSet(AeroSandboxObject):
         # TODO include option for mass file export as well
         # Use MassProperties.export_AVL_mass...
 
-        from aerosandbox.aerodynamics.aero_3D.avl import AVL
+        from archibald2.dynamics.aero_3D.avl import AVL
         avl = AVL(
             airplane=self,
             op_point=None,
@@ -1365,8 +1365,8 @@ class Appendage(LiftingSet):
 
 
 if __name__ == '__main__':
-    import aerosandbox as asb
-    # import aerosandbox.numpy as np
+    import archibald2 as asb
+    # import archibald2.numpy as np
     import archibald2.tools.units as u
 
 

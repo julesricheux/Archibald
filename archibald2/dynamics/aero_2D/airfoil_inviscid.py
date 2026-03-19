@@ -1,10 +1,10 @@
-from aerosandbox.common import *
-from aerosandbox.geometry import Airfoil
-from aerosandbox.performance import OperatingPoint
-from aerosandbox.aerodynamics.aero_2D.singularities import (
+from archibald2.common import *
+from archibald2.geometry import Airfoil
+from archibald2.performance import OperatingPoint
+from archibald2.dynamics.aero_2D.singularities import (
     calculate_induced_velocity_line_singularities,
 )
-import aerosandbox.numpy as np
+import archibald2.numpy as np
 from typing import Union, List
 
 
@@ -189,7 +189,7 @@ class AirfoilInviscid(ImplicitAnalysis):
 
     def draw_streamlines(self, res=200, show=True):
         import matplotlib.pyplot as plt
-        import aerosandbox.tools.pretty_plots as p
+        import archibald2.tools.pretty_plots as p
 
         fig, ax = plt.subplots(1, 1, figsize=(6.4, 4.8), dpi=200)
 
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     a.draw_streamlines()
     a.draw_cp()
 
-    from aerosandbox import Opti
+    from archibald2 import Opti
 
     opti2 = Opti()
     b = AirfoilInviscid(
