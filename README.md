@@ -1,4 +1,4 @@
-# [Archibald 2.0.0dev](https://github.com/julesricheux/archibald/) :sailboat:✏️
+# [Archibald alpha-2.0.x](https://github.com/julesricheux/archibald/) :sailboat:✏️
 
 # 🚧🏗️🛠️ Development branch
 Work in progress for Archibald's next skin.
