@@ -51,19 +51,3 @@ def grad_wind(tws0, z, z0=10.0, a=0.12):
     """
     # return tws0 * (z/z0)**a
     return tws0 * (np.abs(z)/z0)**a
-
-
-def Hs_approx(tws):
-    # Data fitting on D-ICE 03/2023 N136 pilot line routing study
-    a=2.366949947982307
-    b=0.0012004690478089515
-    c=0.6324555320336759
-    
-    return c + b * tws**a
-
-
-def WA_approx(twa):
-    # Data fitting on D-ICE 03/2023 N136 pilot line routing study
-    k=1.
-    
-    return k * twa
