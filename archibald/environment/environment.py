@@ -187,7 +187,7 @@ class Water(Fluid):
         )
 
         self.salinity = salinity
-        self.valid_salinity_range = valid_salinity_range
+        self._valid_salinity_range = valid_salinity_range
         
         self._check_salinity_range()
         
@@ -330,7 +330,7 @@ class Air(Fluid):
     def __init__(self,
                  temperature: float = 15.,  # Celsius
                  pressure: float = u.atm, # Pa
-                 valid_temperature_range: tuple = (0+u.K, 3000+u.K), # Celsius
+                 valid_temperature_range: tuple = (0-u.kelvin, 3000+u.kelvin), # Celsius
                  valid_pressure_range: tuple = (0.01*u.atm, 100*u.atm), # Pa
                  ):
         
