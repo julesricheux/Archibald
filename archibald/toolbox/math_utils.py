@@ -16,7 +16,7 @@ import csv
 import casadi as ca
 import xarray as xr
 import archibald2.numpy as np
-import scipy.interpolate as itrp
+# import scipy.interpolate as itrp # TODO remove
 
 #%% FUNCTIONS
 
@@ -63,8 +63,8 @@ def rotation_matrix(vector, angle):
     x, y, z = vector
     
     # Compute the rotation matrix elements
-    c = cosd(angle)
-    s = sind(angle)
+    c = np.cosd(angle)
+    s = np.sind(angle)
     t = 1 - c
     
     # Construct the rotation matrix
@@ -91,8 +91,8 @@ def rotate_x(vec3d, angle):
     """
     
     rot_matrix = np.array([[1, 0, 0],
-                           [0, cosd(angle), -sind(angle)],
-                           [0, sind(angle), cosd(angle)]])
+                           [0, np.cosd(angle), -np.sind(angle)],
+                           [0, np.sind(angle), np.cosd(angle)]])
     
     return np.dot(rot_matrix, vec3d)
 
@@ -126,45 +126,47 @@ def set_normal(heel, trim):
     z1 = rotate_x(z0, heel)
     y1 = rotate_x(y0, heel)
     
-    z2 = z1*cosd(trim) + np.cross(y1, z1)*sind(trim) + y1*np.dot(y1, z1)*(1 - cosd(trim))
+    z2 = z1*np.cosd(trim) + np.cross(y1, z1)*np.sind(trim) + y1*np.dot(y1, z1)*(1 - np.cosd(trim))
 
     return -z2
 
 
-def build_interpolation(coefs, method='cubic'):
-    A = list()
+# LEGACY
+# def build_interpolation(coefs, method='cubic'):
+#     A = list()
     
-    for a in range(1, coefs.shape[1]):
-        A.append(itrp.interp1d(coefs[:,0], coefs[:,a], kind=method))
+#     for a in range(1, coefs.shape[1]):
+#         A.append(itrp.interp1d(coefs[:,0], coefs[:,a], kind=method))
         
-    return A
+#     return A
 
-def build_2D_interpolator_from_csv(csvFile, delim=','):
-    """
+# LEGACY
+# def build_2D_interpolator_from_csv(csvFile, delim=','):
+#     """
     
-    Parameters
-    ----------
-    csvFile : str. Path to 2D gridded and ordered data.
-    delim : str. CSV separator. The default is ','.
+#     Parameters
+#     ----------
+#     csvFile : str. Path to 2D gridded and ordered data.
+#     delim : str. CSV separator. The default is ','.
 
-    Returns
-    -------
-    interpolator : interpax.Interpolator2D. R^2 to R function interpolating the given data.
+#     Returns
+#     -------
+#     interpolator : interpax.Interpolator2D. R^2 to R function interpolating the given data.
 
-    """
-    data = np.genfromtxt(csvFile, delimiter=delim)
+#     """
+#     data = np.genfromtxt(csvFile, delimiter=delim)
     
-    # Assuming the first column represents x values, and the first row represents y values
-    x = data[1:, 0]  # Exclude the first element which represents y values
-    y = data[0, 1:]  # Exclude the first element which represents x values
-    z = data[1:, 1:]  # Exclude the first row and column
+#     # Assuming the first column represents x values, and the first row represents y values
+#     x = data[1:, 0]  # Exclude the first element which represents y values
+#     y = data[0, 1:]  # Exclude the first element which represents x values
+#     z = data[1:, 1:]  # Exclude the first row and column
     
-    # Create 2D interpolator
-    #interpolator = Interpolator2D(x, y, z, method='cubic')
-    #interpolator = itrp.interp2d(x, y, z, kind='cubic')
-    interpolator = itrp.interp2d(x, y, z)
+#     # Create 2D interpolator
+#     #interpolator = Interpolator2D(x, y, z, method='cubic')
+#     #interpolator = itrp.interp2d(x, y, z, kind='cubic')
+#     interpolator = itrp.interp2d(x, y, z)
     
-    return interpolator
+#     return interpolator
 
 
 def compute_AW(tws, twa, V):
@@ -190,8 +192,8 @@ def compute_AW(tws, twa, V):
     V = np.asarray(V)
     
     # Calculate true wind components
-    TW_x = tws * cosd(twa)
-    TW_y = tws * sind(twa)
+    TW_x = tws * np.cosd(twa)
+    TW_y = tws * np.sind(twa)
     
     # Boat speed components (assuming boat is moving along x-axis)
     SW_x = V
@@ -234,8 +236,8 @@ def compute_TW(aws, awa, V):
     V   = np.asarray(V)
 
     # Apparent wind vector in boat frame (x = forward, y = starboard)
-    AWx = aws * cosd(awa)
-    AWy = aws * sind(awa)
+    AWx = aws * np.cosd(awa)
+    AWy = aws * np.sind(awa)
 
     # Ship motion vector (boat speed forward, 0 sideways)
     SWx = V
