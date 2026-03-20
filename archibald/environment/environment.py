@@ -23,9 +23,6 @@ molecular_mass_air = 28.9644e-3  # kg/mol; molecular mass of air
 gas_constant_air = gas_constant_universal / molecular_mass_air  # J/(kg*K); gas constant of air
 effective_collision_diameter = 0.365e-9  # m, effective collision diameter of an air molecule
 
-# LEGACY
-# WATER_DATA = '../data/seawater_ittc_2011.csv' # TODO remove
-
 warnings.simplefilter("always", RuntimeWarning)
 
 #%% CLASSES
@@ -108,66 +105,15 @@ class Fluid():
         
         """
         return self.dynamic_viscosity / self.density
-    
-# LEGACY
-# TODO remove
-# class Water(Fluid):
-#     def __init__(self,
-#                  temperature: float = 15.,  # Celsius
-#                  salinity: float = 35., # g/kg
-#                  valid_temperature_range: tuple = (None, None), # Celsius
-#                  valid_salinity_range: tuple = (None, None), # g/kg
-#                  ):
-        
-#         super().__init__(temperature=temperature,
-#                          valid_temperature_range=valid_temperature_range)
-        
-#         self.salinity=salinity
-#         self.valid_salinity_range=valid_salinity_range
-        
-#         current = os.path.dirname(os.path.realpath(__file__))
-#         self._measurements = read_coefs(os.path.join(current, WATER_DATA),
-#                                         skipRows=1,
-#                                         delim='\t')
-#         self._interpolators = build_interpolation(self._measurements)
-    
-#     def __repr__(self) -> str:
-#         string = f"temperature: {self.temperature:.1f} °C / salinity {self.salinity:.1f} g/kg"
-
-#         return f"Water ({string}, method: '{self.method}')"
-        
-#     def set_salinity(self, salinity: float = 35.):
-#         self.salinity = salinity        
-        
-#     @property
-#     def density(self):
-#         """
-#         Returns the density, in kg/m^3.
-        
-#         """
-#         rho = self._interpolators[0](self.temperature) * 1.
-
-#         return rho
-    
-#     @property
-#     def dynamic_viscosity(self):
-#         """
-#         Returns the dynamic viscosity (mu), in kg/(m*s).
-
-#         Based on ITTC 2011 recommandations.
-        
-#         """
-#         mu = self._interpolators[1](self.temperature) * 1.
-
-#         return mu
 
 
 class Water(Fluid):
     """
     Describes water properties to be used in an environment.
 
-    Density:
-        Sharqawy et al. (2010), based on UNESCO EOS-80, recommended by ITTC 2011.
+    Based on Sharqawy et al. (2010)
+    
+    Based on UNESCO EOS-80, recommended by ITTC 2011.
 
     Notes:
         - Temperature in °C
