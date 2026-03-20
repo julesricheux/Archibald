@@ -1,73 +1,25 @@
 """
-SAILING OPERATING POINT DESCRIPTION
+This module relies heavily on Peter D. Sharpe's awesome work on AeroSandbox.
 
-Created 18/10/2023
-Last update: 18/10/2024
+AeroSandbox
+Author: Peter D. Sharpe
+Repository: https://github.com/peterdsharpe/AeroSandbox
+Date retrieved: 2024-10-18
 
-@author: Jules Richeux
-@contributors: -
-
-Citation:
-    Adapted from:         operating_point module in AeroSandbox
-    Author:               Peter D Sharpe
-    Date of Retrieval:    18/10/2024
-
+AeroSandbox is distributed under its original MIT license.
 """
 
 #%% DEPENDENCIES
 
 from typing import Tuple, Union, Dict, List
-from archibald2.tools.string_formatting import trim_string
+
 import inspect
 
-from archibald2.tools.env_utils import grad_wind
-from archibald2.environment.environment import Environment
-import archibald2.tools.units as u
-
-import archibald2.numpy as np
-
-
-#%% FUNCTIONS
-
-def compute_AW(tws, twa, V):
-    """
-    Computes apparent wind from true wind.
-
-    Parameters
-    ----------
-    tws : float. True wind speed in m/s
-    twa : float. True wind angle in deg
-    V : float. Boat speed in m/s
-
-    Returns
-    -------
-    Apparent wind speed in m/s
-    Apparent wind angle in deg
-
-    """
-    
-    # Convert inputs to numpy arrays for vectorized operations
-    tws = np.asarray(tws)
-    twa = np.asarray(twa)
-    V = np.asarray(V)
-    
-    # Calculate true wind components
-    TW_x = tws * np.cosd(twa)
-    TW_y = tws * np.sind(twa)
-    
-    # Boat speed components (assuming boat is moving along x-axis)
-    SW_x = V
-    SW_y = np.zeros_like(V)
-    
-    # Apparent wind components
-    AW_x = TW_x + SW_x
-    AW_y = TW_y + SW_y
-    
-    # Apparent wind speed and angle
-    aws = np.sqrt(AW_x**2 + AW_y**2)
-    awa = np.arctan2(AW_y, AW_x)
-    
-    return aws, awa*u.deg
+import archibald.numpy as np
+import archibald.toolbox.units as u
+from archibald.environment import Environment
+from archibald.toolbox.env_utils import grad_wind
+from archibald.toolbox.string_formatting import trim_string
 
 
 #%% CLASSES
@@ -604,7 +556,7 @@ if __name__ == '__main__':
               a=0.12,
               )
 
-    obj = (op_point.tws(z) - 11.) ** 2
+    obj = (op_point.tws(z) - 10.) ** 2
 
     # opti.subject_to(
     #     aero["CL"] == 0.5

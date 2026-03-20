@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module relies on Peter D. Sharpe's awesome work on AeroSandbox.
+This module relies heavily on Peter D. Sharpe's awesome work on AeroSandbox.
 
 AeroSandbox
 Author: Peter D. Sharpe
