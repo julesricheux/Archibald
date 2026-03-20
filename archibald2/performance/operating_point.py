@@ -25,40 +25,68 @@ from archibald.toolbox.string_formatting import trim_string
 #%% CLASSES
 
 class OperatingPoint():
-    def __init__(self,
-                 environment: Environment = Environment(),
-                 stw: float = 1., # kts
-                 tws0: float = 1., # kts
-                 twa: float = 0., # deg
-                 z0: float = 10., # m
-                 a: float = 0.12, # Hellmann coefficient
-                 heel: float = 0., # deg
-                 trim: float = 0., # deg
-                 leeway: float = 0., # deg
-                 immersion: float = 0., # m
-                 p: float = 0.,
-                 q: float = 0.,
-                 r: float = 0.,
-                 ):
+    def __init__(
+            self,
+            environment: Environment = Environment(),
+            stw: float = 1., # kts
+            tws0: float = 1., # kts
+            twa: float = 0., # deg
+            z0: float = 10., # m
+            a: float = 0.12, # Hellmann coefficient
+            heel: float = 0., # deg
+            trim: float = 0., # deg
+            leeway: float = 0., # deg
+            immersion: float = 0., # m
+            p: float = 0.,
+            q: float = 0.,
+            r: float = 0.,
+        ):
         """
-        An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
-
+        An object that represents the instantaneous operating state of a vessel in a given environment.
+        
+        This class gathers the kinematic state of the vessel together with the ambient wind
+        conditions, allowing consistent evaluation of aerodynamic and hydrodynamic loads.
+        
         Args:
-            atmosphere: The atmosphere object (of type asb.Atmosphere). Defaults to sea level conditions.
-
-            tws: The flight velocity, expressed as a true airspeed. [m/s]
-
-            twa: The angle of attack. [degrees]
-
-            beta: The sideslip angle. (Reminder: convention that a positive beta implies that the oncoming air comes
-            from the pilot's right-hand side.) [degrees]
-
-            p: The roll rate about the x_b axis. [rad/sec]
-
-            q: The pitch rate about the y_b axis. [rad/sec]
-
-            r: The yaw rate about the z_b axis. [rad/sec]
-
+            environment (Environment):
+                The environment object containing fluid properties (air, water, etc.).
+        
+            stw (float):
+                Speed through water. [knots]
+        
+            tws0 (float):
+                True wind speed at reference height z0. [knots]
+        
+            twa (float):
+                True wind angle, defined in the horizontal plane relative to the vessel heading. [degrees]
+        
+            z0 (float):
+                Reference height at which the true wind speed is defined. [m]
+        
+            a (float):
+                Hellmann exponent used to model vertical wind shear:
+                V(z) = V(z0) * (z / z0)^a [-]
+        
+            heel (float):
+                Heel angle of the vessel (rotation about longitudinal axis). [degrees]
+        
+            trim (float):
+                Trim angle of the vessel (rotation about transverse axis). [degrees]
+        
+            leeway (float):
+                Leeway angle, i.e. the angle between the vessel heading and its actual trajectory through water. [degrees]
+        
+            immersion (float):
+                Vertical displacement of the vessel relative to its reference floating position. [m]
+        
+            p (float):
+                Roll rate about the body x-axis. [rad/s]
+        
+            q (float):
+                Pitch rate about the body y-axis. [rad/s]
+        
+            r (float):
+                Yaw rate about the body z-axis. [rad/s]
         """
         self.environment = environment
         self._stw = stw * u.knot
@@ -540,11 +568,10 @@ class OperatingPoint():
 
 
 if __name__ == '__main__':
-    # op_point = OperatingPoint()
     
-    import archibald2 as arb
+    from archibald.optimization import Opti
     
-    opti = arb.Opti()
+    opti = Opti()
 
     z = opti.variable(init_guess=2., lower_bound=0.)
     
@@ -557,10 +584,6 @@ if __name__ == '__main__':
               )
 
     obj = (op_point.tws(z) - 10.) ** 2
-
-    # opti.subject_to(
-    #     aero["CL"] == 0.5
-    # )
 
     opti.minimize(obj)
     
