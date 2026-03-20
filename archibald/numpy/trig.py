@@ -40,6 +40,11 @@ def arccosd(x):
     return degrees(_onp.arccos(x))
 
 
+def arctand(x):
+    """Returns the arccos of an x, in degrees"""
+    return degrees(_onp.arctan(x))
+
+
 def arctan2d(y, x):
     """Returns the angle associated with arctan(y, x), in degrees"""
     return degrees(_onp.arctan2(y, x))
