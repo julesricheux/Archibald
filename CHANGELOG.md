@@ -21,6 +21,25 @@ and this project follows Semantic Versioning https://semver.org
 
 ---
 
-## v2.0.0dev - 2024-11-20
+## [Unreleased] v2.0.0 - 2024-11-20
 
 - TODO: add description
+- The auto-diff update!
+- DifferentiableMesh
+- CasADI compatibility
+- Fork AeroSandbox modules
+
+## [Unreleased] v2.0.1 - 2025-03-12
+
+- TODO: add description
+- Concatenate methods into Sailboat class
+
+## [Unreleased] v2.0.2 - 2025-11-08
+- TODO: add description
+- Thin wings
+- Calibration
+
+## v2.1.0
+- Full rebuild.
+- Updated, minimised and cleaned AeroSandbox forks.
+- Older scripts compatible (maybe?).
