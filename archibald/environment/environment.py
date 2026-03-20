@@ -26,6 +26,7 @@ effective_collision_diameter = 0.365e-9  # m, effective collision diameter of an
 # LEGACY
 # WATER_DATA = '../data/seawater_ittc_2011.csv' # TODO remove
 
+warnings.simplefilter("always", RuntimeWarning)
 
 #%% CLASSES
 
