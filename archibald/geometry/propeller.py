@@ -8,10 +8,10 @@ Created on Thu Apr 18 14:59:26 2024
 import os
 
 from archibald import _archibald_root
-
-from archibald.toolbox.math_utils import read_coefs, build_interpolation, rotate_single_vector, rotate
+from archibald.modeling import InterpolatedModel
+from archibald.toolbox.math_utils import read_coefs, rotate_single_vector
 import archibald.numpy as np
-from archibald.geometry.airfoil import Airfoil
+# from archibald.geometry.airfoil import Airfoil
 
 from typing import Union, List
 
@@ -331,7 +331,6 @@ class BSeriesPropeller(Propeller):
         
         super().__init__(name, xyz_center, axis, Z, Ae_Ao, D, P_D)
         
-        current = os.path.dirname(os.path.realpath(__file__))
         _data_path = os.path.join(_archibald_root, "data", "propeller")
         ktDatapath = os.path.join(_data_path, "b-series-kt.csv")
         kqDatapath = os.path.join(_data_path, "b-series-kq.csv")
@@ -344,21 +343,26 @@ class BSeriesPropeller(Propeller):
         
         if self._Z == 3:
             _coefs = read_coefs(geometryDatapath, delim='\t',
-                                skipRows=2, columns=[0,4,5,6,7,8,9])
+                                skipRows=2, columns=[0,4,5,6,7,8,9]).T
             
         elif 4 <= self._Z <= 7:
             _coefs = read_coefs(geometryDatapath, delim='\t',
-                                skipRows=2, columns=[0,1,2,3,7,8,9])
+                                skipRows=2, columns=[0,1,2,3,7,8,9]).T
             
         else:
             raise ValueError("Number of blades is "+str(self._Z)+" but should be between 3 and 7")
         
-        _interp = build_interpolation(_coefs, method='cubic')
+        # _interp = build_interpolation(_coefs, method='cubic') LEGACY
         geometryKeys = ['c/D*Z/(AE/AO)', 'a/c', 'b/c', 'Ar', 'Br', 'pitch factor']
         geometryData = {}
         
         for i, k in enumerate(geometryKeys):
-            geometryData[k] = _interp[i]
+            # geometryData[k] = _interp[i] LEGACY
+            geometryData[k] = InterpolatedModel(
+                x_data_coordinates=_coefs[0, :],
+                y_data_structured=_coefs[i+1, :],
+                method="bspline",
+            )
         
         """
         geometryData['V1'] = build_2D_interpolator_from_csv(V1Datapath)
@@ -702,6 +706,7 @@ class BSeriesPropeller(Propeller):
         
         return Cth, Cq, Cp
     
+    # TODO implement properly
     # def compute_forces(self,
     #                    op_point,
     #                    hull = None,
@@ -771,6 +776,8 @@ class BSeriesPropeller(Propeller):
 
 if __name__=="__main__":
     
+    # TODO clean
+    
     import casadi as ca
     import matplotlib.pyplot as plt
     import csv
@@ -796,8 +803,8 @@ if __name__=="__main__":
     
     plt.figure()
     
-    # J = np.linspace(0.1, 1.3, 100)
-    J = ca.linspace(0., 3.0, 100)
+    J = np.linspace(0.1, 1.3, 100)
+    # J = ca.linspace(0., 3.0, 100)
     TSR = np.pi/J
     rpm = 60 * STW * 0.5144 / (J*D)
     
@@ -940,179 +947,3 @@ if __name__=="__main__":
     # plt.ylim((0., 1.0))
     
     plt.show()
-      
-    
-    #%%
-    
-    # P_D = 1.0
-    # J = np.linspace(0.4, 2.5, 1000)
-    
-    # prop = BSeriesPropeller(Z=7, Ae_Ao=.66, P_D=P_D, D=3.800)
-    
-    # Kt, Kq, eta = prop.compute_performance(J)
-    # T, Q, P, n = prop.compute_forces(J, rpm=rpm)
-    # Cth, Cq, Cp = prop.compute_coefficients(J, rpm=rpm)
-    
-    # fileProp = prop.write_pyBEMT_input()
-    # fileGen = prop.write_pyBEMT_input(generator=True)
-    
-    # s = Solver(fileProp)
-    # df, sections = s.run_sweep('rpm', 50, 200., 2.)
-    
-    # sG = Solver(fileGen)
-    # dfG, sectionsG = sG.run_sweep('rpm', 50, 100., 5.)
-        
-    # #%%
-    # STW = 11. # kts
-    
-    # dfG['J'] = np.pi / dfG['TSR']
-    # dfG['KT'] = np.pi * dfG['J']**2 * dfG['CT'] / 8
-    # dfG['CQ'] = dfG['CP'] / (2*np.pi * dfG['rpm']/60)
-    
-    # dfG['V'] = dfG['J'] * prop.diameter * dfG['rpm']/60
-    
-    # KR = 5.
-    
-    # Qgen = generator_speed_torque_law(dfG['rpm']*KR)
-    # CQgen = Qgen / (0.5 * prop.area * rho * dfG['V']**3) / (2*np.pi* dfG['rpm']/60)
-    
-    # df['CTH'] = 8/np.pi * df['CT'] / df['J']**2
-    
-    # Kt, Kq, eta = prop.compute_performance(J)
-    # T, Q, P, n = prop.compute_forces(J, rpm=rpm)
-    # Cth, Cq, Cp = prop.compute_coefficients(J, rpm=rpm)
-    # # T, Q, P, n = prop.compute_forces(J, Va=STW*0.5144)
-    
-    # iMaxT = slice_before_negative(Kt)
-    # iMaxQ = slice_before_negative(Kq)*3
-    # # iMaxQ = -1
-    # iMaxE = slice_before_negative(eta)
-    
-    # plt.plot(J[:iMaxQ], Cth[:iMaxQ], color='red', ls='-', label='Exp Cth')
-    # # plt.plot(J[:iMaxQ], Kt[:iMaxQ], color='red', ls='--', label='Exp Kt')
-    # plt.plot(J[:iMaxQ], Cq[:iMaxQ], color='red', ls='-.', label='Exp Cq')
-    # plt.plot(J[:iMaxQ], Cp[:iMaxQ], color='red', ls=':', label='Exp Cp')
-    
-    # Jcorr = 1.0
-    # CTHcorr = 1.0
-    
-    # iMaxTG = slice_before_negative(-dfG['CT']) - 1
-    # iMaxQG = slice_before_negative(-dfG['CQ']) - 1
-    
-    # # plt.plot(df['J'][:iMaxQbemt], df['CT'][:iMaxQbemt], color=colors[i], ls=':')
-    # plt.plot(dfG['J'][iMaxQG:]*Jcorr, -dfG['CT'][iMaxQG:]*CTHcorr, color='green', ls='-', label='BEMT gen Cth')
-    # # plt.plot(dfG['J'][iMaxQG:]*Jcorr, -dfG['KT'][iMaxQG:]*CTHcorr, color='green', ls='--', label='BEMT gen Kt')
-    # plt.plot(dfG['J'][iMaxQG:]*Jcorr, -dfG['CQ'][iMaxQG:], color='green', ls='-.', label='BEMT gen Cq')
-    # plt.plot(dfG['J'][iMaxQG:]*Jcorr, -dfG['CP'][iMaxQG:]/CTHcorr, color='green', ls=':', label='BEMT gen Cp')
-    
-    
-    # # plt.plot(df['J']*Jcorr, df['CTH'], color='blue', ls='-', label='BEMT prop Cth')
-    # # plt.plot(df['J']*Jcorr, df['CT'], color='blue', ls='--', label='BEMT prop Kt')
-    # # plt.plot(df['J']*Jcorr, df['CP'], color='blue', ls=':', label='BEMT prop Cp')
-
-    # rpmMax = 155.
-    # Jmin = STW * 0.5144 / (rpmMax/60. * D)
-    # rpmMin = 40.
-    # Jmax = STW * 0.5144 / (rpmMin/60. * D)
-    
-    # yTxt = -1.0
-    
-    # plt.plot(dfG['J'][iMaxQG:]*Jcorr, -CQgen[iMaxQG:], color='black', ls='-', lw=1.)
-    
-    # plt.plot([Jmin, Jmin], [-10., 10.], color='black', ls=':', lw=1.)
-    # plt.text(Jmin+0.01, yTxt, 'RPM '+str(rpmMax), rotation='vertical')
-    # plt.plot([Jmax, Jmax], [-10., 10.], color='black', ls=':', lw=1.)
-    # plt.text(Jmax+0.01, yTxt, 'RPM '+str(rpmMin), rotation='vertical')
-    
-    # plt.plot([J[iMaxT], J[iMaxT]], [-10., 10.], color='black', ls=':', lw=1.)
-    # plt.text(J[iMaxT]+0.01, yTxt, 'RPM '+str(round(STW*0.5144/J[iMaxT]/D*60.,1)), rotation='vertical')
-    
-    # plt.plot([dfG['J'][iMaxQG]*Jcorr, dfG['J'][iMaxQG]*Jcorr], [-10., 10.], color='black', ls=':', lw=1.)
-    # plt.text(dfG['J'][iMaxQG]*Jcorr+0.01, yTxt, 'RPM '+str(round(STW*0.5144/dfG['J'][iMaxQG]/Jcorr/D*60.,1)), rotation='vertical')
-    
-    # # iMax = slice_before_negative(eta)
-    # # plt.plot(J[:iMaxE], eta[:iMaxE], color='red', ls='-.')
-        
-    # D = prop.diameter
-    
-    # Va = rpm/60/(J*prop.diameter)
-    
-    # Teff = (Rt - Fx) * 1000.
-    # KtEff = Teff / (rho * (STW * 0.5144)**2 * D**2) * J**2
-    # CthEff = Teff / (0.5*rho*prop.area*Va**2)
-    
-    # # plt.plot(J, KtEff, color='black', lw=1.)
-    # # plt.plot(np.pi / J, -Teff*np.ones(len(J)), color='black', lw=1.)
-    # # plt.plot(TSR, -CthEff*np.ones(len(J)), color='black', lw=1.)
-    
-    # plt.grid()
-    # plt.legend()
-    
-    # plt.xlim((np.min(J), 4.0))
-    # # plt.xlim((J.min(), J.max()))
-    # # plt.xlim((TSR.min(), TSR.max()))
-    # plt.ylim((-1.2, 2))
-    
-    # plt.title('STW = '+str(STW)+' kts \ Pitch ratio = '+str(P_D))
-    # plt.xlabel('J')
-    
-    # plt.show()
-    
-    # #%%
-    # # plt.plot(J, Cp, color='red', ls=':', label='Exp Cp')
-    # plt.plot(dfG['J'][iMaxQG:], -dfG['CP'][iMaxQG:], color='green', ls=':', label='BEMT gen Cp')
-    
-    # plt.plot(dfG['J'][iMaxQG:], -CQgen[iMaxQG:]*KR*(2*np.pi*dfG['rpm'][iMaxQG:]/60)*1000., color='black', ls=':', lw=1.)
-    
-    
-    # # plt.plot(J, Cq, color='red', ls='-.', label='Exp Cq')
-    # # plt.plot(dfG['J'][iMaxQG:], -dfG['CQ'][iMaxQG:], color='green', ls='-.', label='BEMT gen Cq')
-    
-    # # plt.plot(dfG['J'][iMaxQG:], -CQgen[iMaxQG:]*KR, color='black', ls='-.', lw=1.)
-    
-    # plt.grid()
-    # plt.legend()
-    
-    # plt.xlim((np.min(J), 4.0))
-    # # plt.xlim((J.min(), J.max()))
-    # # plt.xlim((TSR.min(), TSR.max()))
-    # # plt.ylim((-1.2, 2))
-    
-    # plt.title('STW = '+str(STW)+' kts \ Pitch ratio = '+str(P_D))
-    # plt.xlabel('J')
-    
-    # plt.show()
-    
-    # # v = J * (150./60.) * D
-    
-    # # s = Solver('./pyBEMT-master/examples/b-series.ini')
-    # # df, sections = s.run_sweep('v_inf', 20, np.min(v), np.max(v))
-    
-    # # J = df['J'].to_numpy()
-    
-    # # Jp = J/1.0
-    
-    # # Kt, Kq, eta = prop.compute_performance(J)
-    
-    # # fig, ax = plt.subplots()
-    
-    # # ax.plot(Jp, df['eta'], label='BEMT eta') 
-    # # ax.scatter(J, eta, label='Exp eta')
-    
-    # # ax.plot(Jp, df['CP'], label='BEMT Cp') 
-    # # ax.scatter(J, 10*Kq, label='Exp Cp')
-    
-    # # ax.plot(Jp, df['CT'], label='BEMT Ct') 
-    # # ax.scatter(J, Kt, label='Exp Ct')
-    
-    
-    
-    # # plt.legend()
-    
-    # # rpm = STW / J / D
-
-    # # T = rho * (rpm/60.)**2 * D**4 * Kt
-    # # Q = rho * (rpm/60.)**2 * D**5 * Kq
-    
-    # # asbProp = prop.build_aerosanbox_geometry()
-    # # asbProp.draw()
