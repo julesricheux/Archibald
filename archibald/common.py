@@ -10,7 +10,6 @@ Date retrieved: 2026-03-20
 AeroSandbox is distributed under its original MIT license.
 All credit for the underlying methods and implementations belongs to the original author.
 """
-
 import archibald.numpy as np
 from archibald.optimization.opti import Opti
 from abc import abstractmethod, ABC
