@@ -625,3 +625,5 @@ if __name__ == "__main__":
     plt.title(f"B-Series Propeller Performance (Z={prop.blades_number}, P/D={prop.pitch_ratio})")
     plt.ylim(0, 1.2)
     plt.show()
+
+

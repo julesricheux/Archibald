@@ -5,9 +5,9 @@ Created on Mon Sep 22 10:39:31 2025
 @author: jrich
 """
 
-from archibald2.geometry.airfoil.airfoil_families import get_kulfan_parameters
-from archibald2.geometry import Airfoil, KulfanAirfoil
-import archibald2.numpy as np
+from archibald.geometry.airfoil.airfoil_families import get_kulfan_parameters
+from archibald.geometry import Airfoil, KulfanAirfoil
+import archibald.numpy as np
 
 from typing import Union
 
@@ -135,7 +135,7 @@ def thin_airfoil(
 
 
 if __name__=="__main__":
-    from archibald2.optimization import Opti
+    from archibald.optimization import Opti
     
     opti = Opti()
     
@@ -180,5 +180,8 @@ if __name__=="__main__":
         print(180/np.pi * np.arctan(leading_edge_camber(xc, mc)))
         
     
+
+
+
 
 

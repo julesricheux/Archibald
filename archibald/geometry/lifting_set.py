@@ -14,17 +14,17 @@ Citation:
 
 """
 
-from archibald2 import AeroSandboxObject
-from archibald2.geometry.common import *
+from archibald import AeroSandboxObject
+from archibald.geometry.common import *
 from typing import List, Dict, Any, Union, Optional, Tuple
-import archibald2.geometry.mesh_utilities as mesh_utils
-from archibald2.geometry.wing import Wing, Sail, Fin
-from archibald2.geometry.fuselage import Fuselage
-from archibald2.geometry.propulsor import Propulsor
-from archibald2.weights.mass_properties import MassProperties
+import archibald.geometry.mesh_utilities as mesh_utils
+from archibald.geometry.wing import Wing, Sail, Fin
+from archibald.geometry.fuselage import Fuselage
+from archibald.geometry.propulsor import Propulsor
+from archibald.weights.mass_properties import MassProperties
 import copy
 
-import archibald2.numpy as np
+import archibald.numpy as np
 
 
 class LiftingSet(AeroSandboxObject):
@@ -194,7 +194,7 @@ class LiftingSet(AeroSandboxObject):
                   ):
         """
         Returns a surface mesh of the Airplane, in (points, faces) format. For reference on this format,
-        see the documentation in `archibald2.geometry.mesh_utilities`.
+        see the documentation in `archibald.geometry.mesh_utilities`.
 
         Args:
 
@@ -282,7 +282,7 @@ class LiftingSet(AeroSandboxObject):
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import archibald2.tools.pretty_plots as p
+            import archibald.tools.pretty_plots as p
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
             if ax is None:
@@ -351,7 +351,7 @@ class LiftingSet(AeroSandboxObject):
 
         elif backend == "plotly":
 
-            from archibald2.visualization.plotly_Figure3D import Figure3D
+            from archibald.visualization.plotly_Figure3D import Figure3D
             fig = Figure3D()
             for f in faces:
                 fig.add_quad((
@@ -421,7 +421,7 @@ class LiftingSet(AeroSandboxObject):
             fuselage_longeron_theta = np.linspace(0, 2 * np.pi, 8 + 1)[:-1]
 
         import matplotlib.pyplot as plt
-        import archibald2.tools.pretty_plots as p
+        import archibald.tools.pretty_plots as p
 
         if ax is None:
             _, ax = p.figure3d(figsize=(8, 8), computed_zorder=False)
@@ -642,7 +642,7 @@ class LiftingSet(AeroSandboxObject):
 
         """
         import matplotlib.pyplot as plt
-        import archibald2.tools.pretty_plots as p
+        import archibald.tools.pretty_plots as p
 
         preset_view_angles = np.array([
             ["XZ", "-YZ"],
@@ -961,7 +961,7 @@ class LiftingSet(AeroSandboxObject):
         # TODO include option for mass file export as well
         # Use MassProperties.export_AVL_mass...
 
-        from archibald2.dynamics.aero_3D.avl import AVL
+        from archibald.dynamics.aero_3D.avl import AVL
         avl = AVL(
             airplane=self,
             op_point=None,
@@ -1365,9 +1365,9 @@ class Appendage(LiftingSet):
 
 
 if __name__ == '__main__':
-    import archibald2 as asb
-    # import archibald2.numpy as np
-    import archibald2.tools.units as u
+    import archibald as asb
+    # import archibald.numpy as np
+    import archibald.tools.units as u
 
 
     def ft(feet, inches=0):  # Converts feet (and inches) to meters
@@ -1507,3 +1507,5 @@ if __name__ == '__main__':
     airplane.draw()
     # airplane.draw_three_view()
     # airplane.export_XFLR5_xml("test.xml", mass_props=asb.MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
+
+

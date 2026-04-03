@@ -1,5 +1,5 @@
-import archibald2.numpy as np
-from archibald2.optimization import Opti
+import archibald.numpy as np
+from archibald.optimization import Opti
 from scipy.special import comb
 import re
 from typing import Union
@@ -374,7 +374,7 @@ def get_kulfan_parameters(
 
         These can be passed directly into `get_kulfan_coordinates()` to reconstruct the airfoil.
     """
-    from archibald2.geometry.airfoil import Airfoil
+    from archibald.geometry.airfoil import Airfoil
     
     if method == "least_squares":
         """
@@ -667,7 +667,7 @@ def get_UIUC_coordinates(name: str = "dae11") -> np.ndarray:
 
     Returns: The coordinates of the airfoil as a Nx2 ndarray [x, y]
     """
-    from archibald2 import _archibald_root
+    from archibald import _archibald_root
 
     airfoil_database_root = _archibald_root / "geometry" / "airfoil" / "airfoil_database"
 
@@ -688,8 +688,8 @@ def get_UIUC_coordinates(name: str = "dae11") -> np.ndarray:
 
 
 if __name__ == "__main__":
-    import archibald2 as arb
-    import archibald2.numpy as np
+    import archibald as arb
+    import archibald.numpy as np
 
     af = arb.Airfoil("e376").normalize()
     af.draw(backend="plotly")
@@ -707,5 +707,8 @@ if __name__ == "__main__":
 
     print(kulfan_params)
     print(af.jaccard_similarity(af_reconstructed))
+
+
+
 
 

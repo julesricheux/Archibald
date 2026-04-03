@@ -23,12 +23,12 @@ Further development plans:
 import numpy as np
 
 import os
-import archibald2
+import archibald
 
-from archibald2.tools.math_utils import *
-from archibald2.tools.dyn_utils import *
-from archibald2.tools.xfoil_utils import *
-from archibald2.tools.geom_utils import *
+from archibald.tools.math_utils import *
+from archibald.tools.dyn_utils import *
+from archibald.tools.xfoil_utils import *
+from archibald.tools.geom_utils import *
 
 #%% CLASSES
 
@@ -305,3 +305,5 @@ class CantingKeel(Appendage):
 
     def set_angle(self, angle):
         self.angle = angle
+
+

@@ -1,7 +1,7 @@
-import archibald2.numpy as np
-from archibald2.geometry.airfoil.airfoil import Airfoil
-from archibald2.geometry.airfoil.airfoil_families import get_kulfan_parameters
-from archibald2.modeling.splines.hermite import (
+import archibald.numpy as np
+from archibald.geometry.airfoil.airfoil import Airfoil
+from archibald.geometry.airfoil.airfoil_families import get_kulfan_parameters
+from archibald.modeling.splines.hermite import (
     cosine_hermite_patch,
 )
 from typing import Union, Dict, List
@@ -272,14 +272,14 @@ class KulfanAirfoil(Airfoil):
 
         ##### Extend aerodynamic data to 360 degrees (post-stall) using wind tunnel behavior here.
         if include_360_deg_effects:
-            from archibald2.dynamics.aero_2D.airfoil_polar_functions import (
+            from archibald.dynamics.aero_2D.airfoil_polar_functions import (
                 airfoil_coefficients_post_stall,
             )
 
             CL_if_separated, CD_if_separated, CM_if_separated = (
                 airfoil_coefficients_post_stall(airfoil=self, alpha=alpha)
             )
-            import archibald2.library.aerodynamics as lib_aero
+            import archibald.library.aerodynamics as lib_aero
 
             # These values are set relatively high because NeuralFoil extrapolates quite well past stall
             alpha_stall_positive = 20
@@ -755,5 +755,8 @@ class KulfanAirfoil(Airfoil):
             N1=a_fraction * foil_a.N1 + b_fraction * foil_b.N1,
             N2=a_fraction * foil_a.N2 + b_fraction * foil_b.N2,
         )
+
+
+
 
 

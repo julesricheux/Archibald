@@ -1,4 +1,4 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 from typing import Tuple
 
 """
@@ -85,3 +85,5 @@ def convert_mesh_to_polydata_format(
     ]
     faces = np.reshape(np.array(faces), -1)
     return points, faces
+
+

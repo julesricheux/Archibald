@@ -1,6 +1,6 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 import warnings
-from archibald2.library.aerodynamics.viscous import Cf_flat_plate
+from archibald.library.aerodynamics.viscous import Cf_flat_plate
 
 warnings.warn(
     "This file is deprecated and will be removed in the subsequent version of ASB.\n"
@@ -43,5 +43,8 @@ def default_CM_function(alpha, Re, mach=0, deflection=0):
     Pitching moment coefficient, as measured about quarter-chord.
     """
     return np.zeros_like(alpha)
+
+
+
 
 

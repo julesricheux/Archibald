@@ -1,12 +1,12 @@
-import archibald2.numpy as np
-from archibald2.geometry.polygon import Polygon
-from archibald2.geometry.airfoil.airfoil_families import (
+import archibald.numpy as np
+from archibald.geometry.polygon import Polygon
+from archibald.geometry.airfoil.airfoil_families import (
     get_NACA_coordinates,
     get_UIUC_coordinates,
     get_file_coordinates,
 )
-from archibald2.library.aerodynamics import transonic
-from archibald2.modeling.splines.hermite import (
+from archibald.library.aerodynamics import transonic
+from archibald.modeling.splines.hermite import (
     cubic_hermite_patch,
 )
 from scipy import interpolate
@@ -132,7 +132,7 @@ class Airfoil(Polygon):
                 self.generate_polars()
             else:
 
-                from archibald2.library.aerodynamics.viscous import Cf_flat_plate
+                from archibald.library.aerodynamics.viscous import Cf_flat_plate
 
                 def print_default_warning():
                     warnings.warn(
@@ -208,8 +208,8 @@ class Airfoil(Polygon):
         use_leading_edge_modification: bool = True,
     ) -> "KulfanAirfoil":
 
-        from archibald2.geometry.airfoil.kulfan_airfoil import KulfanAirfoil
-        from archibald2.geometry.airfoil.airfoil_families import get_kulfan_parameters
+        from archibald.geometry.airfoil.kulfan_airfoil import KulfanAirfoil
+        from archibald.geometry.airfoil.airfoil_families import get_kulfan_parameters
 
         parameters = get_kulfan_parameters(
             coordinates=self.coordinates,
@@ -268,11 +268,11 @@ class Airfoil(Polygon):
 
                 * If the file does exist, XFoil will not be run, and the cache file will be read instead.
 
-            xfoil_kwargs: Keyword arguments to pass into the AeroSandbox XFoil module. See the archibald2.XFoil
+            xfoil_kwargs: Keyword arguments to pass into the AeroSandbox XFoil module. See the archibald.XFoil
                 constructor for options.
 
             unstructured_interpolated_model_kwargs: Keyword arguments to pass into the UnstructuredInterpolatedModels
-                that contain the polars themselves. See the archibald2.UnstructuredInterpolatedModel constructor for
+                that contain the polars themselves. See the archibald.UnstructuredInterpolatedModel constructor for
                 options.
 
             include_compressibility_effects: Includes compressibility effects in the polars, such as wave drag,
@@ -331,7 +331,7 @@ class Airfoil(Polygon):
             if cache_filename is not None:
                 os.makedirs(os.path.dirname(cache_filename), exist_ok=True)
 
-            from archibald2.aerodynamics.aero_2D import XFoil
+            from archibald.aerodynamics.aero_2D import XFoil
 
             def get_run_data(
                 Re,
@@ -380,7 +380,7 @@ class Airfoil(Polygon):
         self.xfoil_data = data
 
         ### Make the interpolators for attached aerodynamics
-        from archibald2.modeling import UnstructuredInterpolatedModel
+        from archibald.modeling import UnstructuredInterpolatedModel
 
         attached_alphas_to_use = alphas[::2] if len(alphas) > 20 else alphas
 
@@ -440,7 +440,7 @@ class Airfoil(Polygon):
             )
 
         ### Make the interpolators for separated aerodynamics
-        from archibald2.aerodynamics.aero_2D.airfoil_polar_functions import (
+        from archibald.aerodynamics.aero_2D.airfoil_polar_functions import (
             airfoil_coefficients_post_stall,
         )
 
@@ -711,7 +711,7 @@ class Airfoil(Polygon):
         Re_colors=None,
     ) -> None:
         import matplotlib.pyplot as plt
-        import archibald2.tools.pretty_plots as p
+        import archibald.tools.pretty_plots as p
 
         fig, ax = plt.subplots(2, 2, figsize=(8, 7))
         plt.sca(ax[0, 0])
@@ -760,7 +760,7 @@ class Airfoil(Polygon):
                 alpha=0.7,
             )
 
-        from archibald2.tools.string_formatting import eng_string
+        from archibald.tools.string_formatting import eng_string
 
         plt.sca(ax[0, 0])
         plt.legend(
@@ -884,7 +884,7 @@ class Airfoil(Polygon):
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import archibald2.tools.pretty_plots as p
+            import archibald.tools.pretty_plots as p
 
             color = "#280887"
             plt.plot(x, y, ".-" if draw_markers else "-", zorder=11, color=color)
@@ -900,7 +900,7 @@ class Airfoil(Polygon):
                 )
 
         elif backend == "plotly":
-            from archibald2.visualization.plotly import go
+            from archibald.visualization.plotly import go
 
             fig = go.Figure()
             fig.add_trace(
@@ -1589,7 +1589,7 @@ class Airfoil(Polygon):
     #
     #     def get_xfoil_data_at_Re(Re):
     #
-    #         import archibald2.numpy as np  # needs to be imported here to support parallelization
+    #         import archibald.numpy as np  # needs to be imported here to support parallelization
     #
     #         run_data_upper = self.xfoil_aseq(
     #             a_start=a_init + a_step,
@@ -1909,7 +1909,7 @@ if __name__ == "__main__":
     af = Airfoil("dae11")
 
     import matplotlib.pyplot as plt
-    import archibald2.tools.pretty_plots as p
+    import archibald.tools.pretty_plots as p
 
     fig, ax = plt.subplots(4, 2, figsize=(6.4, 6.4), dpi=200)
 
@@ -1956,5 +1956,8 @@ if __name__ == "__main__":
     # af.plot_polars(
     #     Res=np.geomspace(1e4, 1e6, 6)
     # )
+
+
+
 
 

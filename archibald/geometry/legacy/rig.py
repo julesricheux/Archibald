@@ -32,15 +32,15 @@ from tqdm import tqdm
 import numpy as np
 
 import os
-import archibald2
+import archibald
 
-from archibald2.geometry.legacy.lifting_planes import Mainsail, Jib, Spi, Wingsail
-from archibald2.environment import _Environment, OffshoreEnvironment, InshoreEnvironment
+from archibald.geometry.legacy.lifting_planes import Mainsail, Jib, Spi, Wingsail
+from archibald.environment import _Environment, OffshoreEnvironment, InshoreEnvironment
 
-from archibald2.tools.math_utils import *
-from archibald2.tools.dyn_utils import *
-from archibald2.tools.avl_utils import *
-from archibald2.tools.xfoil_utils import *
+from archibald.tools.math_utils import *
+from archibald.tools.dyn_utils import *
+from archibald.tools.avl_utils import *
+from archibald.tools.xfoil_utils import *
 
 
 ARCHIBALD_DIR = os.path.dirname(archibald.__file__)
@@ -346,3 +346,4 @@ class Rig():
             return None
           
  
+
