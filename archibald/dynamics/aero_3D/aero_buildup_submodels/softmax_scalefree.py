@@ -11,3 +11,4 @@ def softmax_scalefree(x: List[float]) -> float:
         return np.softmax(*x, softness=softness)
 
 
+

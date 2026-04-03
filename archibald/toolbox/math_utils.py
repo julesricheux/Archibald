@@ -374,3 +374,4 @@ def sym_array(x, fac=1.):
                       x[1:]))
 
 
+

@@ -1,5 +1,5 @@
 import archibald.numpy as np
-from archibald import ExplicitAnalysis, AeroSandboxObject
+from archibald import ExplicitAnalysis, ArchibaldObject
 from archibald.geometry import *
 from archibald.performance import OperatingPoint
 from archibald.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import (
@@ -193,7 +193,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     @immutable_dataclass
     class Elements(ABC):
-        parent_component: AeroSandboxObject
+        parent_component: ArchibaldObject
         start_index: int
         end_index: int
 
@@ -533,5 +533,6 @@ if __name__ == "__main__":
 
     for k, v in res.items():
         print(f"{str(k).rjust(10)} : {v}")
+
 
 

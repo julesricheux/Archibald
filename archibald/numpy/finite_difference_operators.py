@@ -100,3 +100,4 @@ def finite_difference_coefficients(
     return coefficients
 
 
+

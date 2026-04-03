@@ -92,3 +92,4 @@ plt.plot(x, H)
 show_plot("$H$", "$x$", "$H$")
 
 
+

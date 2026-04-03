@@ -40,3 +40,4 @@ plt.ylabel(r"$\alpha$ [deg]")
 p.show_plot("3D Fuselage Lift", rotate_axis_labels=False)
 
 
+

@@ -188,3 +188,4 @@ def is_valid_rotation_matrix(a: _onp.ndarray, tol=1e-9) -> bool:
     return is_volume_preserving_and_right_handed and is_orthogonality_preserving
 
 
+

@@ -106,3 +106,4 @@ print(s.pretty(df2dx, num_columns=100))
 print(f"Parsimony: {parsimony}")
 
 
+

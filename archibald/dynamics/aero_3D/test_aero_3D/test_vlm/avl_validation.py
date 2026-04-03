@@ -31,3 +31,4 @@ for k, v in {"VLM": vlm_aero, "AVL": avl_aero, "AB": ab_aero}.items():
     print(f"\tL/D : {v['CL'] / v['CD']}")
 
 
+

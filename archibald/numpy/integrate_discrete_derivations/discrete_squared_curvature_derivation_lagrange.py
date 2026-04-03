@@ -124,3 +124,4 @@ print(f"Parsimony: {parsimony}")
 # print(f"Parsimony: {parsimony}")
 
 
+

@@ -14,7 +14,7 @@ Citation:
 
 """
 
-from archibald import AeroSandboxObject
+from archibald import ArchibaldObject
 from archibald.geometry.common import *
 from typing import List, Dict, Any, Union, Optional, Tuple
 import archibald.geometry.mesh_utilities as mesh_utils
@@ -27,7 +27,7 @@ import copy
 import archibald.numpy as np
 
 
-class LiftingSet(AeroSandboxObject):
+class LiftingSet(ArchibaldObject):
     """
     Definition for an airplane.
     
@@ -1507,6 +1507,7 @@ if __name__ == '__main__':
     airplane.draw()
     # airplane.draw_three_view()
     # airplane.export_XFLR5_xml("test.xml", mass_props=asb.MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
+
 
 
 

@@ -82,3 +82,4 @@ def get_last_line_color():
         ]  # TODO make this just the first color in the current palette
 
 
+

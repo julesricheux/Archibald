@@ -53,3 +53,4 @@ def grad_wind(tws0, z, z0=10.0, a=0.12):
     return tws0 * (np.abs(z)/z0)**a
 
 
+

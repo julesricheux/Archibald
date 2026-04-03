@@ -87,3 +87,4 @@ for i, (var, expr) in enumerate(cse[0]):
 print(f"res = {cse[1]}")
 
 
+
