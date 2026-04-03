@@ -10,6 +10,7 @@ from archibald.dynamics.aero_3D.singularities.point_source import (
 from typing import Dict, List, Callable, Union
 from archibald.dynamics.aero_3D.aero_buildup import AeroBuildup
 from dataclasses import dataclass
+import archibald.numpy as np
 
 
 ### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
