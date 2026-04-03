@@ -3,7 +3,7 @@ import archibald.numpy as np
 
 sd7037 = asb.Airfoil("sd7037")
 
-airplane = asb.Airplane(
+airplane = asb.LiftingSet(
     name="Vanilla",
     xyz_ref=[0.5, 0, 0],
     s_ref=9,
