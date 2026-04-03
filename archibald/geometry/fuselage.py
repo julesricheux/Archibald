@@ -1,12 +1,12 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 
-from archibald2 import AeroSandboxObject
-from archibald2.geometry.common import *
+from archibald import ArchibaldObject
+from archibald.geometry.common import *
 from typing import List, Dict, Any, Union, Tuple, Optional, Callable
 import copy
 
 
-class Fuselage(AeroSandboxObject):
+class Fuselage(ArchibaldObject):
     """
     Definition for a Fuselage or other slender body (pod, fuel tank, etc.).
 
@@ -372,7 +372,7 @@ class Fuselage(AeroSandboxObject):
         Meshes the fuselage as a solid (thickened) body.
 
         Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
-        `archibald2.geometry.mesh_utilities`.
+        `archibald.geometry.mesh_utilities`.
 
         Args:
 
@@ -509,7 +509,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw()
 
         """
-        from archibald2.geometry.airplane import Airplane
+        from archibald.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw(*args, **kwargs)
 
     def draw_wireframe(self, *args, **kwargs):
@@ -523,7 +523,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw_wireframe()
 
         """
-        from archibald2.geometry.airplane import Airplane
+        from archibald.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw_wireframe(*args, **kwargs)
 
     def draw_three_view(self, *args, **kwargs):
@@ -537,7 +537,7 @@ class Fuselage(AeroSandboxObject):
         Returns: Same return as Airplane.draw_three_view()
 
         """
-        from archibald2.geometry.airplane import Airplane
+        from archibald.geometry.airplane import Airplane
         return Airplane(fuselages=[self]).draw_three_view(*args, **kwargs)
 
     def subdivide_sections(self,
@@ -614,7 +614,7 @@ class Fuselage(AeroSandboxObject):
         return self.xsecs[index].compute_frame()
 
 
-class FuselageXSec(AeroSandboxObject):
+class FuselageXSec(ArchibaldObject):
     """
     Definition for a fuselage cross-section ("X-section").
     """
@@ -995,3 +995,5 @@ if __name__ == '__main__':
         ]
     ).translate([0, 0, 2])
     fuse.draw()
+
+
