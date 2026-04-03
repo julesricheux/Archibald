@@ -458,8 +458,8 @@ def get_kulfan_parameters(
         b = y
 
         # Solve least-squares problem
-        # x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
-        x = np.linalg.least_squares(A, b, rcond=None)
+        x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        # x = np.linalg.least_squares(A, b, rcond=None)
         
         # def least_squares(A, b):
         #     """
