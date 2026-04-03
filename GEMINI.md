@@ -14,6 +14,7 @@ Archibald is a specialized sailboat performance analysis and design framework. I
 
 ## Project Structure
 - `archibald/`: The current active development branch (v2.1.x alpha).
+  - `data/`: Reference datasets (coefficients, fluid properties, airfoil data).
   - `common.py`: Base classes (`AeroSandboxObject`, `ExplicitAnalysis`, `ImplicitAnalysis`) and serialization.
   - `geometry/`: Sailboat, Hull, Wing, Rig, Propeller, and mesh utilities.
   - `dynamics/`: Aero and Hydro analysis models (VLM, etc.).
@@ -22,9 +23,8 @@ Archibald is a specialized sailboat performance analysis and design framework. I
   - `performance/`: Operating point definitions and performance metrics.
   - `tools/`: Unit conversions and utility functions.
   - `avl.exe`, `xfoil.exe`: Aerodynamic analysis engines.
-- `archibald2/`: Legacy version (v2.0.x).
-- `legacy/`: Legacy version (v1.x).
-- `data/`: Reference datasets (coefficients, fluid properties, airfoil data).
+- `archibald2/`: Legacy version (v2.0.x). IGNORE IT.
+- `legacy/`: Legacy version (v1.x). IGNORE IT.
 
 ## Building and Running
 

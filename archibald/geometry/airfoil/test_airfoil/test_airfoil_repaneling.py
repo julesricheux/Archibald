@@ -47,3 +47,5 @@ def debug_draw(af: asb.Airfoil):
 
 if __name__ == "__main__":
     test_repaneling_validity()
+
+

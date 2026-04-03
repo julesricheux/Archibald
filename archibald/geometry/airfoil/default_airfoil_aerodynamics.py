@@ -43,3 +43,5 @@ def default_CM_function(alpha, Re, mach=0, deflection=0):
     Pitching moment coefficient, as measured about quarter-chord.
     """
     return np.zeros_like(alpha)
+
+

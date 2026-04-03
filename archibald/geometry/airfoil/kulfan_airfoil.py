@@ -755,3 +755,5 @@ class KulfanAirfoil(Airfoil):
             N1=a_fraction * foil_a.N1 + b_fraction * foil_b.N1,
             N2=a_fraction * foil_a.N2 + b_fraction * foil_b.N2,
         )
+
+

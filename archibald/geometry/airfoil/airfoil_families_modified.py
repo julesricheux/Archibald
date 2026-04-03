@@ -677,3 +677,5 @@ if __name__ == "__main__":
 
     print(kulfan_params)
     print(af.jaccard_similarity(af_reconstructed))
+
+

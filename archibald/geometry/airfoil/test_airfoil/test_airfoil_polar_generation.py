@@ -95,3 +95,5 @@ if __name__ == "__main__":
     LD = af.CL_function(alpha, 1e6) / af.CD_function(alpha, 1e6)
     opti.minimize(-LD)
     sol = opti.solve()
+
+

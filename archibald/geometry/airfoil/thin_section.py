@@ -180,3 +180,5 @@ if __name__=="__main__":
         print(180/np.pi * np.arctan(leading_edge_camber(xc, mc)))
         
     
+
+

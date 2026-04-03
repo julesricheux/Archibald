@@ -11,3 +11,5 @@ for file in db.glob("*.dat"):
     if s != s_fixed:
         with open(file, "w+") as f:
             f.write(s_fixed)
+
+
