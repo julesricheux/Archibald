@@ -458,19 +458,19 @@ def get_kulfan_parameters(
         b = y
 
         # Solve least-squares problem
-        x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        # x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
         # x = np.linalg.least_squares(A, b, rcond=None)
         
-        # def least_squares(A, b):
-        #     """
-        #     Solve Ax ≈ b in least-squares sense.
-        #     Works for both NumPy and CasADi.
-        #     """
-        #     AtA = A.T @ A
-        #     Atb = A.T @ b
-        #     return np.linalg.solve(AtA, Atb)
+        def least_squares(A, b):
+            """
+            Solve Ax ≈ b in least-squares sense.
+            Works for both NumPy and CasADi.
+            """
+            AtA = A.T @ A
+            Atb = A.T @ b
+            return np.linalg.solve(AtA, Atb)
         
-        # x = least_squares(A, b)
+        x = least_squares(A, b)
 
         lower_weights = x[:n_weights_per_side]
         upper_weights = x[n_weights_per_side : 2 * n_weights_per_side]
