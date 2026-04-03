@@ -98,3 +98,5 @@ def finite_difference_coefficients(
     )  # Reconstructs using archibald.numpy to intelligently type
 
     return coefficients
+
+

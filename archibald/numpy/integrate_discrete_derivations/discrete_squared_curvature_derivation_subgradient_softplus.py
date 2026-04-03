@@ -46,3 +46,5 @@ discrete = np.sum(subgradients**2)
 print(f"Discrete: {discrete}")
 
 print(f"Ratio: {discrete / exact} (equiv: 1 / {exact / discrete})")
+
+

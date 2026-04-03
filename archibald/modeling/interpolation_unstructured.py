@@ -207,7 +207,7 @@ if __name__ == "__main__":
         y_data=f.flatten(),
     )
 
-    # from archibald.tools.pretty_plots import plt
+    # from archibald.toolbox.pretty_plots import plt
     import matplotlib.pyplot as plt
 
     fig = plt.figure()
@@ -247,3 +247,5 @@ if __name__ == "__main__":
     sol = opti.solve()
     print(sol(x))
     print(sol(y))
+
+

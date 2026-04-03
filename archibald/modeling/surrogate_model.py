@@ -171,3 +171,5 @@ class SurrogateModel(ArchibaldObject):
 
         else:
             raise NotImplementedError()
+
+

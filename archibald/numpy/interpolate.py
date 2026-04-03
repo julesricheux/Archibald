@@ -269,3 +269,5 @@ def interpn(
             f"{method=!r} is not a valid option. "
             f"Valid options are: 'linear', 'bspline', 'nearest'."
         )
+
+

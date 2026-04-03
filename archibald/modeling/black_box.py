@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     ### Plot the function over its inputs
     import matplotlib.pyplot as plt
-    # import archibald.tools.pretty_plots as p
+    # import archibald.toolbox.pretty_plots as p
     import matplotlib.pyplot as p
 
     M, N = np.meshgrid(
@@ -207,3 +207,5 @@ if __name__ == "__main__":
     )
     # p.show_plot()
     p.show()
+
+

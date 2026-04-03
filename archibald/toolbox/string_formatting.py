@@ -278,3 +278,5 @@ if __name__ == "__main__":
         print(wrap_text_ignoring_mathtext(input, width=10))
 
     print(wrap_text_ignoring_mathtext(r"Angle of Attack $\alpha$ [deg]", 14))
+
+

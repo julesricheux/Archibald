@@ -1506,3 +1506,5 @@ if __name__ == "__main__":
     sol = opti.solve()
 
     assert sol([x, y]) == pytest.approx([0.7864, 0.6177], abs=1e-3)
+
+

@@ -282,7 +282,7 @@ class LiftingSet(AeroSandboxObject):
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import archibald.tools.pretty_plots as p
+            import archibald.toolbox.pretty_plots as p
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
             if ax is None:
@@ -421,7 +421,7 @@ class LiftingSet(AeroSandboxObject):
             fuselage_longeron_theta = np.linspace(0, 2 * np.pi, 8 + 1)[:-1]
 
         import matplotlib.pyplot as plt
-        import archibald.tools.pretty_plots as p
+        import archibald.toolbox.pretty_plots as p
 
         if ax is None:
             _, ax = p.figure3d(figsize=(8, 8), computed_zorder=False)
@@ -642,7 +642,7 @@ class LiftingSet(AeroSandboxObject):
 
         """
         import matplotlib.pyplot as plt
-        import archibald.tools.pretty_plots as p
+        import archibald.toolbox.pretty_plots as p
 
         preset_view_angles = np.array([
             ["XZ", "-YZ"],
@@ -1367,7 +1367,7 @@ class Appendage(LiftingSet):
 if __name__ == '__main__':
     import archibald as asb
     # import archibald.numpy as np
-    import archibald.tools.units as u
+    import archibald.toolbox.units as u
 
 
     def ft(feet, inches=0):  # Converts feet (and inches) to meters
@@ -1507,5 +1507,7 @@ if __name__ == '__main__':
     airplane.draw()
     # airplane.draw_three_view()
     # airplane.export_XFLR5_xml("test.xml", mass_props=asb.MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
+
+
 
 

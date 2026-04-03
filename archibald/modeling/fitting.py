@@ -415,3 +415,5 @@ class FittedModel(SurrogateModel):
                 "Bad value of `type`! Valid values are:\n"
                 + "\n".join(valid_types_formatted)
             )
+
+

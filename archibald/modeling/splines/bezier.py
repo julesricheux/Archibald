@@ -75,7 +75,7 @@ def quadratic_bezier_patch_from_tangents(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    # import archibald.tools.pretty_plots as p
+    # import archibald.toolbox.pretty_plots as p
     import matplotlib.pyplot as p
 
     x, y = quadratic_bezier_patch_from_tangents(
@@ -85,3 +85,5 @@ if __name__ == "__main__":
     plt.plot(x, y, ".-")
     # p.show_plot()
     p.show()
+
+

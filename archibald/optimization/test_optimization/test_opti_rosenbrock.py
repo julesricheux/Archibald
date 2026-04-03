@@ -104,3 +104,5 @@ def test_2D_rosenbrock_frozen():
 
 if __name__ == "__main__":
     pytest.main()
+
+

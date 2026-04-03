@@ -827,3 +827,5 @@ if __name__ == "__main__":
     x_plot = np.linspace(x[0], x[-1], 10000)
 
     # p.qp(x_plot, f_interp.derivative(2)(x_plot) ** 2)
+
+

@@ -55,3 +55,5 @@ def test_opti_poorly_scaled_objective(objective_hessian_condition_number=1e10):
 
 if __name__ == "__main__":
     pytest.main()
+
+

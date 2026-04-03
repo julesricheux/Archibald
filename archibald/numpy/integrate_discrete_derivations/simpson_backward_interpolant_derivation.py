@@ -59,3 +59,5 @@ integral = integral.factor(factors).simplify()
 parsimony = len(str(integral))
 print(s.pretty(integral, num_columns=100))
 print(f"Parsimony: {parsimony}")
+
+

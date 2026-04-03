@@ -193,3 +193,5 @@ def test_non_log_transformed_solve():
 
 if __name__ == "__main__":
     pytest.main()
+
+

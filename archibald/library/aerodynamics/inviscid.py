@@ -203,3 +203,5 @@ if __name__ == "__main__":
     machs = np.linspace(0, 2, 500)
     plt.plot(machs, CL_over_Cl(5, machs, 0))
     p.show_plot()
+
+

@@ -82,3 +82,5 @@ def test_opti_hanging_chain_with_callback(plot=False):
 
 if __name__ == "__main__":
     pytest.main()
+
+

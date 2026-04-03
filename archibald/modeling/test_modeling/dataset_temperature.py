@@ -17,8 +17,10 @@ time = np.hstack((time, 90))
 measured_temperature = np.hstack((measured_temperature, 0))
 
 if __name__ == "__main__":
-    from archibald.tools.pretty_plots import plt, show_plot
+    from archibald.toolbox.pretty_plots import plt, show_plot
 
     fig, ax = plt.subplots()
     plt.plot(time, measured_temperature, ".")
     show_plot(xlabel="Time", ylabel="Measured Temperature")
+
+

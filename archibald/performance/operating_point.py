@@ -590,3 +590,5 @@ if __name__ == '__main__':
     sol = opti.solve()
     
     print(sol(z))
+
+

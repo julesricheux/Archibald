@@ -2,7 +2,7 @@ import archibald as asb
 import archibald.numpy as np
 import pytest
 
-from archibald.tools.pretty_plots import plt
+from archibald.toolbox.pretty_plots import plt
 
 """
 This test solves the 2-dimensional Rosenbrock problem constrained to a circle centered on the origin:
@@ -51,3 +51,5 @@ def test_rosenbrock_constrained(plot=False):
 
 if __name__ == "__main__":
     pytest.main()
+
+

@@ -372,3 +372,5 @@ def rotate_single_vector(vector, matrix, center):
 def sym_array(x, fac=1.):
     return np.hstack((x[::-1] * fac,
                       x[1:]))
+
+

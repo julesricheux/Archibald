@@ -34,7 +34,7 @@ periods = np.geomspace(2, n_samples, 1001)
 exacts = s.lambdify(k, exact)((n_samples - 1) / periods)
 
 import matplotlib.pyplot as plt
-import archibald.tools.pretty_plots as p
+import archibald.toolbox.pretty_plots as p
 
 fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 for method in ["cubic", "simpson", "hybrid_simpson_cubic"]:
@@ -52,3 +52,5 @@ ax[1].plot(
     periods, np.ones_like(periods), label="Exact", color="k", linestyle="--", alpha=0.5
 )
 p.show_plot()
+
+

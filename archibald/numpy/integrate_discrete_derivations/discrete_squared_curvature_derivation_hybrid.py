@@ -85,3 +85,5 @@ print(f"Parsimony: {parsimony}")
 for i, (var, expr) in enumerate(cse[0]):
     print(f"{var} = {expr}")
 print(f"res = {cse[1]}")
+
+

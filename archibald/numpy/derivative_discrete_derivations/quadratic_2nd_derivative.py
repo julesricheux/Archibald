@@ -104,3 +104,5 @@ df2dx = simplify(df2dx)
 parsimony = len(str(df2dx))
 print(s.pretty(df2dx, num_columns=100))
 print(f"Parsimony: {parsimony}")
+
+

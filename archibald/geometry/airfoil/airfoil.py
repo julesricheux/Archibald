@@ -711,7 +711,7 @@ class Airfoil(Polygon):
         Re_colors=None,
     ) -> None:
         import matplotlib.pyplot as plt
-        import archibald.tools.pretty_plots as p
+        import archibald.toolbox.pretty_plots as p
 
         fig, ax = plt.subplots(2, 2, figsize=(8, 7))
         plt.sca(ax[0, 0])
@@ -760,7 +760,7 @@ class Airfoil(Polygon):
                 alpha=0.7,
             )
 
-        from archibald.tools.string_formatting import eng_string
+        from archibald.toolbox.string_formatting import eng_string
 
         plt.sca(ax[0, 0])
         plt.legend(
@@ -884,7 +884,7 @@ class Airfoil(Polygon):
 
         if backend == "matplotlib":
             import matplotlib.pyplot as plt
-            import archibald.tools.pretty_plots as p
+            import archibald.toolbox.pretty_plots as p
 
             color = "#280887"
             plt.plot(x, y, ".-" if draw_markers else "-", zorder=11, color=color)
@@ -1909,7 +1909,7 @@ if __name__ == "__main__":
     af = Airfoil("dae11")
 
     import matplotlib.pyplot as plt
-    import archibald.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     fig, ax = plt.subplots(4, 2, figsize=(6.4, 6.4), dpi=200)
 
@@ -1956,6 +1956,8 @@ if __name__ == "__main__":
     # af.plot_polars(
     #     Res=np.geomspace(1e4, 1e6, 6)
     # )
+
+
 
 
 

@@ -122,3 +122,5 @@ print(f"Parsimony: {parsimony}")
 # parsimony = len(str(integral))
 # print(s.pretty(integral, num_columns=100))
 # print(f"Parsimony: {parsimony}")
+
+

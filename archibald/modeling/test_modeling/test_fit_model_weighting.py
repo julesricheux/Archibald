@@ -36,3 +36,5 @@ def test_fit_model_weighting():
 
 if __name__ == "__main__":
     test_fit_model_weighting()
+
+

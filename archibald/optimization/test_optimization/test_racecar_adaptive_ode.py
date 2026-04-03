@@ -81,7 +81,7 @@ def test_racecar_adaptive_ode(plot=False):
 
         if i % 5 == 0:
             import matplotlib.pyplot as plt
-            import archibald.tools.pretty_plots as p
+            import archibald.toolbox.pretty_plots as p
 
             fig, ax = plt.subplots()
             ax.plot(soli(t), soli(v), label="speed")
@@ -104,7 +104,7 @@ def test_racecar_adaptive_ode(plot=False):
 
     if plot:
         import matplotlib.pyplot as plt
-        import archibald.tools.pretty_plots as p
+        import archibald.toolbox.pretty_plots as p
 
         fig, ax = plt.subplots()
         ax.plot(sol(t), sol(v), label="speed")
@@ -115,3 +115,5 @@ def test_racecar_adaptive_ode(plot=False):
         plt.xlabel("Time [s]")
         plt.ylabel("Position [m] / Speed [m/s] / Throttle [-]")
         p.show_plot(rotate_axis_labels=False)
+
+

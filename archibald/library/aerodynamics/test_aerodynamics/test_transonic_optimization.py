@@ -22,3 +22,5 @@ def test_simple_scalar_optimization():
 
 if __name__ == "__main__":
     pytest.main()
+
+

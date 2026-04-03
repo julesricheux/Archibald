@@ -52,3 +52,5 @@ def test_fit_model_norm_type(plot=False):
 
 if __name__ == "__main__":
     test_fit_model_norm_type(plot=True)
+
+

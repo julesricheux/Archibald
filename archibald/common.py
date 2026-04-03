@@ -571,3 +571,5 @@ class ImplicitAnalysis(ArchibaldObject):
     @opti_provided.setter
     def opti_provided(self, value: bool):
         self._opti_provided = value
+
+

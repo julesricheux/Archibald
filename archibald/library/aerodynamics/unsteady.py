@@ -438,3 +438,5 @@ if __name__ == "__main__":
     plt.ylabel(r"$C_\ell$")
     plt.title("Guassian Pitch Maneuver Through Top-Hat Gust")
     plt.show()
+
+

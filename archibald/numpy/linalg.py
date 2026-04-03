@@ -196,3 +196,5 @@ def inv_symmetric_3x3(
     a33 = a33 * inv_det
 
     return a11, a22, a33, a12, a23, a13
+
+

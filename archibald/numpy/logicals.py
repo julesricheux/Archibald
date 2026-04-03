@@ -86,3 +86,5 @@ def any(a):  # TODO add axis functionality
             return _cas.logic_any(a)
         except NotImplementedError:
             return False
+
+

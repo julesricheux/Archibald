@@ -138,7 +138,7 @@ def cosine_hermite_patch(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    # import archibald.tools.pretty_plots as p
+    # import archibald.toolbox.pretty_plots as p
     import matplotlib.pyplot as p
 
     x = np.linspace(-1, 2, 500)
@@ -153,3 +153,5 @@ if __name__ == "__main__":
     # p.show_plot()
     p.axis('equal')
     p.show()
+
+

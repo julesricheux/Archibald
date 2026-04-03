@@ -37,10 +37,10 @@ import archibald
 from archibald.geometry.legacy.lifting_planes import Mainsail, Jib, Spi, Wingsail
 from archibald.environment import _Environment, OffshoreEnvironment, InshoreEnvironment
 
-from archibald.tools.math_utils import *
-from archibald.tools.dyn_utils import *
-from archibald.tools.avl_utils import *
-from archibald.tools.xfoil_utils import *
+from archibald.toolbox.math_utils import *
+from archibald.toolbox.dyn_utils import *
+from archibald.toolbox.avl_utils import *
+from archibald.toolbox.xfoil_utils import *
 
 
 ARCHIBALD_DIR = os.path.dirname(archibald.__file__)
@@ -346,4 +346,6 @@ class Rig():
             return None
           
  
+
+
 

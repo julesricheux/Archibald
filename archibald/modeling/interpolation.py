@@ -184,3 +184,5 @@ class InterpolatedModel(SurrogateModel):
             return np.reshape(output, shape)
         except UnboundLocalError:
             return output
+
+

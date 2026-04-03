@@ -99,3 +99,5 @@ dfdx_q3 = simplify(dfdx.subs(q, q3))
 parsimony = len(str(dfdx_q1))
 print(s.pretty(dfdx_q1, num_columns=100))
 print(f"Parsimony: {parsimony}")
+
+
