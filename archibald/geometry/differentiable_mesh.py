@@ -744,11 +744,56 @@ class DifferentiableMesh():
                 f"with {self.vertices.shape[0]} vertices, "+\
                 f"{self.edges.shape[0]} edges "+\
                 f"and {self.faces.shape[0]} faces."
-                
+    
+    # def hydrostatics(self, point, normal=np.array([0., 0., 1.]), tol=0.01):
+    #     """
+    #     Computes the submerged volume and CoB using vertex-based depth weights.
+    #     This resolves the precision issues by allowing partial submersion of faces.
+    #     """
+    #     if self._data['cross_product'] is None:
+    #         self.compute_cross_product()
+            
+    #     # 1. Coordinate shift: align water plane to origin
+    #     ppoint = wide(point)
+    #     v0, v1, v2 = self._v0 - ppoint, self._v1 - ppoint, self._v2 - ppoint
         
+    #     # 2. Calculate signed depth of each vertex (positive = submerged)
+    #     # Using the plane equation: dot(v, n)
+    #     h0 = -np.sum(v0 * wide(normal), axis=1)
+    #     h1 = -np.sum(v1 * wide(normal), axis=1)
+    #     h2 = -np.sum(v2 * wide(normal), axis=1)
+        
+    #     # 3. Smoothed weights per vertex (replaces the 'factor' tuning)
+    #     # tol defines the transition width (e.g., 0.01 units)
+    #     def get_weights(h):
+    #         return np.fmin(np.fmax((h + tol/2) / tol, 0.0), 1.0)
+            
+    #     w0, w1, w2 = get_weights(h0), get_weights(h1), get_weights(h2)
+        
+    #     # 4. Integrate Volume
+    #     # The submerged volume of a face is the fraction of its tetrahedron
+    #     # defined by the average submersion weight of its vertices.
+    #     vols = np.sum(v0 * self._data["cross_product"] / 6.0, axis=1)
+    #     sub_frac = (w0 + w1 + w2) / 3.0
+    #     volume = np.sum(vols * sub_frac)
+        
+    #     # 5. Integrate Center of Buoyancy
+    #     # Use vertex weights to compute the centroid of the submerged part of the face
+    #     w_sum = np.fmax(w0 + w1 + w2, 1e-12)
+    #     face_sub_centroid = (tall(w0)*v0 + tall(w1)*v1 + tall(w2)*v2) / tall(w_sum)
+        
+    #     # Tetrahedron centroid (1/4 from face to origin)
+    #     tetra_sub_centers = face_sub_centroid * 0.75
+        
+    #     # Volume-weighted global CoB
+    #     cob = np.sum(tall(vols * sub_frac) * tetra_sub_centers, axis=0) / np.fmax(volume, 1e-12) + np.reshape(point, (3,))
+        
+    #     return volume, cob
+    
+    # LEGACY
     def hydrostatics(self,
                      point,
-                     normal,
+                     normal=np.array([0., 0., 1.]),
                      offset=0.,
                      factor=1e6,
                      ):
@@ -774,10 +819,25 @@ class DifferentiableMesh():
         ndist = np.fmax(np.fmin((-fdist+offset)*factor, 1.), 0.)
         
         vols = np.sum(v0 * self._data["cross_product"] / 6.0, axis=1)
-        volume = np.sum(vols * ndist)
+        # volume = np.sum(vols * ndist)
         cob = np.sum(wide(vols * ndist) @ centers / np.sum(vols * ndist), axis=0) + point
         
-        return volume, cob # TODO find a solution to compute cob. Volume very quick and precise
+        if self._data['triangle_centers'] is None:
+            self.compute_triangle_centers()
+        if self._data['cross_product'] is None:
+            self.compute_cross_product()
+        
+        weights = np.fmax(
+            np.fmin(
+                -(self._data['triangle_centers'] - wide(point)) @ normal + 0.5, 1.0
+            ),
+            0.0
+        )
+        volume_from_cof = np.sum((self._v0 - wide(point)) * self._data["cross_product"] / 6.0, axis=1)
+        
+        volume = np.sum(volume_from_cof * weights)
+        
+        return volume, cob
     
     
     def slice_mesh(self,

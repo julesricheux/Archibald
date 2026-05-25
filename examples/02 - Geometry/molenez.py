@@ -82,7 +82,11 @@ diff_mesh = DifferentiableMesh(hullMesh.vertices, hullMesh.faces)
 opti = Opti()
 
 # T0 = 5.332476916708436
-T0, ref = 1.3, 115.
+T0, ref = 1.0, 78.6457
+# T0, ref = 1.3, 116.487
+# T0, ref = 1.4, 130.186
+# T0, ref = 1.5, 144.24
+# T0, ref = 10., 362.907208
 # T0, ref = , 146.
 
 # T = opti.variable(init_guess=T0, lower_bound=1e-3)
@@ -340,8 +344,8 @@ mesh_color = 'grey'
 plane_color = 'orange'
 plane_opacity = 0.01
 backend: str = 'pyvista'
-# show: bool = False
-show: bool = True
+show: bool = False
+# show: bool = True
 
 
 if show:
@@ -393,9 +397,9 @@ if show:
     # Display the plot
     plotter.show()
     
-    volume = np.sum(np.sum((diff_mesh._v0 - wide(point)) * diff_mesh._data["cross_product"] / 6.0, axis=1) * np.fmax(np.fmin(-(diff_mesh._data['triangle_centers'] - wide(point)) @ normal + 0.5, 1.0), 0.0))
+volume, _ = diff_mesh.hydrostatics(point)
 
-
+# diff_mesh.draw()
 
 
 print(f"Volume : {volume:.1f} m3")
