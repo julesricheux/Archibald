@@ -381,6 +381,13 @@ def rotate_points(points, matrix, center):
 def rotate_single_vector(vector, matrix, center):
     return np.sum(np.add(np.add(wide(vector), -wide(center)) @ matrix, wide(center)), axis=0)
 
+# def rotate_single_vector(vector, matrix, center):
+#     """
+#     Rotates a single 3D vector around a local center point.
+#     """
+#     # Shift to origin, rotate via dot product, shift back
+#     return (vector - center) @ matrix + center
+
 
 def sym_array(x, fac=1.):
     return np.hstack((x[::-1] * fac,
