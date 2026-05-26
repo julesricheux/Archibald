@@ -267,6 +267,27 @@ def wrap_text_ignoring_mathtext(
     return output
 
 
+def axis_string_to_array(direction):
+    if direction == 'x':
+        return np.array([1.,0.,0.])
+    elif direction == 'y':
+        return np.array([0.,1.,0.])
+    elif direction == 'z':
+        return np.array([0.,0.,1.])
+    if direction == '-x':
+        return -np.array([1.,0.,0.])
+    elif direction == '-y':
+        return -np.array([0.,1.,0.])
+    elif direction == '-z':
+        return -np.array([0.,0.,1.])
+    else:
+        raise ValueError(
+            f"'{direction}' could not be interpreted as a direction."+\
+                " Should be 'x', 'y', 'z' (with possibly a '-' sign) or a (3,) array."
+            )
+        return None
+
+
 if __name__ == "__main__":
     for input in [
         r"$ax^2+bx+c$",
