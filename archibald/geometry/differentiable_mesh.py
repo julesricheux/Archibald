@@ -11,7 +11,7 @@ import copy
 import archibald.numpy as np
 import casadi as ca
 
-np.set_printoptions(precision=2)
+from archibald.toolbox.string_formatting import axis_string_to_array
 
 #%%
 
@@ -21,39 +21,6 @@ def tall(array):
 
 def wide(array):
     return np.reshape(array, (1, -1))
-
-
-def relu(x):
-    # import casadi as ca
-    # return ca.fmax(0,x)
-    
-    return np.fmax(x, 0.)
-
-
-def ramp(x, tol=1e-3):
-    
-    return np.fmin(1.,
-                    np.fmax(0.,
-                            (x+tol)/tol))
-
-def axis_str_to_array(direction):
-    if direction == 'x':
-        return np.array([1.,0.,0.])
-    elif direction == 'y':
-        return np.array([0.,1.,0.])
-    elif direction == 'z':
-        return np.array([0.,0.,1.])
-    if direction == '-x':
-        return -np.array([1.,0.,0.])
-    elif direction == '-y':
-        return -np.array([0.,1.,0.])
-    elif direction == '-z':
-        return -np.array([0.,0.,1.])
-    else:
-        raise ValueError(f"'{direction}' could not be interpreted as a direction."+\
-                         " Should be 'x', 'y', 'z' (with possibly a '-' sign) or a (3,) array.")
-        return None
-    
 
 
 class DifferentiablePolygon():
@@ -499,7 +466,7 @@ class DifferentiableMesh():
 
         """
         if type(normal) is str:
-            normal = axis_str_to_array(normal)
+            normal = axis_string_to_array(normal)
         # NB
         # if dist.all < 0 : fully immersed
         # if dist.all > 0 : fully emerged
@@ -519,7 +486,7 @@ class DifferentiableMesh():
 
         """
         if type(normal) is str:
-            normal = axis_str_to_array(normal)
+            normal = axis_string_to_array(normal)
         # NB
         # if dist.all < 0 : fully immersed
         # if dist.all > 0 : fully emerged
@@ -545,7 +512,7 @@ class DifferentiableMesh():
         
         """
         if type(direction) is str:
-            direction = axis_str_to_array(direction)
+            direction = axis_string_to_array(direction)
         
         if self._data['cross_product'] is None:
             self.compute_cross_product()
@@ -734,7 +701,7 @@ class DifferentiableMesh():
         ):
         
         if type(normal) is str:
-            normal = axis_str_to_array(normal)
+            normal = axis_string_to_array(normal)
         
         if self._data['cross_product'] is None:
             self.compute_cross_product()
