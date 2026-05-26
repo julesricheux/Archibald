@@ -63,13 +63,15 @@ class DifferentiablePolygon():
     Allows approximated though differentiable hydrostatics computations.
     
     """
-    def __init__(self,
-                 vertices: Union[np.ndarray, List] = np.array([]),
-                 edges: List[int] = None):
+    def __init__(
+        self,
+        vertices: Union[np.ndarray, List] = np.array([]),
+        edges: List[int] = None
+    ):
         
         if vertices is None or edges is None:
             vertices = np.zeros((2,3))
-            faces = wide(np.arange(2))
+            # faces = wide(np.arange(2))
         
         self._vertices = vertices
         self._edges = edges
@@ -95,17 +97,18 @@ class DifferentiablePolygon():
         
         self._v2 = np.tile(self._c, (self._nE, 1))
         
-        self._data = {'cross_product': None,
-                      'triangle_areas': None,
-                      'triangle_centers': None,
-                      'edge_lengths': None,
-                      'edge_centers': None,
-                      'area': None,
-                      'area_centroid': None,
-                      'perimeter': None,
-                      'normals': None,
-                      'bounds': None,
-                      }
+        self._data = {
+            'cross_product': None,
+            'triangle_areas': None,
+            'triangle_centers': None,
+            'edge_lengths': None,
+            'edge_centers': None,
+            'area': None,
+            'area_centroid': None,
+            'perimeter': None,
+            'normals': None,
+            'bounds': None,
+        }
         
     def compute_cross_product(self):
         """
@@ -259,10 +262,11 @@ class DifferentiablePolygon():
         z_min = np.min(v[:,2])
         z_max = np.max(v[:,2])
         
-        self._data['bounds'] = np.array([[x_min, x_max],
-                                         [y_min, y_max],
-                                         [z_min, z_max],
-                                         ])
+        self._data['bounds'] = np.array([
+            [x_min, x_max],
+            [y_min, y_max],
+            [z_min, z_max],
+        ])
         
     @property
     def bounds(self):
@@ -276,14 +280,15 @@ class DifferentiablePolygon():
         return self._data['bounds']
     
 
-    def draw(self,
+    def draw(
+            self,
             color = 'cyan',
             # mesh_color = 'grey',
             # plane_color = 'orange',
             # plane_opacity = 0.01,
             backend: str = 'pyvista',
             show: bool = True,
-            ):
+        ):
         
         if backend=="pyvista":
         
@@ -323,9 +328,11 @@ class DifferentiableMesh():
     
     # TODO: add a refine_mesh method to adapt coarser meshes
     
-    def __init__(self,
-                 vertices: Union[np.ndarray, List] = np.array([]),
-                 faces: List[int] = None):
+    def __init__(
+        self,
+        vertices: Union[np.ndarray, List] = np.array([]),
+        faces: List[int] = None,
+    ):
         
         if vertices is None or faces is None:
             vertices = np.zeros((3,3))
@@ -371,19 +378,20 @@ class DifferentiableMesh():
         self._v1 = self.vertices[self.faces[:, 1], :]
         self._v2 = self.vertices[self.faces[:, 2], :]
         
-        self._data = {'cross_product': None,
-                      'edges': None,
-                      'triangle_centers': None,
-                      'triangle_areas': None,
-                      'tetrahedron_centers': None,
-                      'tetrahedron_volumes': None,
-                      'area': None,
-                      'area_centroid': None,
-                      'volume': None,
-                      'volume_centroid': None,
-                      'normals': None,
-                      'bounds': None,
-                      }
+        self._data = {
+            'cross_product': None,
+            'edges': None,
+            'triangle_centers': None,
+            'triangle_areas': None,
+            'tetrahedron_centers': None,
+            'tetrahedron_volumes': None,
+            'area': None,
+            'area_centroid': None,
+            'volume': None,
+            'volume_centroid': None,
+            'normals': None,
+            'bounds': None,
+        }
         
     def compute_edges(self):
         # Generate all edges for each triangle (3 edges per face)
@@ -461,21 +469,31 @@ class DifferentiableMesh():
         self._data['tetrahedron_centers'] = (v0 + v1 + v2) / 4.0
         
             
-    def compute_tetrahedron_volumes(self):
+    def compute_tetrahedron_volumes(
+        self,
+        ref_point: Union[np.ndarray, List] = [0., 0., 0.],
+    ):
         """
         Compute the signed volumes of all tetrahedrons formed by faces and origin.
 
-        """        
+        """
         if self._data['cross_product'] is None:
             self.compute_cross_product()
-            
-        cross_prod = self._data['cross_product']
-        v0 = self._v0
         
         # Signed volume of tetrahedron formed with origin for each face
-        self._data['tetrahedron_volumes'] = np.sum(v0 * cross_prod / 6.0, axis=1)
+        self._data['tetrahedron_volumes'] = np.sum(
+            np.add(
+                self._v0,
+                -wide(ref_point)
+            ) * self._data["cross_product"] / 6.0,
+            axis=1
+        )
     
-    def vertices_distances_to_plane(self, point, normal):
+    def vertices_distances_to_plane(
+        self,
+        point: Union[np.ndarray, List],
+        normal: Union[np.ndarray, List, str],
+    ):
         """
         Compute the oriented distances of each vertex to a given plane, represented by a point and a normal.
 
@@ -486,9 +504,16 @@ class DifferentiableMesh():
         # if dist.all < 0 : fully immersed
         # if dist.all > 0 : fully emerged
         
-        return np.add(self.vertices, -wide(point)) @ normal
+        return np.add(
+            self.vertices,
+            -wide(point)
+        ) @ normal
     
-    def faces_distances_to_plane(self, point, normal):
+    def faces_distances_to_plane(
+        self,
+        point: Union[np.ndarray, List],
+        normal: Union[np.ndarray, List, str],
+    ):
         """
         Compute the oriented distances of each vertex to a given plane, represented by a point and a normal.
 
@@ -504,10 +529,11 @@ class DifferentiableMesh():
         
         return np.add(self._data['triangle_centers'], -wide(point)) @ normal
     
-    def frontal_area(self,
-                     direction: Union[str, np.ndarray],
-                     weight: Union[float, np.ndarray]=1.
-                     ):
+    def frontal_area(
+        self,
+        direction: Union[str, np.ndarray],
+        weight: Union[float, np.ndarray]=1.
+    ):
         """
         Compute the frontal area of a mesh in a given direction.
 
@@ -536,37 +562,56 @@ class DifferentiableMesh():
         
         return frontal_area
         
-    def weighted_volume(self, weight=1.):
+    def weighted_volume(
+        self,
+        weight: Union[np.ndarray, float] = 1.,
+        ref_point: Union[np.ndarray, List] = [0., 0., 0.],
+        recompute_tetrahedron_volumes: bool = False,
+    ):
         """
         Compute the mesh volume. May be weighted.
 
         """
-        if self._data['tetrahedron_volumes'] is None:
-            self.compute_tetrahedron_volumes()
+        if recompute_tetrahedron_volumes or self._data['tetrahedron_volumes'] is None:
+            self.compute_tetrahedron_volumes(ref_point)
         
         # Signed volume of tetrahedron formed with origin for each face
-        tetra_volumes = self._data['tetrahedron_volumes'] * weight
+        tetra_volumes = self._data['tetrahedron_volumes'] * tall(weight)
         
         # Total volume
         return np.sum(tetra_volumes)
         
-    def weighted_volume_centroid(self, weight=1.):
+    def weighted_volume_centroid(
+        self,
+        weight: Union[np.ndarray, float] = 1.,
+        ref_point: Union[np.ndarray, List] = [0., 0., 0.],
+        recompute_tetrahedron_volumes: bool = False,
+    ):
         """
         Compute the mesh volume centroid. May be weighted.
 
         """
+        if recompute_tetrahedron_volumes or self._data['tetrahedron_volumes'] is None:
+            self.compute_tetrahedron_volumes(ref_point)
+            
         if self._data['tetrahedron_centers'] is None:
             self.compute_tetrahedron_centers()
-        if self._data['tetrahedron_volumes'] is None:
-            self.compute_tetrahedron_volumes()
         
         tetra_centers = self._data['tetrahedron_centers']
-        tetra_volumes = self._data['tetrahedron_volumes'] * weight
+        tetra_volumes = self._data['tetrahedron_volumes'] * tall(weight)
         
         # Weighted sum of centroids by volumes to get the total center of mass
         return np.sum(wide(tetra_volumes) @ tetra_centers / np.sum(tetra_volumes), axis=0)
     
-    def weighted_area(self, weight=1.):
+        # np.sum(
+        #     self._data["tetrahedron_centers"] * tall(weighted_volumes_from_cof) / volume,
+        #     axis=0
+        # )
+    
+    def weighted_area(
+        self,
+        weight: Union[np.ndarray, float] = 1.,
+    ):
         """
         Compute the mesh area. May be weighted.
 
@@ -580,7 +625,10 @@ class DifferentiableMesh():
         # Total area
         return np.sum(tri_areas)
 
-    def weighted_area_centroid(self, weight=1.):
+    def weighted_area_centroid(
+            self,
+            weight: Union[np.ndarray, float] = 1.,
+        ):
         """
         Compute the mesh volume centroid. May be weighted.
 
@@ -653,10 +701,11 @@ class DifferentiableMesh():
         z_min = np.min(v[:,2])
         z_max = np.max(v[:,2])
         
-        self._data['bounds'] = np.array([[x_min, x_max],
-                                         [y_min, y_max],
-                                         [z_min, z_max],
-                                         ])
+        self._data['bounds'] = np.array([
+            [x_min, x_max],
+            [y_min, y_max],
+            [z_min, z_max],
+        ])
         
     @property
     def bounds(self):
@@ -667,183 +716,87 @@ class DifferentiableMesh():
         if self._data['bounds'] is None:
             self.compute_bounds()
             
-        return self._data['bounds']
+        return self._data['bounds']     
+        
+    def __repr__(self):
+        
+        return (
+            f"{self.__class__.__name__} instance "+\
+            f"with {self.vertices.shape[0]} vertices, "+\
+            f"{self.edges.shape[0]} edges "+\
+            f"and {self.faces.shape[0]} faces."
+        )
     
-        
-    def compress_mesh(self,
-                      point,
-                      normal,
-                      dist=None,
-                      tol=1e-5,
-                      scale_fac=2.,
-                      inplace: bool = False):
-        """
-        Compress the mesh.
-        TODO: write the complete doc
-
-        Parameters
-        ----------
-        point : TYPE
-            DESCRIPTION.
-        normal : TYPE
-        tol : TYPE, optional
-            DESCRIPTION. The default is 1e-5. The higher tol, the further the plane projection influence.
-        scale_fac : TYPE, optional
-            DESCRIPTION. The default is 2. The higher scale_fac, the sharper the scaling ramp.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        ### PROJECTING STEP
-        
-        vertices = self.vertices
-        faces = self.faces
+    def hydrostatics(
+            self,
+            point: Union[np.ndarray, List],
+            normal: Union[np.ndarray, List, str] = "z",
+        ):
         
         if type(normal) is str:
             normal = axis_str_to_array(normal)
         
-        # Compute the vertices distances from the plane, if not already provided
-        if dist is None:
-            dist = self.vertices_distances_to_plane(point, normal)
-        
-        # Projected vertices = vert - (vert.normal) @ normal
-        # NB: the ramp function allows to only affect the vertices on one side on the plane
-        vert_proj = vertices - tall(dist*ramp(dist, tol)) @ wide(normal)
-        
-        ### SCALING STEP
-        # NB: the previously moves vertices are scaled towards the center of the projecting plane
-        # to get a cleaner external mesh shape
-        
-        # min_fac = -np.min(scal) # NB: this is water draft
-        max_fac = np.max(dist)/scale_fac
-        
-        proximity = ramp(dist-max_fac, tol=max_fac)
-        fac = 1 - proximity
-        
-        center = np.mean(vertices, axis=0)
-        center_proj = wide(center) - (np.add(wide(center), -wide(point)) @ normal) @ wide(normal)
-        
-        # Scaled vertices = (vert - center) * scale_factor + center
-        vert_proj_scal = np.add(np.add(vert_proj, -wide(center_proj)) * tall(fac),
-                                wide(center_proj)
-                                )
-        
-        if inplace:
-            self.vertices = vert_proj_scal
-            self.reset_data()
-        else:
-            return DifferentiableMesh(vert_proj_scal, copy.copy(faces))
-        
-        
-    def __repr__(self):
-        
-        return f"{self.__class__.__name__} instance "+\
-                f"with {self.vertices.shape[0]} vertices, "+\
-                f"{self.edges.shape[0]} edges "+\
-                f"and {self.faces.shape[0]} faces."
-    
-    # def hydrostatics(self, point, normal=np.array([0., 0., 1.]), tol=0.01):
-    #     """
-    #     Computes the submerged volume and CoB using vertex-based depth weights.
-    #     This resolves the precision issues by allowing partial submersion of faces.
-    #     """
-    #     if self._data['cross_product'] is None:
-    #         self.compute_cross_product()
-            
-    #     # 1. Coordinate shift: align water plane to origin
-    #     ppoint = wide(point)
-    #     v0, v1, v2 = self._v0 - ppoint, self._v1 - ppoint, self._v2 - ppoint
-        
-    #     # 2. Calculate signed depth of each vertex (positive = submerged)
-    #     # Using the plane equation: dot(v, n)
-    #     h0 = -np.sum(v0 * wide(normal), axis=1)
-    #     h1 = -np.sum(v1 * wide(normal), axis=1)
-    #     h2 = -np.sum(v2 * wide(normal), axis=1)
-        
-    #     # 3. Smoothed weights per vertex (replaces the 'factor' tuning)
-    #     # tol defines the transition width (e.g., 0.01 units)
-    #     def get_weights(h):
-    #         return np.fmin(np.fmax((h + tol/2) / tol, 0.0), 1.0)
-            
-    #     w0, w1, w2 = get_weights(h0), get_weights(h1), get_weights(h2)
-        
-    #     # 4. Integrate Volume
-    #     # The submerged volume of a face is the fraction of its tetrahedron
-    #     # defined by the average submersion weight of its vertices.
-    #     vols = np.sum(v0 * self._data["cross_product"] / 6.0, axis=1)
-    #     sub_frac = (w0 + w1 + w2) / 3.0
-    #     volume = np.sum(vols * sub_frac)
-        
-    #     # 5. Integrate Center of Buoyancy
-    #     # Use vertex weights to compute the centroid of the submerged part of the face
-    #     w_sum = np.fmax(w0 + w1 + w2, 1e-12)
-    #     face_sub_centroid = (tall(w0)*v0 + tall(w1)*v1 + tall(w2)*v2) / tall(w_sum)
-        
-    #     # Tetrahedron centroid (1/4 from face to origin)
-    #     tetra_sub_centers = face_sub_centroid * 0.75
-        
-    #     # Volume-weighted global CoB
-    #     cob = np.sum(tall(vols * sub_frac) * tetra_sub_centers, axis=0) / np.fmax(volume, 1e-12) + np.reshape(point, (3,))
-        
-    #     return volume, cob
-    
-    # LEGACY
-    def hydrostatics(self,
-                     point,
-                     normal=np.array([0., 0., 1.]),
-                     offset=0.,
-                     factor=1e6,
-                     ):
-        
         if self._data['cross_product'] is None:
             self.compute_cross_product()
             
-        if self._data['triangle_centers'] is None:
-            self.compute_triangle_centers()
+        if self._data['tetrahedron_centers'] is None:
+            self.compute_tetrahedron_centers()
         
-        fdist = self.faces_distances_to_plane(point, normal)
+        # vertices signed distances from the waterplane, shape similar to self.faces
+        # > 0 for wet, < 0 for dry
+        vdist = -self.vertices_distances_to_plane(
+            point,
+            normal
+        )[self.faces]
         
-        n = self.faces.shape[0]
+        mix_weights = np.sigmoid(
+            np.mean(
+                vdist, 
+                axis=1
+            ) * 10./3.
+            # ) * np.sqrt(10.)
+        ) # smooth clipping weight
+        # calibrated from the wet area variation of an equilateral triangle from
+        # the average of its vertices signed distances
         
-        ppoint = np.tile(wide(point), (n,1))
+        highest_v = np.min(vdist, axis=1) # signed distance of the highest vertex of each face
+        deepest_v = np.max(vdist, axis=1) # signed distance of the deepest vertex of each face
         
-        # Extract vertices of each face
-        v0, v1, v2 = self._v0 - ppoint, self._v1 - ppoint, self._v2 - ppoint
+        corr = 1e3
+        wet = np.sigmoid(highest_v*corr) * np.sigmoid(deepest_v*corr) # boolean for fully wet faces
+        dry = np.sigmoid(-highest_v*corr) * np.sigmoid(-deepest_v*corr) # boolean for fully dry faces
         
-        centers = (v0 + v1 + v2) / 4.0
-        
-        # ndist = np.fmax(np.fmin(-fdist+0.5, 1.), 0.)
-        ndist = np.fmax(np.fmin((-fdist+offset)*factor, 1.), 0.)
-        
-        vols = np.sum(v0 * self._data["cross_product"] / 6.0, axis=1)
-        # volume = np.sum(vols * ndist)
-        cob = np.sum(wide(vols * ndist) @ centers / np.sum(vols * ndist), axis=0) + point
-        
-        if self._data['triangle_centers'] is None:
-            self.compute_triangle_centers()
-        if self._data['cross_product'] is None:
-            self.compute_cross_product()
-        
+        # weight = 1 for fully wet faces, 0 for fully dry faces,  
         weights = np.fmax(
-            np.fmin(
-                -(self._data['triangle_centers'] - wide(point)) @ normal + 0.5, 1.0
-            ),
-            0.0
-        )
-        volume_from_cof = np.sum((self._v0 - wide(point)) * self._data["cross_product"] / 6.0, axis=1)
+            wet,
+            mix_weights
+        ) * (1-dry) 
         
-        volume = np.sum(volume_from_cof * weights)
+        # compute tetrahedron volumes with reference point on the waterplane
+        self.compute_tetrahedron_volumes(point)
+        
+        # total volume
+        volume = self.weighted_volume(
+            weight=weights,
+            ref_point=point,
+            recompute_tetrahedron_volumes=False,
+        )
+        
+        # average weighted tetrahedron center i.e. center of buoyancy
+        cob = self.weighted_volume_centroid(
+            weight=weights,
+            ref_point=point,
+            recompute_tetrahedron_volumes=False,
+        )
         
         return volume, cob
     
     
-    def slice_mesh(self,
-                   point,
-                   normal
-                   ):
+    def slice_mesh(
+            self,
+            point,
+            normal
+        ):
         
         dist = self.vertices_distances_to_plane(point, normal)
         
@@ -904,22 +857,20 @@ class DifferentiableMesh():
         
         return DifferentiablePolygon(None, None)
         
-        
-        
-        
-    def draw(self,
-             color = 'cyan',
-             opacity = 0.3,
-             show_edges = True,
-             draw_plane = False,
-             point = np.zeros(3),
-             normal = np.array([0., 0., 1.]),
-             mesh_color = 'grey',
-             plane_color = 'orange',
-             plane_opacity = 0.2,
-             backend: str = 'pyvista',
-             show: bool = True,
-             ):
+    def draw(
+        self,
+        color = 'cyan',
+        opacity = 0.3,
+        show_edges = True,
+        draw_plane = False,
+        point = np.zeros(3),
+        normal = np.array([0., 0., 1.]),
+        mesh_color = 'grey',
+        plane_color = 'orange',
+        plane_opacity = 0.2,
+        backend: str = 'pyvista',
+        show: bool = True,
+    ):
         
         if backend == 'pyvista':
             import pyvista as pv
