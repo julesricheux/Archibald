@@ -824,14 +824,15 @@ class ArchibaldMesh(ArchibaldObject):
         
     def draw(
         self,
-        color = 'cyan',
+        color = 'orange',
         opacity = 0.3,
         show_edges = True,
         draw_plane = False,
         point = np.zeros(3),
         normal = np.array([0., 0., 1.]),
         mesh_color = 'grey',
-        plane_color = 'orange',
+        cmap = "RdYlGn",
+        plane_color = 'blue',
         plane_opacity = 0.2,
         backend: str = 'pyvista',
         show: bool = True,
@@ -845,12 +846,47 @@ class ArchibaldMesh(ArchibaldObject):
             
             # Create the mesh
             mesh = pv.PolyData(self.vertices, np.hstack([[3, *face] for face in self.faces]))
-            plotter.add_mesh(mesh, color=color, opacity=opacity, show_edges=show_edges)
             
             if draw_plane:
+                weight = np.sigmoid(
+                    self.vertices_distances_to_plane(
+                        point,
+                        normal
+                    ) * 10./3.
+                )
+                plotter.add_mesh(
+                    mesh,
+                    show_edges=show_edges,
+                    scalars=weight,
+                    cmap=cmap,
+                )
                 # Add the plane
-                plane = pv.Plane(center=point, direction=normal, i_size=200, j_size=200)
-                plotter.add_mesh(plane, color=plane_color, opacity=plane_opacity)
+                b = self.bounds
+                diag = np.linalg.norm(b[:, 1] - b[:, 0])
+                projected_centroid = (
+                    self.volume_centroid
+                    - np.dot(
+                        wide(self.volume_centroid) - wide(point),
+                        tall(normal),
+                    ) * point
+                )
+                plane = pv.Plane(
+                    center=projected_centroid,
+                    direction=normal,
+                    i_size=diag, j_size=diag,
+                )
+                plotter.add_mesh(
+                    plane,
+                    color=plane_color,
+                    opacity=plane_opacity
+                )
+            else:
+                plotter.add_mesh(
+                    mesh,
+                    show_edges=show_edges,
+                    color=color,
+                    opacity=opacity,
+                )
             
             if show:
                 # Display the plot
