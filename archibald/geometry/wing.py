@@ -16,7 +16,7 @@ from typing import List, Dict, Any, Tuple, Union, Optional, Callable
 from aerosandbox import Airfoil
 from archibald.numpy import pi
 import archibald.numpy as np
-import archibald.geometry.mesh_utilities as mesh_utils
+import archibald.toolbox.mesh_utils as mesh_utils
 from archibald.toolbox.math_utils import rotate_points, rotate_single_vector
 import copy
 

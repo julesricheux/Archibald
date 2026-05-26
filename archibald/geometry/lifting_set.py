@@ -17,7 +17,7 @@ Citation:
 from archibald import ArchibaldObject
 from archibald.geometry.common import *
 from typing import List, Dict, Any, Union, Optional, Tuple
-import archibald.geometry.mesh_utilities as mesh_utils
+import archibald.toolbox.mesh_utils as mesh_utils
 from archibald.geometry.wing import Wing, Sail, Fin
 from archibald.geometry.fuselage import Fuselage
 from archibald.geometry.propulsor import Propulsor
