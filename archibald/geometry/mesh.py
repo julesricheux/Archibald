@@ -818,9 +818,9 @@ class ArchibaldMesh(ArchibaldObject):
                                    
             slice_edges = np.array(slice_edges)
             
-            return DifferentiablePolygon(intersections, slice_edges)
+            return ArchibaldPolygon(intersections, slice_edges)
         
-        return DifferentiablePolygon(None, None)
+        return ArchibaldPolygon(None, None)
         
     def draw(
         self,
