@@ -4,13 +4,11 @@ Created on Sun Oct 27 23:38:18 2024
 
 @author: jrich
 """
+import casadi as ca
+import archibald.numpy as np
 
 from typing import Union, List
-import copy
-
-import archibald.numpy as np
-import casadi as ca
-
+from archibald.common import ArchibaldObject
 from archibald.toolbox.string_formatting import axis_string_to_array
 
 #%%
@@ -23,7 +21,7 @@ def wide(array):
     return np.reshape(array, (1, -1))
 
 
-class DifferentiablePolygon():
+class ArchibaldPolygon(ArchibaldObject):
     """
     Polygon description.
     
@@ -285,7 +283,7 @@ class DifferentiablePolygon():
             return plotter
 
 
-class DifferentiableMesh():
+class ArchibaldMesh(ArchibaldObject):
     """
     Differentiable mesh description. Vertices may be described by both numpy or CasADI objects.
     
@@ -328,7 +326,7 @@ class DifferentiableMesh():
     @vertices.setter
     def vertices(self, value):
         # Check if value is a numpy array, CasADi MX, or CasADi DM
-        if not isinstance(value, (np.ndarray, ca.MX, ca.DM)):
+        if np.is_casadi_type(value):
             raise ValueError("Vertices must be a numpy array or a CasADi array (MX or DM).")
         
         # Check if the shape matches the expected number of vertices and 3D coordinates
