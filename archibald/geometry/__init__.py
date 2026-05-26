@@ -5,9 +5,8 @@ from archibald.geometry.propeller import Propeller, BSeriesPropeller
 from archibald.geometry.wing import Wing, WingXSec, ControlSurface, LiftingDevice, Sail, Fin
 from archibald.geometry.lifting_set import LiftingSet, Rig, Appendage
 
-from aerosandbox.geometry.fuselage import Fuselage, FuselageXSec
-from aerosandbox.geometry.propulsor import Propulsor
-import aerosandbox.geometry.mesh_utilities as mesh_utils
+from archibald.geometry.fuselage import Fuselage, FuselageXSec # TODO integrate and rename
+from archibald.geometry.propulsor import Propulsor # TODO merge with Propeller
 
 
 
