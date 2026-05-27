@@ -79,6 +79,7 @@ mesh.draw(
     draw_plane=True,
     point=np.array([0, 0, T0]),
     # backend="matplotlib",
+    # backend="plotly",
 )
 
 #%%

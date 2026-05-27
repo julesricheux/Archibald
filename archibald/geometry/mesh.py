@@ -928,8 +928,8 @@ class ArchibaldMesh(ArchibaldObject):
                     - np.dot(
                         wide(self.area_centroid) - wide(point),
                         tall(normal),
-                    ) * point
-                ).flatten() # <--- Flatten forces it to shape (3,)
+                    )
+                ).flatten()
                 
                 if np.allclose(normal[:2], 0):
                     v1 = np.array([1., 0., 0.])
@@ -1038,7 +1038,7 @@ class ArchibaldMesh(ArchibaldObject):
                     - np.dot(
                         wide(self.area_centroid) - wide(point),
                         tall(normal),
-                    ) * point
+                    )
                 )
                 
                 if np.allclose(normal[:2], 0):
