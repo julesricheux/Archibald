@@ -29,45 +29,12 @@ import archibald2.numpy as np
 
 #%% FUNCTIONS
 
-def compute_AW(tws, twa, V):
-    """
-    Computes apparent wind from true wind.
+def tall(array):
+    return np.reshape(array, (-1, 1))
 
-    Parameters
-    ----------
-    tws : float. True wind speed in m/s
-    twa : float. True wind angle in deg
-    V : float. Boat speed in m/s
 
-    Returns
-    -------
-    Apparent wind speed in m/s
-    Apparent wind angle in deg
-
-    """
-    
-    # Convert inputs to numpy arrays for vectorized operations
-    tws = np.asarray(tws)
-    twa = np.asarray(twa)
-    V = np.asarray(V)
-    
-    # Calculate true wind components
-    TW_x = tws * np.cosd(twa)
-    TW_y = tws * np.sind(twa)
-    
-    # Boat speed components (assuming boat is moving along x-axis)
-    SW_x = V
-    SW_y = np.zeros_like(V)
-    
-    # Apparent wind components
-    AW_x = TW_x + SW_x
-    AW_y = TW_y + SW_y
-    
-    # Apparent wind speed and angle
-    aws = np.sqrt(AW_x**2 + AW_y**2)
-    awa = np.arctan2(AW_y, AW_x)
-    
-    return aws, awa*u.deg
+def wide(array):
+    return np.reshape(array, (1, -1))
 
 
 #%% CLASSES
@@ -133,6 +100,14 @@ class OperatingPoint():
         self.dx = dx
         self.dy = dy
         self.dz = dz
+        
+        self.xyz = wide(np.array([dx, dy, dz]))
+        # self.xyz = (
+        #     wide([1., 0., 0.]) * self.dx +\
+        #     wide([0., 1., 0.]) * self.dy +\
+        #     wide([0., 0., 1.]) * self.dz
+        # )
+
         
         self.p = p
         self.q = q

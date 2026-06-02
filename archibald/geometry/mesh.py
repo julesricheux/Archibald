@@ -9,6 +9,7 @@ import archibald.numpy as np
 
 from typing import Union, List
 from archibald.common import ArchibaldObject
+from archibald.performance import OperatingPoint
 from archibald.toolbox.string_formatting import axis_string_to_array
 
 #%%
@@ -22,9 +23,9 @@ def wide(array):
 
 
 def rotation_matrix(
-        heel_deg: float = 0.,
-        trim_deg: float = 0.,
-        leeway_deg: float = 0.,
+        heel: float = 0.,
+        trim: float = 0.,
+        leeway: float = 0.,
     ):
     """
     Computes the standard naval/aeronautics rotation matrix (Z-Y-X convention)
@@ -45,9 +46,9 @@ def rotation_matrix(
         A 3x3 rotation matrix.
     """
     # Convert angles to radians
-    phi = np.radians(heel_deg)      # Roll
-    theta = np.radians(trim_deg)    # Pitch
-    psi = np.radians(leeway_deg)    # Yaw / Leeway
+    phi = np.radians(heel)      # Roll
+    theta = np.radians(trim)    # Pitch
+    psi = np.radians(leeway)    # Yaw / Leeway
 
     # Pre-compute sine and cosine values
     c_phi, s_phi = np.cos(phi), np.sin(phi)
@@ -400,8 +401,8 @@ class ArchibaldMesh(ArchibaldObject):
     @vertices.setter
     def vertices(self, value):
         # Check if value is a numpy array, CasADi MX, or CasADi DM
-        if np.is_casadi_type(value):
-            raise ValueError("Vertices must be a numpy array or a CasADi array (MX or DM).")
+        if not (np.is_casadi_type(value) or type(value) == np.ndarray):
+            raise ValueError(f"Vertices must be a numpy array or a CasADi array (MX or DM), not {type(value)}.")
         
         # Check if the shape matches the expected number of vertices and 3D coordinates
         if value.shape != (self.faces.max() + 1, 3):
@@ -456,8 +457,8 @@ class ArchibaldMesh(ArchibaldObject):
         if self._data['edges'] is None:
             self.compute_edges()
             
-        edges_pts = self.vertices[self.edges]
-        v0, v1 = edges_pts[:, 0, :], edges_pts[:, 1, :]
+        # edges_pts = self.vertices[self.edges[:, 0]]
+        v0, v1 = self.vertices[self.edges[:, 0]], self.vertices[self.edges[:, 1]]
         
         self._data['edges_lengths'] = np.linalg.norm(v1 - v0, axis=1)
         
@@ -469,7 +470,7 @@ class ArchibaldMesh(ArchibaldObject):
         if self._data['edges_lengths'] is None:
             self.compute_edges_lengths()
         
-        self._data['average_length'] = self.edges_lengths.mean()
+        self._data['average_length'] = np.mean(self.edges_lengths)
         
     def compute_cross_product(self):
         """
@@ -793,7 +794,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     def hydrostatics(
             self,
-            point: Union[np.ndarray, List],
+            point: Union[np.ndarray, List] = np.zeros(3),
             normal: Union[np.ndarray, List, str] = "z",
         ):
         
@@ -813,7 +814,8 @@ class ArchibaldMesh(ArchibaldObject):
             normal
         )[self.faces]
         
-        avg_dist = self.average_length
+        # avg_dist = self.average_length
+        avg_dist = 1.
         
         mix_weights = np.sigmoid(
             np.mean(
@@ -922,6 +924,28 @@ class ArchibaldMesh(ArchibaldObject):
             return ArchibaldPolygon(intersections, slice_edges)
         
         return ArchibaldPolygon(None, None)
+    
+    def transform(
+            self,
+            op_point: OperatingPoint,
+            inverse: bool = False,
+        ):
+        
+        mat = rotation_matrix(
+            heel=op_point.heel,
+            leeway=op_point.leeway,
+            trim=op_point.trim
+        )
+        
+        if inverse:
+            rot = mat
+        else:
+            rot = mat.T
+    
+        self.vertices = np.add(
+            self.vertices @ rot,
+            op_point.xyz
+        )
             
     def draw(
         self,

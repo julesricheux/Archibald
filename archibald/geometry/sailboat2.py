@@ -29,7 +29,7 @@ import archibald.toolbox.units as u
 from archibald.common import ArchibaldObject
 
 
-class Sailboat(ArchibaldObject):
+class Sailboat2(ArchibaldObject):
     
     def __init__(
             self,
@@ -39,9 +39,14 @@ class Sailboat(ArchibaldObject):
             cog: Union[np.ndarray, List] = None,
             rig: Rig = None,
             app: Appendage = None,
-            hull: List[Hull] = [],
-            propeller: List[Propeller] = [],
+            hulls: List[Hull] = [],
+            propellers: List[Propeller] = [],
         ):
         
-        pass
+        self.hulls = hulls
+        self.displacement = displacement
+        self.cog = cog
+        
+        self.forces = {}
+        self.moments = {}
         
