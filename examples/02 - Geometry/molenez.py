@@ -3,7 +3,7 @@ import archibald.numpy as np
 
 from archibald.optimization import Opti
 from archibald.performance import OperatingPoint
-from archibald.geometry.mesh import ArchibaldMesh, rotation_matrix
+from archibald.geometry.mesh import ArchibaldMesh
 from archibald.toolbox.mesh_utils import load_stl
 
 

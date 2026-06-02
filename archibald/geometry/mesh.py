@@ -572,7 +572,7 @@ class ArchibaldMesh(ArchibaldObject):
         return np.add(
             self.vertices,
             -wide(point)
-        ) @ normal
+        ) @ tall(normal)
     
     def faces_distances_to_plane(
         self,
