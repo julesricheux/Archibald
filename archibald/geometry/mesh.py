@@ -383,6 +383,20 @@ class ArchibaldMesh(ArchibaldObject):
             
         return self._data['edges']
     
+    @property
+    def edges_lengths(self):
+        if self._data['edges_lengths'] is None:
+            self.compute_edges_lengths()
+            
+        return self._data['edges_lengths']
+    
+    @property
+    def average_length(self):
+        if self._data['average_length'] is None:
+            self.compute_average_length()
+            
+        return self._data['average_length']
+    
     @vertices.setter
     def vertices(self, value):
         # Check if value is a numpy array, CasADi MX, or CasADi DM
@@ -406,6 +420,7 @@ class ArchibaldMesh(ArchibaldObject):
         self._data = {
             'cross_product': None,
             'edges': None,
+            'edges_lengths': None,
             'triangle_centers': None,
             'triangle_areas': None,
             'tetrahedron_centers': None,
@@ -416,6 +431,7 @@ class ArchibaldMesh(ArchibaldObject):
             'volume_centroid': None,
             'normals': None,
             'bounds': None,
+            'average_length': None,
         }
         
     def compute_edges(self):
@@ -431,6 +447,29 @@ class ArchibaldMesh(ArchibaldObject):
         
         # Remove duplicates
         self._data['edges'] = np.unique(edges, axis=0)
+        
+    def compute_edges_lengths(self):
+        """
+        Compute the length of each mesh edge.
+
+        """
+        if self._data['edges'] is None:
+            self.compute_edges()
+            
+        edges_pts = self.vertices[self.edges]
+        v0, v1 = edges_pts[:, 0, :], edges_pts[:, 1, :]
+        
+        self._data['edges_lengths'] = np.linalg.norm(v1 - v0, axis=1)
+        
+    def compute_average_length(self):
+        """
+        Compute the average mesh edge length.
+
+        """
+        if self._data['edges_lengths'] is None:
+            self.compute_edges_lengths()
+        
+        self._data['average_length'] = self.edges_lengths.mean()
         
     def compute_cross_product(self):
         """

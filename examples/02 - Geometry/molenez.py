@@ -98,14 +98,6 @@ opti.minimize((volume - ref)**2.)
 
 sol = opti.solve()
 
-mesh.draw(
-    draw_plane=True,
-    point=np.array([0, 0, sol(T)]),
-    # backend="matplotlib",
-    # backend="plotly",
-    set_axis_visibility=True,
-)
-
 #%% DRAWING
 
 volume, _ = mesh.hydrostatics(point)
