@@ -67,13 +67,13 @@ T0, ref = 1.3, 116.487
 # T0, ref = 1.5, 144.240
 # T0, ref = 10., 362.907
 
-heel = 12.
-trim = -5.
-leeway = 10.
+heel = 0.
+trim = 0.
+leeway = 0.
 
 rot = rotation_matrix(heel_deg=heel, leeway_deg=leeway, trim_deg=trim)
 
-mesh.vertices = mesh.vertices @ rot.T
+mesh.vertices = mesh.vertices @ rot.T @ rot
 
 mesh.draw(
     draw_plane=True,
@@ -97,6 +97,14 @@ volume, _ = mesh.hydrostatics(point)
 opti.minimize((volume - ref)**2.)
 
 sol = opti.solve()
+
+mesh.draw(
+    draw_plane=True,
+    point=np.array([0, 0, sol(T)]),
+    # backend="matplotlib",
+    # backend="plotly",
+    set_axis_visibility=True,
+)
 
 #%% DRAWING
 

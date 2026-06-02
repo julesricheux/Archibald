@@ -73,21 +73,24 @@ def compute_AW(tws, twa, V):
 #%% CLASSES
 
 class OperatingPoint():
-    def __init__(self,
-                 environment: Environment = Environment(),
-                 stw: float = 1., # kts
-                 tws0: float = 1., # kts
-                 twa: float = 0., # deg
-                 z0: float = 10., # m
-                 a: float = 0.12, # Hellmann coefficient
-                 heel: float = 0., # deg
-                 trim: float = 0., # deg
-                 leeway: float = 0., # deg
-                 immersion: float = 0., # m
-                 p: float = 0.,
-                 q: float = 0.,
-                 r: float = 0.,
-                 ):
+    def __init__(
+            self,
+            environment: Environment = Environment(),
+            stw: float = 1., # kts
+            tws0: float = 1., # kts
+            twa: float = 0., # deg
+            z0: float = 10., # m
+            a: float = 0.12, # Hellmann coefficient
+            heel: float = 0., # deg
+            trim: float = 0., # deg
+            leeway: float = 0., # deg
+            dx: float = 0., # m
+            dy: float = 0., # m
+            dz: float = 0., # m
+            p: float = 0.,
+            q: float = 0.,
+            r: float = 0.,
+        ):
         """
         An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
 
@@ -127,7 +130,9 @@ class OperatingPoint():
         self.heel = heel
         self.trim = trim
         self.leeway = leeway
-        self.immersion = immersion
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
         
         self.p = p
         self.q = q
