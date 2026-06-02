@@ -10,6 +10,7 @@ import archibald.numpy as np
 from typing import Union, List
 from archibald.common import ArchibaldObject
 from archibald.environment import Environment
+from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
 
 class Hull2(ArchibaldObject):
@@ -37,11 +38,19 @@ class Hull2(ArchibaldObject):
     def draw(self):
         if self.mesh:
             self.mesh.draw(backend="matplotlib")
+            
+    def compute_hydrostatics_properties(
+            self,
+            op_point: OperatingPoint,
+        ):
+        pass
         
         
 if __name__=="__main__":
     import os
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull2(mesh=stl)
+    
+    op_point = OperatingPoint()
     
     hull.draw()

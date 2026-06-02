@@ -2,8 +2,9 @@
 import archibald.numpy as np
 
 from archibald.optimization import Opti
-from archibald.geometry.mesh import ArchibaldMesh
+from archibald.geometry.mesh import ArchibaldMesh, rotation_matrix
 from archibald.toolbox.mesh_utils import load_stl
+
 
 #%% FUNCTIONS
 
@@ -66,11 +67,20 @@ T0, ref = 1.3, 116.487
 # T0, ref = 1.5, 144.240
 # T0, ref = 10., 362.907
 
+heel = 12.
+trim = -5.
+leeway = 10.
+
+rot = rotation_matrix(heel_deg=heel, leeway_deg=leeway, trim_deg=trim)
+
+mesh.vertices = mesh.vertices @ rot.T
+
 mesh.draw(
     draw_plane=True,
     point=np.array([0, 0, T0]),
     # backend="matplotlib",
     # backend="plotly",
+    set_axis_visibility=True,
 )
 
 #%%
