@@ -930,22 +930,8 @@ class ArchibaldMesh(ArchibaldObject):
             op_point: OperatingPoint,
             inverse: bool = False,
         ):
-        
-        mat = rotation_matrix(
-            heel=op_point.heel,
-            leeway=op_point.leeway,
-            trim=op_point.trim
-        )
-        
-        if inverse:
-            rot = mat
-        else:
-            rot = mat.T
     
-        self.vertices = np.add(
-            self.vertices @ rot,
-            op_point.xyz
-        )
+        self.vertices = op_point.apply_transformations(self.vertices, inverse=inverse)
             
     def draw(
         self,

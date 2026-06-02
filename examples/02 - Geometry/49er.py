@@ -2,6 +2,7 @@
 import archibald.numpy as np
 
 from archibald.optimization import Opti
+from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
 from archibald.toolbox.mesh_utils import load_stl
 
@@ -89,9 +90,11 @@ opti = Opti()
 T = opti.variable(init_guess = T0)
 # T = T0
 
-point = np.array([0., 0., 1.]) * T
+op_point = OperatingPoint(dz=-T)
 
-volume, _ = mesh.hydrostatics(point)
+mesh.transform(op_point)
+
+volume, _ = mesh.hydrostatics()
 
 opti.minimize((volume - ref)**2.)
 
@@ -99,12 +102,6 @@ sol = opti.solve()
 
 #%% DRAWING
 
-# mesh.draw(
-#     draw_plane=True,
-#     point=np.array([0, 0, sol(T)])
-# )
-
-volume, _ = mesh.hydrostatics(point)
 print(f"Volume : {sol(volume)*1000:.1f} L")
 # print(f"Draft error : {sol(T-T0)/T0*100.:.1f} %")
 print(f"Volume error : {sol(volume-ref)/ref*100.:.1f} %")

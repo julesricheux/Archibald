@@ -29,35 +29,65 @@ import archibald2.numpy as np
 
 #%% FUNCTIONS
 
-def tall(array):
-    return np.reshape(array, (-1, 1))
+def compute_AW(tws, twa, V):
+    """
+    Computes apparent wind from true wind.
 
+    Parameters
+    ----------
+    tws : float. True wind speed in m/s
+    twa : float. True wind angle in deg
+    V : float. Boat speed in m/s
 
-def wide(array):
-    return np.reshape(array, (1, -1))
+    Returns
+    -------
+    Apparent wind speed in m/s
+    Apparent wind angle in deg
+
+    """
+    
+    # Convert inputs to numpy arrays for vectorized operations
+    tws = np.asarray(tws)
+    twa = np.asarray(twa)
+    V = np.asarray(V)
+    
+    # Calculate true wind components
+    TW_x = tws * np.cosd(twa)
+    TW_y = tws * np.sind(twa)
+    
+    # Boat speed components (assuming boat is moving along x-axis)
+    SW_x = V
+    SW_y = np.zeros_like(V)
+    
+    # Apparent wind components
+    AW_x = TW_x + SW_x
+    AW_y = TW_y + SW_y
+    
+    # Apparent wind speed and angle
+    aws = np.sqrt(AW_x**2 + AW_y**2)
+    awa = np.arctan2(AW_y, AW_x)
+    
+    return aws, awa*u.deg
 
 
 #%% CLASSES
 
 class OperatingPoint():
-    def __init__(
-            self,
-            environment: Environment = Environment(),
-            stw: float = 1., # kts
-            tws0: float = 1., # kts
-            twa: float = 0., # deg
-            z0: float = 10., # m
-            a: float = 0.12, # Hellmann coefficient
-            heel: float = 0., # deg
-            trim: float = 0., # deg
-            leeway: float = 0., # deg
-            dx: float = 0., # m
-            dy: float = 0., # m
-            dz: float = 0., # m
-            p: float = 0.,
-            q: float = 0.,
-            r: float = 0.,
-        ):
+    def __init__(self,
+                 environment: Environment = Environment(),
+                 stw: float = 1., # kts
+                 tws0: float = 1., # kts
+                 twa: float = 0., # deg
+                 z0: float = 10., # m
+                 a: float = 0.12, # Hellmann coefficient
+                 heel: float = 0., # deg
+                 trim: float = 0., # deg
+                 leeway: float = 0., # deg
+                 immersion: float = 0., # m
+                 p: float = 0.,
+                 q: float = 0.,
+                 r: float = 0.,
+                 ):
         """
         An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
 
@@ -97,17 +127,7 @@ class OperatingPoint():
         self.heel = heel
         self.trim = trim
         self.leeway = leeway
-        self.dx = dx
-        self.dy = dy
-        self.dz = dz
-        
-        self.xyz = wide(np.array([dx, dy, dz]))
-        # self.xyz = (
-        #     wide([1., 0., 0.]) * self.dx +\
-        #     wide([0., 1., 0.]) * self.dy +\
-        #     wide([0., 0., 1.]) * self.dz
-        # )
-
+        self.immersion = immersion
         
         self.p = p
         self.q = q

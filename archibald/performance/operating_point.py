@@ -12,14 +12,84 @@ AeroSandbox is distributed under its original MIT license.
 #%% DEPENDENCIES
 
 from typing import Tuple, Union, Dict, List
-
+from archibald2.tools.string_formatting import trim_string
 import inspect
 
-import archibald.numpy as np
-import archibald.toolbox.units as u
-from archibald.environment import Environment
-from archibald.toolbox.env_utils import grad_wind
-from archibald.toolbox.string_formatting import trim_string
+from archibald2.tools.env_utils import grad_wind
+from archibald2.environment.environment import Environment
+import archibald2.tools.units as u
+
+import archibald2.numpy as np
+
+
+#%% FUNCTIONS
+
+def tall(array):
+    return np.reshape(array, (-1, 1))
+
+
+def wide(array):
+    return np.reshape(array, (1, -1))
+
+
+def rotation_matrix(
+        heel: float = 0.,
+        trim: float = 0.,
+        leeway: float = 0.,
+    ):
+    """
+    Computes the standard naval/aeronautics rotation matrix (Z-Y-X convention)
+    to rotate points based on leeway, trim, and heel angles.
+    
+    Parameters:
+    -----------
+    heel_deg : float
+        Heel angle (Roll) in degrees. Positive heels to starboard.
+    trim_deg : float
+        Trim angle (Pitch) in degrees. Positive is bow down.
+    leeway_deg : float
+        Leeway angle (Yaw) in degrees. Positive is leeway to starboard.
+        
+    Returns:
+    --------
+    R : numpy.ndarray
+        A 3x3 rotation matrix.
+    """
+    # Convert angles to radians
+    phi = np.radians(heel)      # Roll
+    theta = np.radians(trim)    # Pitch
+    psi = np.radians(leeway)    # Yaw / Leeway
+
+    # Pre-compute sine and cosine values
+    c_phi, s_phi = np.cos(phi), np.sin(phi)
+    c_theta, s_theta = np.cos(theta), np.sin(theta)
+    c_psi, s_psi = np.cos(psi), np.sin(psi)
+
+    # Rotation around Z-axis (Leeway / Yaw)
+    R_z = np.array([
+        [c_psi, -s_psi, 0],
+        [s_psi,  c_psi, 0],
+        [0,      0,     1]
+    ])
+
+    # Rotation around Y-axis (Trim / Pitch)
+    R_y = np.array([
+        [ c_theta, 0, s_theta],
+        [ 0,       1, 0      ],
+        [-s_theta, 0, c_theta]
+    ])
+
+    # Rotation around X-axis (Heel / Roll)
+    R_x = np.array([
+        [1, 0,       0      ],
+        [0, c_phi, -s_phi],
+        [0, s_phi,  c_phi]
+    ])
+
+    # Combined matrix: R = Rz * Ry * Rx
+    R = R_z @ R_y @ R_x
+
+    return R
 
 
 #%% CLASSES
@@ -36,57 +106,32 @@ class OperatingPoint():
             heel: float = 0., # deg
             trim: float = 0., # deg
             leeway: float = 0., # deg
-            immersion: float = 0., # m
+            dx: float = 0., # m
+            dy: float = 0., # m
+            dz: float = 0., # m
             p: float = 0.,
             q: float = 0.,
             r: float = 0.,
         ):
         """
-        An object that represents the instantaneous operating state of a vessel in a given environment.
-        
-        This class gathers the kinematic state of the vessel together with the ambient wind
-        conditions, allowing consistent evaluation of aerodynamic and hydrodynamic loads.
-        
+        An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
+
         Args:
-            environment (Environment):
-                The environment object containing fluid properties (air, water, etc.).
-        
-            stw (float):
-                Speed through water. [knots]
-        
-            tws0 (float):
-                True wind speed at reference height z0. [knots]
-        
-            twa (float):
-                True wind angle, defined in the horizontal plane relative to the vessel heading. [degrees]
-        
-            z0 (float):
-                Reference height at which the true wind speed is defined. [m]
-        
-            a (float):
-                Hellmann exponent used to model vertical wind shear:
-                V(z) = V(z0) * (z / z0)^a [-]
-        
-            heel (float):
-                Heel angle of the vessel (rotation about longitudinal axis). [degrees]
-        
-            trim (float):
-                Trim angle of the vessel (rotation about transverse axis). [degrees]
-        
-            leeway (float):
-                Leeway angle, i.e. the angle between the vessel heading and its actual trajectory through water. [degrees]
-        
-            immersion (float):
-                Vertical displacement of the vessel relative to its reference floating position. [m]
-        
-            p (float):
-                Roll rate about the body x-axis. [rad/s]
-        
-            q (float):
-                Pitch rate about the body y-axis. [rad/s]
-        
-            r (float):
-                Yaw rate about the body z-axis. [rad/s]
+            atmosphere: The atmosphere object (of type asb.Atmosphere). Defaults to sea level conditions.
+
+            tws: The flight velocity, expressed as a true airspeed. [m/s]
+
+            twa: The angle of attack. [degrees]
+
+            beta: The sideslip angle. (Reminder: convention that a positive beta implies that the oncoming air comes
+            from the pilot's right-hand side.) [degrees]
+
+            p: The roll rate about the x_b axis. [rad/sec]
+
+            q: The pitch rate about the y_b axis. [rad/sec]
+
+            r: The yaw rate about the z_b axis. [rad/sec]
+
         """
         self.environment = environment
         self._stw = stw * u.knot
@@ -107,7 +152,17 @@ class OperatingPoint():
         self.heel = heel
         self.trim = trim
         self.leeway = leeway
-        self.immersion = immersion
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
+        
+        self.mat = rotation_matrix(
+            heel=heel,
+            leeway=leeway,
+            trim=trim,
+        )
+        
+        self.xyz = wide(np.array([dx, dy, dz]))
         
         self.p = p
         self.q = q
@@ -565,13 +620,31 @@ class OperatingPoint():
         rotation_velocity_geometry_axes = -rotation_velocity_geometry_axes  # negative sign, since we care about the velocity the WING SEES, not the velocity of the wing.
 
         return rotation_velocity_geometry_axes
+    
+    def apply_transformations(
+            self,
+            geometry: Union[np.ndarray, List] = None,
+            inverse: bool = False,
+        ):
+        
+        if inverse:
+            rot = self.mat
+        else:
+            rot = self.mat.T
+    
+        return np.add(
+            geometry @ rot,
+            self.xyz
+        )
+        
 
 
 if __name__ == '__main__':
+    # op_point = OperatingPoint()
     
-    from archibald.optimization import Opti
+    import archibald2 as arb
     
-    opti = Opti()
+    opti = arb.Opti()
 
     z = opti.variable(init_guess=2., lower_bound=0.)
     
@@ -583,13 +656,14 @@ if __name__ == '__main__':
               a=0.12,
               )
 
-    obj = (op_point.tws(z) - 10.) ** 2
+    obj = (op_point.tws(z) - 11.) ** 2
+
+    # opti.subject_to(
+    #     aero["CL"] == 0.5
+    # )
 
     opti.minimize(obj)
     
     sol = opti.solve()
     
     print(sol(z))
-
-
-
