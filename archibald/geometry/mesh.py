@@ -813,9 +813,11 @@ class ArchibaldMesh(ArchibaldObject):
             normal
         )[self.faces]
         
+        avg_dist = self.average_length
+        
         mix_weights = np.sigmoid(
             np.mean(
-                vdist, 
+                vdist/avg_dist, 
                 axis=1
             ) * 10./3.
             # ) * np.sqrt(10.)
