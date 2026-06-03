@@ -17,7 +17,7 @@ import archibald.numpy as np
 
 import casadi as ca
 
-from archibald.toolbox.dyn_utils import Cf_hull
+from archibald.dynamics.hydro.common import Cf_hull
 from archibald.toolbox.math_utils import ReLU
 
 #%% FUNCTIONS

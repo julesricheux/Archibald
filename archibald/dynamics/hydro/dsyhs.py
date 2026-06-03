@@ -7,6 +7,7 @@ Created on Wed Jun  3 20:50:45 2026
 
 import archibald.numpy as np
 from archibald.modeling import InterpolatedModel
+from archibald.dynamics.hydro.common import Cf_hull
 
 # Delft table data 
 # Coefficients a0 to a7
@@ -30,24 +31,48 @@ for i in range(8):
         y_data_structured=_keunig_coefs[f"a{i}"],
         method="bspline"
     )
+    
 
-
-def compute_residuary_resistance_dsyhs(
-    Fr,
-    rho,
-    g,
-    volume,
-    LCB_fpp,
-    Lwl,
-    Cp,
-    Awp,
-    Bwl,
-    LCF_fpp,
-    T,
-    Cx,
-):
+def compute_Rf_dsyhs(
+        Re,
+        rho,
+        Aws,
+        stw,
+    ):
     """
-    Calculates the residuary resistance (R_Rc) based on the 
+    Calculates the frctionnal resistance (Rf) based on the 
+    Delft Systematic Yacht Hull series polynomial equation.
+    
+    Parameters:
+    -----------
+    ...
+    
+    Returns:
+    --------
+    ...
+    """
+    V = stw * u.kt # speed through water in m/s
+    
+    Rf = 0.5 * Cf_hull(Re) * rho * Aws * V**2
+    return Rf
+
+
+def compute_Rw_dsyhs(
+        Fr,
+        rho,
+        g,
+        volume,
+        Lwl,
+        Bwl,
+        T,
+        Awp,
+        Cp,
+        Cx,
+        LCB_fpp,
+        LCF_fpp,
+    ):
+    """
+    Calculates the residuary resistance (Rw) based on the 
     Delft Systematic Yacht Hull series polynomial equation.
     
     Parameters:
@@ -87,7 +112,7 @@ def compute_residuary_resistance_dsyhs(
     # Calculate the non-dimensional resistance coefficient
     resistance_coeff = a[0] + (term1 * vol_ratio) + (term2 * vol_ratio)
     
-    # Convert back to dimensional resistance (R_Rc) in Newtons
+    # Convert back to dimensional resistance in Newtons
     Rw = resistance_coeff * volume * rho * g
     
     return Rw
@@ -102,7 +127,7 @@ if __name__=="__main__":
     
     # Mock dimensions # TODO find correct mock dimensions for verification
     hull_params = {
-        'Fr': 0.75,
+        'Fr': 0.35,
         'rho': 1025.0,     # kg/m^3 (seawater)
         'g': 9.81,         # m/s^2
         'volume': 6.0,      # m^3 (approx 6 tons)
@@ -113,10 +138,10 @@ if __name__=="__main__":
         'Bwl': 3.0,       # m
         'LCF_fpp': 5.4,    # m
         'T': 0.8,        # m
-        'Cx': 0.70
+        'Cx': 0.70,
     }
     
-    res = compute_residuary_resistance_dsyhs(**hull_params)
+    res = compute_Rw_dsyhs(**hull_params)
     print(f"Boat speed: {hull_params['Fr']*np.sqrt(hull_params['g']*hull_params['Lwl'])/u.kt:.2f} kts")
     print(f"Calculated Residuary Resistance: {res:.2f} N")
     
