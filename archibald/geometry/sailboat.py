@@ -249,8 +249,6 @@ if __name__=="__main__":
     T = opti.variable(init_guess=T0)
     heel = opti.variable(init_guess=heel0)
     trim = opti.variable(init_guess=trim0)
-    # trim = opti.parameter(trim0)
-    # heel = opti.parameter(heel0)
     leeway = opti.parameter(leeway0)
     
     op_point = OperatingPoint(
@@ -260,13 +258,12 @@ if __name__=="__main__":
         leeway=leeway,
     )
     
-
-    stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
-    hull = Hull(mesh=stl)
+    hull = Hull(
+        mesh=os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
+    )
     
     sailboat = Sailboat(
         displacement=120e3,
-        # displacement=255.1e3,
         cog=[12.2, 0., 1.],
         hulls=[hull],
     )
