@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-HOLTROP METHOD FUNCTIONS
-
-Created: -/-/2023
-Last update: 11/02/2025
-
-@author: Jules Richeux
-@university: ENSA Nantes, FRANCE
-@contributors: -
+HOLTROP-MENNEN 1984 METHOD FUNCTIONS
 """
 
 #%% DEPENDENCIES
@@ -18,258 +11,650 @@ import archibald.toolbox.units as u
 from archibald.dynamics.hydro.common import Cf_hull
 from archibald.toolbox.math_utils import ReLU
 
-#%% FUNCTIONS
+#%% INDIVIDUAL COEFFICIENTS
 
-# RESISTANCE COMPONENTS
+def c_14(
+        Cstern,
+        **kwargs,
+    ):
+    r"""Coefficient c14 used in form factor prediction.
 
-def compute_Rf_holtrop(
-        stw,
-        Lbp,
+    According to :cite:`holtrop1982approximate`, p. 166:
+
+    .. math::
+        c_{14} = 1 + 0.011\,C_{\text{stern}}
+
+    Parameters
+    ----------
+    Cstern : float, Stern shape parameter [-].
+
+    Returns
+    -------
+    float, Coefficient c14 [-].
+    """
+    return 1.0 + 0.011 * Cstern
+
+
+def L_R(
         Lwl,
-        volume,
-        Bwl,
-        T,
-        Aws,
         Cp,
         lcb,
-        Csternchoice,
+        **kwargs,
+    ):
+    r"""Stern run length LR used in form factor prediction.
+
+    According to :cite:`holtrop1982approximate`, p. 166:
+
+    .. math::
+        L_R = L_{WL} \left(1 - C_P + \frac{0.06\,C_P\,\text{lcb}}{4\,C_P - 1}\right)
+
+    Parameters
+    ----------
+    Lwl : float, Waterline length [m].
+    Cp : float, Prismatic coefficient [-].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lwl from midship [-].
+
+    Returns
+    -------
+    float, Stern run length LR [m].
+    """
+    return Lwl * (1 - Cp + 0.06 * Cp * lcb / (4 * Cp - 1))
+
+
+def one_plus_k(
+        Lwl,
+        Bwl,
+        T,
+        volume,
+        Cp,
+        Cstern,
+        lcb,
+        **kwargs,
+    ):
+    r"""Form factor (1+k) for frictional resistance prediction.
+
+    According to :cite:`holtrop1982approximate`, p. 166:
+
+    .. math::
+        1 + k = 0.93 + 0.487118\,c_{14}
+            \left(\frac{B}{L}\right)^{1.06806}
+            \left(\frac{T}{L}\right)^{0.46106}
+            \left(\frac{L}{L_R}\right)^{0.121563}
+            \left(\frac{L^3}{\nabla}\right)^{0.36486}
+            \left(1 - C_P\right)^{-0.604247}
+
+    Parameters
+    ----------
+    Lwl : float, Waterline length [m].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    volume : float, Displaced volume [m³].
+    Cp : float, Prismatic coefficient [-].
+    Cstern : float, Stern shape parameter [-].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lwl from midship [-].
+
+    Returns
+    -------
+    float, Form factor (1+k) [-].
+    """
+    _c14 = c_14(Cstern=Cstern)
+    _Lr  = L_R(Lwl=Lwl, Cp=Cp, lcb=lcb)
+    return (
+        0.93
+        + 0.487118 * _c14
+        * (Bwl / Lwl) ** 1.06806
+        * (T / Lwl) ** 0.46106
+        * (Lwl / _Lr) ** 0.121563
+        * (Lwl ** 3 / volume) ** 0.36486
+        * (1 - Cp) ** (-0.604247)
+    )
+
+
+def C_A(
+        Lwl,
+        **kwargs,
+    ):
+    r"""Model-ship correlation allowance coefficient CA.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        C_A = 0.00675\,(L + 100)^{-1/3} - 0.00064
+
+    Parameters
+    ----------
+    Lwl : float, Waterline length [m].
+
+    Returns
+    -------
+    float, Correlation allowance coefficient CA [-].
+    """
+    return 0.00675 * (Lwl + 100) ** (-1/3) - 0.00064
+
+
+def Re(
+        stw,
+        Lwl,
         nu,
-        rho,
-        uInterval=False,
         **kwargs,
     ):
+    r"""Reynolds number for frictional resistance prediction.
+
+    .. math::
+        \text{Re} = \frac{V\,L}{\nu}
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    Lwl : float, Waterline length [m].
+    nu : float, Kinematic viscosity of water [m²/s].
+
+    Returns
+    -------
+    float, Reynolds number [-].
     """
-    Calculate the frictional resistance of a ship using the ITTC '57 method
-    and Holtrop form factor (1+k).
-    
-    Parameters:
-    -----------
-        stw (float): Speed through water in knots
-        Lbp (float): Length between perpendiculars (m)
-        Lwl (float): Length at waterline (m)
-        volume (float): Volume displacement (m^3)
-        Bwl (float): Beam at waterline (m)
-        T (float): Draft (m)
-        Aws (float): Wetted surface area (m^2)
-        Cp (float): Prismatic coefficient
-        lcb (float): LCB position as a % of L forward of midships L/2
-        Csternchoice (int): Stern form (1=transom, 2=V-shaped, 3=U-shaped, 4=Spoon)
-        nu (float): Kinematic viscosity of water (m^2/s)
-        rho (float): Density of water (kg/m^3)
-        uInterval (bool): Whether to return min/max uncertainty intervals
-        
-    Returns:
-    --------
-        float or tuple: Frictional resistance of the ship (N)
-    """
-    Vms = stw * u.kt
-
-    if Csternchoice == 1:
-        Cstern = -25.
-    elif Csternchoice == 2:
-        Cstern = -10.
-    elif Csternchoice == 3:
-        Cstern = 0.
-    elif Csternchoice == 4:
-        Cstern = 10.
-    else:
-        # Default to standard U-shape if invalid
-        Cstern = 0.
-    
-    c14 = 1 + 0.011 * Cstern
-    Lr = Lwl * (1 - Cp + 0.06 * Cp * lcb / (4 * Cp - 1))
-
-    k = 0.93 + 0.487118 * c14 * (Bwl/Lwl)**1.06806 * (T/Lwl)**0.46106 * \
-        (Lwl/Lr)**0.121563 * (Lwl**3/volume)**0.36486 * (1-Cp)**(-0.604247) - 1
-           
-    sigmaK = k * 0.046 # std deviation 4.6%
-    
-    Re_corr = (np.softplus(Vms, beta=1e6) * Lwl) / nu
-    
-    if uInterval:
-        RfMin = (1 + k - 2*sigmaK) * Cf_hull(Re_corr+10.) * (0.5 * rho * Aws * (Vms ** 2))
-        RfMax = (1 + k + 2*sigmaK) * Cf_hull(Re_corr+10.) * (0.5 * rho * Aws * (Vms ** 2))
-        return RfMin, RfMax
-    
-    Rf = (1+k) * Cf_hull(Re_corr+10.) * (0.5 * rho * Aws * (Vms ** 2))
-    
-    return Rf
+    return (np.softplus(stw * u.kt, beta=1e6) * Lwl) / nu
 
 
-def compute_Rw_holtrop(
-        stw,
-        Lwl,
+def c_7(
         Lbp,
         Bwl,
-        T,
-        volume,
-        Abt,
-        Cp,
-        Cwp,
-        Atr,
-        lcb,
-        hB,
-        Cx,
-        ie,
-        rho,
-        g,
         **kwargs,
     ):
+    r"""Coefficient c7 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_7 = \begin{cases}
+            0.229577 \left(\frac{B}{L}\right)^{1/3} & \text{if } \frac{B}{L} < 0.11 \\
+            \frac{B}{L} & \text{if } 0.11 \leq \frac{B}{L} \leq 0.25 \\
+            0.5 - 0.0625 \frac{L}{B} & \text{otherwise}
+        \end{cases}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+
+    Returns
+    -------
+    float, Coefficient c7 [-].
     """
-    Calculates the wave-making resistance of a ship in calm water.
-    """
-    Vms = stw * u.kt
-    Fr = np.softplus(Vms, beta=1e6) / (np.sqrt(g * Lbp))
-    
-    ### RW FOR FROUDE < 0.40
-    Lr = Lwl * ((1 - Cp) - ((0.06 * Cp * lcb) / (4 * Cp - 1)))
-    
-    # Replaced casadi if_else with numpy where for differentiable branching
-    c7 = np.where(
+    return np.where(
         Bwl / Lbp < 0.11,
-        0.229577 * ((Bwl / Lbp) ** 0.3333),
+        0.229577 * (Bwl / Lbp) ** 0.3333,
         np.where(
             Bwl / Lbp <= 0.25,
             Bwl / Lbp,
-            0.5 - (0.0625 * (Lbp / Bwl))
+            0.5 - 0.0625 * (Lbp / Bwl)
         )
     )
-    
-    c1 = 2223105 * (c7 ** 3.78613) * ((T / Bwl) ** 1.07961) * ((90 - ie) ** (-1.37565))
-    c3 = ((0.56 * Abt) ** 1.5) / ((Bwl * T) * ((0.31 * (np.sqrt(Abt))) + (T - hB)))
-    c2 = np.exp(-1.89 * (np.sqrt(c3)))
-    c5 = 1 - (0.8 * (Atr / (Bwl * T * Cx)))
-    
-    c16 = np.where(
-        Cp < 0.8,
-        (8.07981 * Cp) - (13.8673 * (Cp ** 2)) + (6.984388 * (Cp ** 3)),
-        1.73014 - (0.7067 * Cp)
+
+
+def c_1(
+        Lbp,
+        Bwl,
+        T,
+        ie,
+        **kwargs,
+    ):
+    r"""Coefficient c1 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_1 = 2223105\,c_7^{3.78613}
+            \left(\frac{T}{B}\right)^{1.07961}
+            \left(90 - i_E\right)^{-1.37565}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    ie : float, Half angle of entrance of waterline [°].
+
+    Returns
+    -------
+    float, Coefficient c1 [-].
+    """
+    _c7 = c_7(Lbp=Lbp, Bwl=Bwl)
+    return (
+        2223105
+        * _c7 ** 3.78613
+        * (T / Bwl) ** 1.07961
+        * (90 - ie) ** (-1.37565)
     )
-    
-    m1 = (0.014047 * (Lbp / T)) - ((1.75254 * (volume ** (1 / 3))) / Lbp) - (4.79323 * (Bwl / Lbp)) - c16
-    
-    l = np.where(
-        Lbp / Bwl < 12,
-        (1.446 * Cp) - (0.03 * (Lbp / Bwl)),
-        (1.446 * Cp) - 0.36
+
+
+def c_3(
+        Bwl,
+        T,
+        Abt,
+        hB,
+        **kwargs,
+    ):
+    r"""Coefficient c3 accounting for bulbous bow effect on wave resistance.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_3 = \frac{0.56\,A_{BT}^{1.5}}{B\,T\,\left(0.31\sqrt{A_{BT}} + T - h_B\right)}
+
+    Parameters
+    ----------
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    Abt : float, Transverse area of bulbous bow [m²].
+    hB : float, Centre of bulbous bow above keel [m].
+
+    Returns
+    -------
+    float, Coefficient c3 [-].
+    """
+    return (
+        (0.56 * Abt) ** 1.5
+        / (Bwl * T * (0.31 * np.sqrt(Abt) + T - hB))
     )
-    
-    L3_V = (Lbp ** 3) / volume
-    c15 = np.where(
+
+
+def c_2(
+        Bwl,
+        T,
+        Abt,
+        hB,
+        **kwargs,
+    ):
+    r"""Coefficient c2 accounting for bulbous bow effect on wave resistance.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_2 = \exp\left(-1.89\,\sqrt{c_3}\right)
+
+    Parameters
+    ----------
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    Abt : float, Transverse area of bulbous bow [m²].
+    hB : float, Centre of bulbous bow above keel [m].
+
+    Returns
+    -------
+    float, Coefficient c2 [-].
+    """
+    return np.exp(-1.89 * np.sqrt(c_3(Bwl=Bwl, T=T, Abt=Abt, hB=hB)))
+
+
+def c_5(
+        Bwl,
+        T,
+        Cx,
+        Atr,
+        **kwargs,
+    ):
+    r"""Coefficient c5 accounting for transom stern effect on wave resistance.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_5 = 1 - 0.8 \frac{A_{TR}}{B\,T\,C_X}
+
+    Parameters
+    ----------
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    Cx : float, Midship section coefficient [-].
+    Atr : float, Transom area at rest waterline [m²].
+
+    Returns
+    -------
+    float, Coefficient c5 [-].
+    """
+    return 1 - 0.8 * (Atr / (Bwl * T * Cx))
+
+
+def c_15(
+        Lbp,
+        volume,
+        **kwargs,
+    ):
+    r"""Coefficient c15 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_{15} = \begin{cases}
+            -1.69385 & \text{if } \frac{L^3}{\nabla} < 512 \\
+            -1.69385 + \frac{L / \nabla^{1/3} - 8}{2.36}
+            & \text{if } 512 \leq \frac{L^3}{\nabla} < 1726.91 \\
+            0 & \text{otherwise}
+        \end{cases}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    volume : float, Displaced volume [m³].
+
+    Returns
+    -------
+    float, Coefficient c15 [-].
+    """
+    L3_V = Lbp ** 3 / volume
+    return np.where(
         L3_V < 512,
         -1.69385,
         np.where(
             L3_V < 1726.91,
-            -1.69385 + (((Lbp / (volume ** (1 / 3))) - 8) / 2.36),
+            -1.69385 + ((Lbp / volume ** (1/3)) - 8) / 2.36,
             0.
         )
     )
-    
-    m4 = c15 * 0.4 * (np.exp(-0.034 * (Fr ** -3.29)))
-    d_ = -0.9
-    
-    Rw_to_040 = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (Fr ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-
-    # RW FOR 0.40 < FROUDE < 0.55
-    rwo_ = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (0.40 ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-    rwo__ = c1 * c2 * c5 * volume * rho * g * (np.exp((m1 * (0.55 ** d_)) + m4 * (np.cos(l * (Fr ** (-2))))))
-    
-    Rw_from_040_to_055 = rwo_ + (((10 * Fr) - 4) * ((rwo__ - rwo_) / 1.224))
-        
-    # RW FOR FROUDE > 0.55
-    c17 = (6919.3 * (Cx ** (-1.3346))) * ((volume / (Lbp ** 3)) ** 2.00977) * (((Lbp / Bwl) - 2) ** 1.40692)
-    m3 = (-7.2035 * ((Bwl / Lbp) ** 0.326869)) * ((T / Bwl) ** 0.605375)
-    
-    Rw_from_055 = c17 * c2 * c5 * volume * rho * g * (np.exp((m3 * (Fr ** d_) + (m4 * (np.cos(l * (Fr ** -2)))))))
-
-    is_below_040 = np.where(Fr <= 0.40, 1., 0.)
-    is_below_055 = np.where(Fr <= 0.55, 1., 0.)
-    
-    Rw = Rw_to_040 * is_below_040 + \
-         Rw_from_040_to_055 * (1. - is_below_040) * is_below_055 + \
-         Rw_from_055 * (1. - is_below_040) * (1. - is_below_055)
-         
-    return Rw
 
 
-def compute_Rb_holtrop(
+def c_16(
+        Cp,
+        **kwargs,
+    ):
+    r"""Coefficient c16 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        c_{16} = \begin{cases}
+            8.07981\,C_P - 13.8673\,C_P^2 + 6.984388\,C_P^3
+            & \text{if } C_P < 0.8 \\
+            1.73014 - 0.7067\,C_P & \text{otherwise}
+        \end{cases}
+
+    Parameters
+    ----------
+    Cp : float, Prismatic coefficient [-].
+
+    Returns
+    -------
+    float, Coefficient c16 [-].
+    """
+    return np.where(
+        Cp < 0.8,
+        8.07981 * Cp - 13.8673 * Cp ** 2 + 6.984388 * Cp ** 3,
+        1.73014 - 0.7067 * Cp
+    )
+
+
+def c_17(
+        Lbp,
+        Bwl,
+        volume,
+        Cx,
+        **kwargs,
+    ):
+    r"""Coefficient c17 used in high-speed wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        c_{17} = 6919.3\,C_X^{-1.3346}
+            \left(\frac{\nabla}{L^3}\right)^{2.00977}
+            \left(\frac{L}{B} - 2\right)^{1.40692}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    volume : float, Displaced volume [m³].
+    Cx : float, Midship section coefficient [-].
+
+    Returns
+    -------
+    float, Coefficient c17 [-].
+    """
+    return (
+        6919.3
+        * Cx ** (-1.3346)
+        * (volume / Lbp ** 3) ** 2.00977
+        * (Lbp / Bwl - 2) ** 1.40692
+    )
+
+
+def m_1(
+        Lbp,
+        Bwl,
+        T,
+        volume,
+        Cp,
+        **kwargs,
+    ):
+    r"""Coefficient m1 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        m_1 = 0.014047 \frac{L}{T} - \frac{1.75254\,\nabla^{1/3}}{L}
+            - 4.79323 \frac{B}{L} - c_{16}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    volume : float, Displaced volume [m³].
+    Cp : float, Prismatic coefficient [-].
+
+    Returns
+    -------
+    float, Coefficient m1 [-].
+    """
+    return (
+        0.014047 * (Lbp / T)
+        - (1.75254 * volume ** (1/3)) / Lbp
+        - 4.79323 * (Bwl / Lbp)
+        - c_16(Cp=Cp)
+    )
+
+
+def m_3(
+        Lbp,
+        Bwl,
+        T,
+        **kwargs,
+    ):
+    r"""Coefficient m3 used in high-speed wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        m_3 = -7.2035
+            \left(\frac{B}{L}\right)^{0.326869}
+            \left(\frac{T}{B}\right)^{0.605375}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+
+    Returns
+    -------
+    float, Coefficient m3 [-].
+    """
+    return (
+        -7.2035
+        * (Bwl / Lbp) ** 0.326869
+        * (T / Bwl) ** 0.605375
+    )
+
+
+def m_4(
+        Fr,
+        Lbp,
+        volume,
+        **kwargs,
+    ):
+    r"""Coefficient m4 used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        m_4 = c_{15} \cdot 0.4\,\exp\left(-0.034\,F_r^{-3.29}\right)
+
+    Parameters
+    ----------
+    Fr : float, Froude number [-].
+    Lbp : float, Length between perpendiculars [m].
+    volume : float, Displaced volume [m³].
+
+    Returns
+    -------
+    float, Coefficient m4 [-].
+    """
+    return c_15(Lbp=Lbp, volume=volume) * 0.4 * np.exp(-0.034 * Fr ** (-3.29))
+
+
+def lambda_(
+        Lbp,
+        Bwl,
+        Cp,
+        **kwargs,
+    ):
+    r"""Coefficient lambda used in wave-making resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 271:
+
+    .. math::
+        \lambda = \begin{cases}
+            1.446\,C_P - 0.03 \frac{L}{B} & \text{if } \frac{L}{B} < 12 \\
+            1.446\,C_P - 0.36 & \text{otherwise}
+        \end{cases}
+
+    Parameters
+    ----------
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    Cp : float, Prismatic coefficient [-].
+
+    Returns
+    -------
+    float, Coefficient lambda [-].
+    """
+    return np.where(
+        Lbp / Bwl < 12,
+        1.446 * Cp - 0.03 * (Lbp / Bwl),
+        1.446 * Cp - 0.36
+    )
+
+
+def Fr_i(
         stw,
         T,
         hB,
         Abt,
-        Bulbchoice,
-        rho,
         g,
         **kwargs,
     ):
-    """
-    Calculates the resistance due to bulbous bow using Holtrop's method.
+    r"""Froude number based on bulb immersion for bulbous bow resistance.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        F_{r_i} = \frac{V}{\sqrt{g\,(T - h_B - 0.25\,\sqrt{A_{BT}})
+            + 0.15\,V^2}}
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    T : float, Mean moulded draught [m].
+    hB : float, Centre of bulbous bow above keel [m].
+    Abt : float, Transverse area of bulbous bow [m²].
+    g : float, Gravitational acceleration [m/s²].
+
+    Returns
+    -------
+    float, Bulb Froude number Fri [-].
     """
     Vms = stw * u.kt
-    
-    if Bulbchoice == 1:
-        Fri = Vms / (np.sqrt((g * (T - hB - (0.25 * (np.sqrt(Abt))))) + (0.15 * (Vms ** 2))))
-        pb = (0.56 * (np.sqrt(Abt))) / (T - (1.5 * hB))
-        Rb = 0.11 * (np.exp(((-3) * (pb ** (-2)))) * (Fri ** 3) * (Abt ** 1.5) * rho * g) / (1 + (Fri ** 2))
-        return Rb
-    else:
-        return 0.
+    return Vms / np.sqrt(g * (T - hB - 0.25 * np.sqrt(Abt)) + 0.15 * Vms ** 2)
 
 
-def compute_Rtr_holtrop(
+def p_b(
+        T,
+        hB,
+        Abt,
+        **kwargs,
+    ):
+    r"""Emergence coefficient pb for bulbous bow resistance.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        p_b = \frac{0.56\,\sqrt{A_{BT}}}{T - 1.5\,h_B}
+
+    Parameters
+    ----------
+    T : float, Mean moulded draught [m].
+    hB : float, Centre of bulbous bow above keel [m].
+    Abt : float, Transverse area of bulbous bow [m²].
+
+    Returns
+    -------
+    float, Emergence coefficient pb [-].
+    """
+    return 0.56 * np.sqrt(Abt) / (T - 1.5 * hB)
+
+
+def Fr_T(
         stw,
         Ttr,
-        Atr,
-        Bwl,
-        Cwp,
-        rho,
         g,
         **kwargs,
     ):
+    r"""Transom Froude number for transom resistance prediction.
+
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        F_{r_T} = \frac{V}{\sqrt{g\,T_{TR}}}
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    Ttr : float, Transom draught [m].
+    g : float, Gravitational acceleration [m/s²].
+
+    Returns
+    -------
+    float, Transom Froude number FrT [-].
     """
-    Calculate transom resistance using the Holtrop-Mennen method.
-    """
-    Vms = stw * u.kt
-    
-    Fr_T = Vms / np.sqrt(g * Ttr)
-    
-    ctr = 0.2 * (1 - (0.2 * Fr_T))
-    ctr_ReLu = ReLU(ctr)
-    Rtr = 0.5 * rho * (Vms ** 2) * Atr * ctr_ReLu
-    
-    return Rtr
+    return (stw * u.kt) / np.sqrt(g * Ttr)
 
 
-def compute_Ra_holtrop(
+def c_tr(
         stw,
-        Lwl,
-        Bwl,
-        T,
-        Cb,
-        hB,
-        rho,
-        Aws,
-        Abt,
-        uInterval=False,
+        Ttr,
+        g,
         **kwargs,
     ):
-    """
-    Calculates the model-ship correlation resistance RA.
-    """
-    Vms = stw * u.kt
-    
-    CA = 0.00675 * (Lwl + 100)**(-1/3) - 0.00064
-    sigmaCA = 0.00021
-        
-    if uInterval:
-        RaMin = 0.5 * rho * Aws * (Vms ** 2) * (CA - 2*sigmaCA)
-        RaMax = 0.5 * rho * Aws * (Vms ** 2) * (CA + 2*sigmaCA)
-        return RaMin, RaMax
-    
-    Ra = 0.5 * rho * Aws * (Vms ** 2) * CA
-    return Ra
+    r"""Transom resistance coefficient ctr.
 
-# PROPELLER COEFFICIENTS
+    According to :cite:`holtropStatisticalReAnalysisResistance1984`, p. 272:
+
+    .. math::
+        c_{tr} = \text{ReLU}\left(0.2\,\left(1 - 0.2\,F_{r_T}\right)\right)
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    Ttr : float, Transom draught [m].
+    g : float, Gravitational acceleration [m/s²].
+
+    Returns
+    -------
+    float, Transom resistance coefficient ctr [-].
+    """
+    return ReLU(0.2 * (1 - 0.2 * Fr_T(stw=stw, Ttr=Ttr, g=g)))
+
+
 def c_8(
         Lbp,
         Bwl,
@@ -512,7 +897,7 @@ def C_V(
     -------
     float, Viscous resistance coefficient CV [-].
     """
-    c14 = 1.0 + 0.011 * Cstern
+    c14 = c_14(Cstern)
     Lr = Lbp * (1 - Cp + 0.06 * Cp * lcb / (4 * Cp - 1))
     one_plus_k = (
         0.93
@@ -523,10 +908,241 @@ def C_V(
         * (Lbp ** 3 / volume) ** 0.36486
         * (1 - Cp) ** (-0.604247)
     )
-    CA = 0.00675 * (Lbp + 100) ** (-1/3) - 0.00064
+    CA = C_A(Lbp)
     Re = (np.softplus(stw * u.kt, beta=1e6) * Lbp) / 1.2e-6
     return one_plus_k * Cf_hull(Re + 10.0) + CA
 
+#%% RESISTANCE COMPONENTS
+
+def compute_Rf_holtrop(
+        stw,
+        Lbp,
+        Lwl,
+        volume,
+        Bwl,
+        T,
+        Aws,
+        Cp,
+        lcb,
+        Csternchoice,
+        nu,
+        rho,
+        uInterval=False,
+        **kwargs,
+    ):
+    """
+    Calculate the frictional resistance of a ship using the ITTC '57 method
+    and Holtrop form factor (1+k).
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    Lbp : float, Length between perpendiculars [m].
+    Lwl : float, Waterline length [m].
+    volume : float, Displaced volume [m³].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    Aws : float, Wetted surface area [m²].
+    Cp : float, Prismatic coefficient [-].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lwl from midship [-].
+    Csternchoice : int, Stern form (1=transom, 2=V-shaped, 3=U-shaped, 4=Spoon).
+    nu : float, Kinematic viscosity of water [m²/s].
+    rho : float, Water density [kg/m³].
+    uInterval : bool, Whether to return min/max uncertainty intervals.
+
+    Returns
+    -------
+    float or tuple, Frictional resistance [N], or (RfMin, RfMax) if uInterval=True.
+    """
+    Vms = stw * u.kt
+
+    if Csternchoice == 1:
+        Cstern = -25.
+    elif Csternchoice == 2:
+        Cstern = -10.
+    elif Csternchoice == 3:
+        Cstern = 0.
+    elif Csternchoice == 4:
+        Cstern = 10.
+    else:
+        Cstern = 0.
+
+    _1pk    = one_plus_k(Lwl=Lwl, Bwl=Bwl, T=T, volume=volume, Cp=Cp, Cstern=Cstern, lcb=lcb)
+    _CA     = C_A(Lwl=Lwl)
+    _Re     = Re(stw=stw, Lwl=Lwl, nu=nu)
+    sigma_k = (_1pk - 1) * 0.046
+
+    dynamic_pressure = 0.5 * rho * Aws * Vms ** 2
+    Rf = _1pk * Cf_hull(_Re + 10.) * dynamic_pressure
+
+    if uInterval:
+        RfMin = (_1pk - 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
+        RfMax = (_1pk + 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
+        return RfMin, RfMax
+
+    return Rf
+
+
+def compute_Rw_holtrop(
+        stw,
+        Lwl,
+        Lbp,
+        Bwl,
+        T,
+        volume,
+        Abt,
+        Cp,
+        Cwp,
+        Atr,
+        lcb,
+        hB,
+        Cx,
+        ie,
+        rho,
+        g,
+        **kwargs,
+    ):
+    """
+    Calculates the wave-making resistance of a ship in calm water.
+
+    Parameters
+    ----------
+    stw : float, Speed through water [kt].
+    Lwl : float, Waterline length [m].
+    Lbp : float, Length between perpendiculars [m].
+    Bwl : float, Waterline beam [m].
+    T : float, Mean moulded draught [m].
+    volume : float, Displaced volume [m³].
+    Abt : float, Transverse area of bulbous bow [m²].
+    Cp : float, Prismatic coefficient [-].
+    Cwp : float, Waterplane area coefficient [-].
+    Atr : float, Transom area at rest waterline [m²].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lbp from midship [-].
+    hB : float, Centre of bulbous bow above keel [m].
+    Cx : float, Midship section coefficient [-].
+    ie : float, Half angle of entrance of waterline [°].
+    rho : float, Water density [kg/m³].
+    g : float, Gravitational acceleration [m/s²].
+
+    Returns
+    -------
+    float, Wave-making resistance [N].
+    """
+    Vms = stw * u.kt
+    Fr   = np.softplus(Vms, beta=1e6) / np.sqrt(g * Lbp)
+    d_   = -0.9
+
+    _c1  = c_1(Lbp=Lbp, Bwl=Bwl, T=T, ie=ie)
+    _c2  = c_2(Bwl=Bwl, T=T, Abt=Abt, hB=hB)
+    _c5  = c_5(Bwl=Bwl, T=T, Cx=Cx, Atr=Atr)
+    _c17 = c_17(Lbp=Lbp, Bwl=Bwl, volume=volume, Cx=Cx)
+    _m1  = m_1(Lbp=Lbp, Bwl=Bwl, T=T, volume=volume, Cp=Cp)
+    _m3  = m_3(Lbp=Lbp, Bwl=Bwl, T=T)
+    _m4  = m_4(Fr=Fr, Lbp=Lbp, volume=volume)
+    _l   = lambda_(Lbp=Lbp, Bwl=Bwl, Cp=Cp)
+
+    base = _c2 * _c5 * volume * rho * g
+
+    Rw_to_040  = _c1  * base * np.exp(_m1 * Fr ** d_  + _m4 * np.cos(_l * Fr ** (-2)))
+    Rw_from_055 = _c17 * base * np.exp(_m3 * Fr ** d_ + _m4 * np.cos(_l * Fr ** (-2)))
+
+    _m4_040 = m_4(Fr=0.40, Lbp=Lbp, volume=volume)
+    _m4_055 = m_4(Fr=0.55, Lbp=Lbp, volume=volume)
+
+    Rw_anchor_low  = _c1  * base * np.exp(_m1 * 0.40 ** d_ + _m4_040 * np.cos(_l * 0.40 ** (-2)))
+    Rw_anchor_high = _c17 * base * np.exp(_m3 * 0.55 ** d_ + _m4_055 * np.cos(_l * 0.55 ** (-2)))
+
+    Rw_from_040_to_055 = Rw_anchor_low + ((Fr - 0.40) / (0.55 - 0.40)) * (Rw_anchor_high - Rw_anchor_low)
+
+    is_below_040 = np.where(Fr <= 0.40, 1., 0.)
+    is_below_055 = np.where(Fr <= 0.55, 1., 0.)
+    
+    Rw = Rw_to_040 * is_below_040 + \
+         Rw_from_040_to_055 * (1. - is_below_040) * is_below_055 + \
+         Rw_from_055 * (1. - is_below_040) * (1. - is_below_055)
+         
+    return Rw
+
+
+def compute_Rb_holtrop(
+        stw,
+        T,
+        hB,
+        Abt,
+        Bulbchoice,
+        rho,
+        g,
+        **kwargs,
+    ):
+    """
+    Calculates the resistance due to bulbous bow using Holtrop's method.
+    """
+    Vms = stw * u.kt
+    
+    if Bulbchoice == 1:
+        Fri = Fr_i(stw, T, hB, Abt, g)
+        pb = p_b(T, hB, Abt)
+        Fri = Vms / (np.sqrt((g * (T - hB - (0.25 * (np.sqrt(Abt))))) + (0.15 * (Vms ** 2))))
+        Rb = 0.11 * (np.exp(((-3) * (pb ** (-2)))) * (Fri ** 3) * (Abt ** 1.5) * rho * g) / (1 + (Fri ** 2))
+        return Rb
+    else:
+        return 0.
+
+
+def compute_Rtr_holtrop(
+        stw,
+        Ttr,
+        Atr,
+        Bwl,
+        Cwp,
+        rho,
+        g,
+        **kwargs,
+    ):
+    """
+    Calculate transom resistance using the Holtrop-Mennen method.
+    """
+    Vms = stw * u.kt
+    
+    Fr_T = Vms / np.sqrt(g * Ttr)
+    
+    ctr = 0.2 * (1 - (0.2 * Fr_T))
+    ctr_ReLu = ReLU(ctr)
+    Rtr = 0.5 * rho * (Vms ** 2) * Atr * ctr_ReLu
+    
+    return Rtr
+
+
+def compute_Ra_holtrop(
+        stw,
+        Lwl,
+        Bwl,
+        T,
+        Cb,
+        hB,
+        rho,
+        Aws,
+        Abt,
+        uInterval=False,
+        **kwargs,
+    ):
+    """
+    Calculates the model-ship correlation resistance RA.
+    """
+    Vms = stw * u.kt
+    
+    CA = C_A(Lwl)
+    sigmaCA = 0.00021
+        
+    if uInterval:
+        RaMin = 0.5 * rho * Aws * (Vms ** 2) * (CA - 2*sigmaCA)
+        RaMax = 0.5 * rho * Aws * (Vms ** 2) * (CA + 2*sigmaCA)
+        return RaMin, RaMax
+    
+    Ra = 0.5 * rho * Aws * (Vms ** 2) * CA
+    return Ra
+
+#%% PROPELLER COEFFICIENTS
 
 def w_single(
         stw,
@@ -800,7 +1416,7 @@ def eta_R_twin(
         + 0.06325 * P / D
     )
 
-
+#%% EXAMPLE
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     
