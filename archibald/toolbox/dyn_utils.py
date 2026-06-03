@@ -37,10 +37,9 @@ def Cf_hull(Re):
 
     """
     
-    Re_val = np.abs(Re) + 1.
-    Re_sg = np.sign(Re)
+    Re_corr = np.softplus(Re - 100) + 100 + 1. # threshold Re above 100 to avoid dividing by 0
     
-    return Re_sg * 0.075/((np.log10(Re_val) - 2)**2)
+    return 0.075/(np.log10(Re_corr) - 2)**2
 
 
 def holtrop_correction_factor(Fr):

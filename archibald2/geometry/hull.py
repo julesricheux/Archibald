@@ -1719,7 +1719,7 @@ if __name__ == '__main__':
     archibald_root = 'C:/Users/jrich/NEOLINE DEVELOPPEMENT/NeoDev - ND-DÉVELOPPEMENT - Documents/ND-DÉVELOPPEMENT/01_Développement/08_Outils'
     # hullStl = archibald_root+'/archibald-main/Private/n136_data/n136.stl' # path to a STL mesh of the hull
     hullStl = archibald_root+'/archibald-main/Private/n136_data/n136_quad.stl' # path to a STL mesh of the hull
-    hullMesh = trimesh.load(hullStl)
+    hullMesh = trimesh.load(os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl"))
     
     hullMesh.fix_normals()
     
