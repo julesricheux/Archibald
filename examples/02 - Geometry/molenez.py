@@ -86,8 +86,8 @@ leeway = 0.
 
 opti = Opti()
 
-# T = opti.variable(init_guess = T0)
-T = T0
+T = opti.variable(init_guess = T0)
+# T = T0
 
 op_point = OperatingPoint(dz=-T)
 

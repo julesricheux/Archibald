@@ -55,8 +55,16 @@ class Hull2(ArchibaldObject):
             if op_point is None:
                 self.mesh.draw(backend="matplotlib", set_axis_visibility=set_axis_visibility)
             else:
-                point = -op_point.xyz
-                normal = -wide(np.array([0., 0., 1.])) @ op_point.mat
+                # Bring the global water plane into the boat's local frame
+                point = op_point.apply_transformations(
+                    geometry=np.array([[0., 0., 0.]]), 
+                    inverse=True,
+                )
+                normal = op_point.apply_transformations(
+                    geometry=np.array([[0., 0., 1.]]), 
+                    inverse=True,
+                    is_vector=True,
+                )
                 self.mesh.draw(
                     point=point,
                     normal=normal,
@@ -69,8 +77,22 @@ class Hull2(ArchibaldObject):
             self,
             op_point: OperatingPoint,
         ):
-        point = -op_point.xyz
-        normal = -wide(np.array([0., 0., 1.])) @ op_point.mat
+    
+        # Bring the global water plane into the boat's local frame
+        point = op_point.apply_transformations(
+            geometry=np.array([[0., 0., 0.]]), 
+            inverse=True,
+        )
+        normal = op_point.apply_transformations(
+            geometry=np.array([[0., 0., 1.]]), 
+            inverse=True,
+            is_vector=True,
+        )
+        
+        # _temp = self.mesh.copy()
+        # _temp.transform(op_point)
+    
+        # volume, cob = _temp.hydrostatics()
     
         volume, cob = self.mesh.hydrostatics(point, normal)
         
@@ -111,7 +133,7 @@ if __name__=="__main__":
     
     T0, ref = 1.3, 116.487
     
-    op_point = OperatingPoint(dz=-T0, heel=45.)
+    op_point = OperatingPoint(dz=-T0, heel=0.)
     
     # hull.draw(op_point, set_axis_visibility=True)
     
@@ -119,8 +141,8 @@ if __name__=="__main__":
     
     
     
-    # T = opti.variable(init_guess = T0)
-    T = T0
+    T = opti.variable(init_guess = T0)
+    # T = T0
     
     op_point = OperatingPoint(
         dz=-T,
@@ -128,6 +150,8 @@ if __name__=="__main__":
         # trim=0.1,
         # heel=45.
     )
+    
+    
     
     hull.compute_buoyancy(op_point)
     

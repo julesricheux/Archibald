@@ -621,21 +621,43 @@ class OperatingPoint():
 
         return rotation_velocity_geometry_axes
     
+
     def apply_transformations(
             self,
-            geometry: Union[np.ndarray, List] = None,
+            geometry: Union[np.ndarray, List],
             inverse: bool = False,
+            is_vector: bool = False
         ):
+        """
+        Applies the operating point's transformation to a geometry.
         
-        if inverse:
-            rot = self.mat
+        Parameters:
+        -----------
+        geometry : np.ndarray or List
+            The coordinates to transform (N, 3) or (3,).
+        inverse : bool
+            If False, transforms from Local to Global.
+            If True, transforms from Global to Local.
+        is_vector : bool
+            If True, treats geometry as a direction vector (e.g., a normal).
+            Vectors are only rotated, NOT translated.
+        """
+        # Ensure we are working with a numpy array
+        geom = np.array(geometry)
+        
+        if not inverse:
+            # Forward (Local -> Global)
+            # 1. Rotate
+            rotated = geom @ self.mat.T
+            # 2. Translate (skip if it's a pure vector like a normal)
+            return rotated if is_vector else rotated + self.xyz
+            
         else:
-            rot = self.mat.T
-    
-        return np.add(
-            geometry @ rot,
-            self.xyz
-        )
+            # Inverse (Global -> Local)
+            # 1. Translate back (skip if it's a pure vector)
+            translated = geom if is_vector else geom - self.xyz
+            # 2. Rotate back
+            return translated @ self.mat
         
 
 

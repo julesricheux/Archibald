@@ -14,7 +14,7 @@ import copy
 
 from typing import List, Dict, Union, Optional, Tuple
 
-from archibald.geometry.hull import Hull
+from archibald.geometry.hull2 import Hull2
 from archibald.geometry.lifting_set import Rig, Appendage
 from archibald.geometry.propeller import Propeller, BSeriesPropeller
 
@@ -48,7 +48,7 @@ class Sailboat2(ArchibaldObject):
             cog: Union[np.ndarray, List] = None,
             rig: Rig = None,
             app: Appendage = None,
-            hulls: List[Hull] = [],
+            hulls: List[Hull2] = [],
             propellers: List[Propeller] = [],
         ):
         
@@ -234,104 +234,68 @@ class Sailboat2(ArchibaldObject):
             "success": True
         }
     
-# if __name__=="__main__":
-    
-#     import os
-#     from archibald.optimization import Opti
-#     from archibald.geometry.hull2 import Hull2
-    
-#     T0 = 1.3
-#     heel0 = 0.
-#     trim0 = 0.
-#     leeway0 = 0.
-    
-#     opti = Opti()
-    
-#     T = opti.variable(init_guess=T0)
-#     heel = opti.variable(init_guess=T0)
-#     trim = opti.variable(init_guess=T0)
-#     leeway = opti.parameter(leeway0)
-    
-#     op_point = OperatingPoint(
-#         dz=-T,
-#         heel=heel,
-#         trim=trim,
-#         leeway=leeway,
-#     )
-    
-
-#     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
-#     hull = Hull2(mesh=stl)
-    
-#     sailboat = Sailboat2(
-#         displacement=116e3,
-#         cog=[12., 0., 1.],
-#         hulls=[hull],
-#     )
-    
-#     Ftot, Mtot = sailboat.compute_torsor(
-#         op_point
-#     )
-    
-#     opti.subject_to(Ftot[2] == 0)
-#     opti.subject_to(Mtot[0] == 0)
-#     opti.subject_to(Mtot[1] == 0)
-    
-#     sol = opti.solve()
-    
-#     forces = sol(sailboat.forces)
-#     moments = sol(sailboat.moments)
-    
-#     print(sol((T, heel, trim)))
-    
-#     print(forces["Fw"])
-#     print(forces["Fb"])
-#     print(moments["Mw"]/1e3)
-#     print(moments["Mb"]/1e3)
-#     print(sol(Ftot), sol(Mtot))
-    
 if __name__=="__main__":
+    
     import os
+    from archibald.optimization import Opti
     from archibald.geometry.hull2 import Hull2
-
-    # 1. Define initial state
-    op_point_guess = OperatingPoint(
-        dz=0.0,
-        heel=0.0,
-        trim=0.0,
-        leeway=0.0,
+    
+    T0 = 1.3
+    heel0 = 0.
+    trim0 = 0.
+    leeway0 = 1.
+    
+    opti = Opti()
+    
+    T = opti.variable(init_guess=T0)
+    heel = opti.variable(init_guess=heel0)
+    trim = opti.variable(init_guess=trim0)
+    # trim = opti.parameter(trim0)
+    # heel = opti.parameter(heel0)
+    leeway = opti.parameter(leeway0)
+    
+    op_point = OperatingPoint(
+        dz=-T,
+        heel=heel,
+        trim=trim,
+        leeway=leeway,
     )
+    
 
-    # 2. Load Geometry & Setup Boat
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull2(mesh=stl)
     
     sailboat = Sailboat2(
         displacement=120e3,
-        cog=[12.8, 10., 2.],
+        # displacement=255.1e3,
+        cog=[12.2, 0., 1.],
         hulls=[hull],
     )
     
-    # 3. Solve Equilibrium cleanly
-    results = sailboat.find_equilibrium(
-        initial_op=op_point_guess,
-        # free_variables=["dz", "heel", "trim"],
-        # targets=["Fz", "Mx", "My"]
-        free_variables=["dz", "trim"],
-        targets=["Fz", "My"]
+    Ftot, Mtot = sailboat.compute_torsor(
+        op_point
     )
     
-    # 4. Access the clean results
-    final_op = results["converged_op"]
+    opti.subject_to(Ftot[2] == 0)
+    opti.subject_to(Mtot[0] == 0)
+    opti.subject_to(Mtot[1] == 0)
+    
+    # opti.minimize(T)
+    
+    sol = opti.solve()
+    
+    forces = sol(sailboat.forces)
+    moments = sol(sailboat.moments)
+    
+    print(sol((T, heel, trim)))
+    
+    final_op = sol(op_point)
     
     print("\n--- EQUILIBRIUM REACHED ---")
     print(f"Draft (dz): {final_op.dz:.3f}")
     print(f"Heel:       {final_op.heel:.3f} deg")
     print(f"Trim:       {final_op.trim:.3f} deg")
-    print(f"Final Ftot: {results['Ftot']}")
-    print(f"Final Mtot: {results['Mtot']}")
+    print(f"Final Ftot: {sol(Ftot)}")
+    print(f"Final Mtot: {sol(Mtot)}")
     
-    sol = results["sol_object"]
-    op_point = sol(results['converged_op'])
-    
-    hull.draw(op_point)
+    # hull.draw(final_op, set_axis_visibility=True)
