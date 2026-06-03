@@ -291,11 +291,23 @@ def compute_Raw_dsyhs(
     return R_aw
 
 
+def compute_Rrr_dsyhs(
+        **kwargs,
+    ):
+    pass #TODO implement roughness influence
+    
+    
+def compute_Rtr_dsyhs(
+        **kwargs,
+    ):
+    pass #TODO implement transom influence
+
+
 if __name__=="__main__":
     import archibald.toolbox.units as u
     # VERIFICATION
     # --- Example Usage based on the image's check values ---
-    # The image notes: R_Rc / (∇ * p * g) = 0.00649 at Fr = 0.35
+    # The image notes: Rb / (∇ * p * g) = 0.00649 at Fr = 0.35
     # Assuming arbitrary hull dimensions that yield exactly this coefficient to prove the math:
     
     # Mock dimensions # TODO find correct mock dimensions for verification
@@ -341,7 +353,7 @@ if __name__=="__main__":
     # above this code block, along with `archibald.toolbox.units as u`.
     
     # 1. Define the range of Froude numbers to sweep (e.g., 0.15 to 0.60)
-    fr_array = np.linspace(0.15, 1.0, 50)
+    fr_array = np.linspace(0.0, 1.0, 50)
     
     # Arrays to store the calculated resistances
     Rf_list = []
