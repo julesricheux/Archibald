@@ -72,22 +72,22 @@ heel = 0.
 trim = 0.
 leeway = 0.
 
-mesh.draw(
-    draw_plane=True,
-    point=np.array([0, 0, T0]),
-    # normal=np.array([0., 1., 0.]),
-    # backend="matplotlib",
-    # backend="plotly",
-    set_axis_visibility=True,
-)
+# mesh.draw(
+#     draw_plane=True,
+#     point=np.array([0, 0, T0]),
+#     # normal=np.array([0., 1., 0.]),
+#     # backend="matplotlib",
+#     # backend="plotly",
+#     set_axis_visibility=True,
+# )
 
 
 #%%
 
 opti = Opti()
 
-T = opti.variable(init_guess = T0)
-# T = T0
+# T = opti.variable(init_guess = T0)
+T = T0
 
 op_point = OperatingPoint(dz=-T)
 

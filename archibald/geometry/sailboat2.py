@@ -127,60 +127,211 @@ class Sailboat2(ArchibaldObject):
         
         return self.forces["Ftot"], self.moments["Mtot"]
     
-if __name__=="__main__":
+    def _get_target_residual(
+            self,
+            target_name: str,
+            Ftot: np.ndarray,
+            Mtot: np.ndarray
+        ):
+        """Helper to map string targets to actual torsor arrays."""
+        target_map = {
+            'Fx': Ftot[0], 'Fy': Ftot[1], 'Fz': Ftot[2],
+            'Mx': Mtot[0], 'My': Mtot[1], 'Mz': Mtot[2]
+        }
+        if target_name not in target_map:
+            raise ValueError(f"Target '{target_name}' not recognized. Use one of: {list(target_map.keys())}")
+        return target_map[target_name]
+
+    def find_equilibrium(
+            self,
+            initial_op: OperatingPoint,
+            free_variables: List[str] = ["dz", "heel", "trim"],
+            targets: List[str] = ["Fz", "Mx", "My"],
+            additional_constraints: Optional[List[callable]] = None,
+            objective: Optional[callable] = None,
+            verbose: bool = True
+        ) -> Dict[str, any]:
+        """
+        Solves the static equilibrium of the sailboat.
+        
+        Parameters:
+        -----------
+        initial_op : OperatingPoint
+            The starting operating point containing initial guesses and fixed parameters.
+        free_variables : List[str]
+            List of attributes on the OperatingPoint that the solver is allowed to vary.
+        targets : List[str]
+            List of forces/moments that must equal zero (e.g., ['Fz', 'Mx', 'My']).
+        additional_constraints : List[callable], optional
+            A list of functions: f(opti, Ftot, Mtot, vars_dict) -> constraint_expression.
+        objective : callable, optional
+            A function to minimize: f(opti, Ftot, Mtot, vars_dict) -> objective_expression.
+            
+        Returns:
+        --------
+        Dict containing the converged OperatingPoint, and the resulting forces/moments.
+        """
+        from archibald.optimization import Opti
+        opti = Opti()
+        
+        # 1. Dynamically build the solver's OperatingPoint
+        solver_kwargs = {}
+        vars_dict = {}
+        
+        # Assuming OperatingPoint exposes its attributes (or defaults to 0)
+        standard_attributes = ["dx", "dy", "dz", "heel", "trim", "leeway"]
+        
+        for attr in standard_attributes:
+            init_val = getattr(initial_op, attr, 0.0)
+            
+            if attr in free_variables:
+                var = opti.variable(init_guess=init_val)
+                solver_kwargs[attr] = var
+                vars_dict[attr] = var
+            else:
+                param = opti.parameter(init_val)
+                solver_kwargs[attr] = param
+                vars_dict[attr] = param
+                
+        solver_op = OperatingPoint(**solver_kwargs)
+        
+        # 2. Compute Torsor with symbolic/optimization variables
+        Ftot, Mtot = self.compute_torsor(solver_op)
+        
+        # 3. Apply equilibrium constraints (Residuals == 0)
+        for target in targets:
+            residual = self._get_target_residual(target, Ftot, Mtot)
+            opti.subject_to(residual == 0)
+            
+        # 4. Apply custom constraints
+        if additional_constraints is not None:
+            for constraint_func in additional_constraints:
+                opti.subject_to(constraint_func(opti, Ftot, Mtot, vars_dict))
+                
+        # 5. Apply objective function
+        if objective is not None:
+            opti.minimize(objective(opti, Ftot, Mtot, vars_dict))
+            
+        # 6. Solve the system
+        try:
+            sol = opti.solve()
+        except RuntimeError as e:
+            if verbose: print(f"Solver failed to converge: {e}")
+            raise
+            
+        # 7. Reconstruct the numerical OperatingPoint and Results
+        resolved_kwargs = {}
+        for attr in standard_attributes:
+            resolved_kwargs[attr] = float(sol(solver_kwargs[attr]))
+            
+        converged_op = OperatingPoint(**resolved_kwargs)
+        
+        return {
+            "converged_op": converged_op,
+            "Ftot": np.array(sol(Ftot)).flatten(),
+            "Mtot": np.array(sol(Mtot)).flatten(),
+            "sol_object": sol, # Keep underlying sol object if user wants to query inner forces
+            "success": True
+        }
     
-    import os
-    from archibald.optimization import Opti
-    from archibald.geometry.hull2 import Hull2
+# if __name__=="__main__":
     
-    T0 = 1.3
-    heel0 = 0.
-    trim0 = 0.
-    leeway0 = 0.
+#     import os
+#     from archibald.optimization import Opti
+#     from archibald.geometry.hull2 import Hull2
     
-    opti = Opti()
+#     T0 = 1.3
+#     heel0 = 0.
+#     trim0 = 0.
+#     leeway0 = 0.
     
-    T = opti.variable(init_guess=T0)
-    heel = opti.variable(init_guess=T0)
-    trim = opti.variable(init_guess=T0)
-    leeway = opti.parameter(leeway0)
+#     opti = Opti()
     
-    op_point = OperatingPoint(
-        dz=-T,
-        heel=heel,
-        trim=trim,
-        leeway=leeway,
-    )
+#     T = opti.variable(init_guess=T0)
+#     heel = opti.variable(init_guess=T0)
+#     trim = opti.variable(init_guess=T0)
+#     leeway = opti.parameter(leeway0)
+    
+#     op_point = OperatingPoint(
+#         dz=-T,
+#         heel=heel,
+#         trim=trim,
+#         leeway=leeway,
+#     )
     
 
+#     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
+#     hull = Hull2(mesh=stl)
+    
+#     sailboat = Sailboat2(
+#         displacement=116e3,
+#         cog=[12., 0., 1.],
+#         hulls=[hull],
+#     )
+    
+#     Ftot, Mtot = sailboat.compute_torsor(
+#         op_point
+#     )
+    
+#     opti.subject_to(Ftot[2] == 0)
+#     opti.subject_to(Mtot[0] == 0)
+#     opti.subject_to(Mtot[1] == 0)
+    
+#     sol = opti.solve()
+    
+#     forces = sol(sailboat.forces)
+#     moments = sol(sailboat.moments)
+    
+#     print(sol((T, heel, trim)))
+    
+#     print(forces["Fw"])
+#     print(forces["Fb"])
+#     print(moments["Mw"]/1e3)
+#     print(moments["Mb"]/1e3)
+#     print(sol(Ftot), sol(Mtot))
+    
+if __name__=="__main__":
+    import os
+    from archibald.geometry.hull2 import Hull2
+
+    # 1. Define initial state
+    op_point_guess = OperatingPoint(
+        dz=0.0,
+        heel=0.0,
+        trim=0.0,
+        leeway=0.0,
+    )
+
+    # 2. Load Geometry & Setup Boat
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull2(mesh=stl)
     
     sailboat = Sailboat2(
-        displacement=116e3,
-        cog=[12., 0., 1.],
+        displacement=120e3,
+        cog=[12.8, 10., 2.],
         hulls=[hull],
     )
     
-    Ftot, Mtot = sailboat.compute_torsor(
-        op_point
+    # 3. Solve Equilibrium cleanly
+    results = sailboat.find_equilibrium(
+        initial_op=op_point_guess,
+        # free_variables=["dz", "heel", "trim"],
+        # targets=["Fz", "Mx", "My"]
+        free_variables=["dz", "trim"],
+        targets=["Fz", "My"]
     )
     
-    opti.subject_to(Ftot[2] == 0)
-    opti.subject_to(Mtot[0] == 0)
-    opti.subject_to(Mtot[1] == 0)
+    # 4. Access the clean results
+    final_op = results["converged_op"]
     
-    opti.minimize(heel)
+    print("\n--- EQUILIBRIUM REACHED ---")
+    print(f"Draft (dz): {final_op.dz:.3f}")
+    print(f"Heel:       {final_op.heel:.3f} deg")
+    print(f"Trim:       {final_op.trim:.3f} deg")
+    print(f"Final Ftot: {results['Ftot']}")
+    print(f"Final Mtot: {results['Mtot']}")
     
-    sol = opti.solve()
+    sol = results["sol_object"]
+    op_point = sol(results['converged_op'])
     
-    forces = sol(sailboat.forces)
-    moments = sol(sailboat.moments)
-    
-    print(sol((T, heel, trim)))
-    
-    print(forces["Fw"])
-    print(forces["Fb"])
-    print(moments["Mw"]/1e3)
-    print(moments["Mb"]/1e3)
-    print(sol(Ftot), sol(Mtot))
+    hull.draw(op_point)

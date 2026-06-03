@@ -641,7 +641,7 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_tetrahedron_volumes(ref_point)
         
         # Signed volume of tetrahedron formed with origin for each face
-        tetra_volumes = self._data['tetrahedron_volumes'] * weight
+        tetra_volumes = tall(self._data['tetrahedron_volumes']) * weight
         
         # Total volume
         return np.sum(tetra_volumes)
@@ -663,13 +663,13 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_tetrahedron_centers()
         
         tetra_centers = self._data['tetrahedron_centers']
-        tetra_volumes = self._data['tetrahedron_volumes'] * weight
+        tetra_volumes = tall(self._data['tetrahedron_volumes']) * weight
         
         # Weighted sum of centroids by volumes to get the total center of mass
         # return np.sum(wide(tetra_volumes) @ tetra_centers / np.sum(tetra_volumes), axis=0)
     
         return np.sum(
-            tetra_centers * tall(tetra_volumes) / np.sum(tetra_volumes),
+            tetra_centers * tetra_volumes / np.sum(tetra_volumes),
             axis=0
         )
     

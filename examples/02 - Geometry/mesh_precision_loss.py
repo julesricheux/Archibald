@@ -28,7 +28,7 @@ reference_data = {
     1.7: 173.011,
     1.8: 187.623,
     1.9: 202.347,
-    # 4.0: 362.907
+    4.0: 362.907
 }
 
 ref_drafts = np.array(list(reference_data.keys()))

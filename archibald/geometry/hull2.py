@@ -46,16 +46,31 @@ class Hull2(ArchibaldObject):
     def __repr__(self):
         return f"Hull object '{self.name}'"
     
-    def draw(self):
+    def draw(
+            self,
+            op_point: OperatingPoint = None,
+            set_axis_visibility: bool = None
+        ):
         if self.mesh:
-            self.mesh.draw(backend="matplotlib")
+            if op_point is None:
+                self.mesh.draw(backend="matplotlib", set_axis_visibility=set_axis_visibility)
+            else:
+                point = -op_point.xyz
+                normal = -wide(np.array([0., 0., 1.])) @ op_point.mat
+                self.mesh.draw(
+                    point=point,
+                    normal=normal,
+                    draw_plane=True,
+                    backend="pyvista",
+                    set_axis_visibility=set_axis_visibility,
+                )
             
     def compute_hydrostatics_properties(
             self,
             op_point: OperatingPoint,
         ):
         point = -op_point.xyz
-        normal = wide(np.array([0., 0., 1.])) @ op_point.mat
+        normal = -wide(np.array([0., 0., 1.])) @ op_point.mat
     
         volume, cob = self.mesh.hydrostatics(point, normal)
         
@@ -94,22 +109,24 @@ if __name__=="__main__":
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull2(mesh=stl)
     
-    op_point = OperatingPoint()
+    T0, ref = 1.3, 116.487
     
-    hull.draw()
+    op_point = OperatingPoint(dz=-T0, heel=45.)
+    
+    # hull.draw(op_point, set_axis_visibility=True)
     
     opti = Opti()
     
-    T0, ref = 1.3, 116.487
     
-    T = opti.variable(init_guess = T0)
-    # T = T0
+    
+    # T = opti.variable(init_guess = T0)
+    T = T0
     
     op_point = OperatingPoint(
         dz=-T,
-        leeway=45.,
+        # leeway=45.,
         # trim=0.1,
-        heel=45.
+        # heel=45.
     )
     
     hull.compute_buoyancy(op_point)
