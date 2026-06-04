@@ -39,7 +39,7 @@ measured_volumes = []
 for T in ref_drafts:
     point = np.array([0., 0., 1.]) * T
     # Assuming mesh.hydrostatics can take standard floats/numpy arrays here
-    vol, _ = mesh.hydrostatics(point)
+    vol = mesh.hydrostatics(point)["volume"]
     
     # If your mesh function returns a CasADi variable, you might need to extract 
     # the numerical value using float(vol) or sol.value(vol). Assuming float here:
@@ -50,7 +50,7 @@ smooth_drafts = np.linspace(min(ref_drafts), max(ref_drafts), 50)
 smooth_measured = []
 for T in smooth_drafts:
     point = np.array([0., 0., 1.]) * T
-    vol, _ = mesh.hydrostatics(point)
+    vol = mesh.hydrostatics(point)["volume"]
     smooth_measured.append(float(vol))
 
 # 4. Create the plot

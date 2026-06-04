@@ -93,7 +93,7 @@ op_point = OperatingPoint(dz=-T)
 
 mesh.transform(op_point)
 
-volume, _ = mesh.hydrostatics()
+volume = mesh.hydrostatics()["volume"]
 
 opti.minimize((volume - ref)**2.)
 

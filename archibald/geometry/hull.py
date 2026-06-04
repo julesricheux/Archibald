@@ -93,11 +93,8 @@ class Hull(ArchibaldObject):
         # _temp.transform(op_point)
     
         # volume, cob = _temp.hydrostatics()
-    
-        volume, cob = self.mesh.hydrostatics(point, normal)
         
-        self.hydrostatics_data["volume"] = volume
-        self.hydrostatics_data["cob"] = wide(cob)
+        self.hydrostatics_data = self.mesh.hydrostatics(point, normal)
         
     def compute_buoyancy(
             self,
@@ -139,8 +136,6 @@ if __name__=="__main__":
     
     opti = Opti()
     
-    
-    
     T = opti.variable(init_guess = T0)
     # T = T0
     
@@ -150,8 +145,6 @@ if __name__=="__main__":
         # trim=0.1,
         # heel=45.
     )
-    
-    
     
     hull.compute_buoyancy(op_point)
     

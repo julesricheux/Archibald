@@ -704,10 +704,13 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_triangle_areas()
         
         tri_centers = self._data['triangle_centers']
-        tri_areas = self._data['triangle_areas'] * weight
+        tri_areas = tall(self._data['triangle_areas']) * weight
         
         # Weighted sum of centroids by volumes to get the total center of mass
-        return np.sum((wide(tri_areas) @ tri_centers / np.sum(tri_areas)), axis=0)
+        return np.sum(
+            tri_centers * tri_areas / np.sum(tri_areas),
+            axis=0
+        )
     
     @property
     def volume(self):
@@ -857,7 +860,35 @@ class ArchibaldMesh(ArchibaldObject):
             recompute_tetrahedron_volumes=False,
         )
         
-        return volume, cob
+        hydrostatics = {}
+        hydrostatics["volume"] = volume
+        hydrostatics["cob"] = wide(cob)
+        hydrostatics["Aws"] = self.weighted_area(weight=weights)
+        hydrostatics["cow"] = wide(self.weighted_area_centroid(weight=weights))
+        hydrostatics["T"] = np.max(vdist)
+        
+        #TODO
+        """
+        "cof"
+        "Awp"
+        "Lwl"
+        "Bwl"
+        "Ttr"
+        "Atr"
+        "Cx"
+        "Cy"
+        "Cb"
+        "Cp"
+        "Cwp"
+        "Abt"
+        "hB"
+        "lcb"
+        "ie"
+        "LCB_fpp"
+        "LCF_fpp"
+        """
+        
+        return hydrostatics
     
     
     def slice_mesh(

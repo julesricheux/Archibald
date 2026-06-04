@@ -650,12 +650,12 @@ class OperatingPoint():
             # 1. Rotate
             rotated = geom @ self.mat.T
             # 2. Translate (skip if it's a pure vector like a normal)
-            return rotated if is_vector else rotated + self.xyz
+            return rotated if is_vector else np.add(rotated, self.xyz)
             
         else:
             # Inverse (Global -> Local)
             # 1. Translate back (skip if it's a pure vector)
-            translated = geom if is_vector else geom - self.xyz
+            translated = geom if is_vector else np.add(geom, -self.xyz)
             # 2. Rotate back
             return translated @ self.mat
         
