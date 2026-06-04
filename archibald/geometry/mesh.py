@@ -21,65 +21,31 @@ def tall(array):
 def wide(array):
     return np.reshape(array, (1, -1))
 
-
-def rotation_matrix(
-        heel: float = 0.,
-        trim: float = 0.,
-        leeway: float = 0.,
+def complete_base_from_waterplane_normal(
+        normal: Union[np.ndarray, List, str] = "z",
     ):
     """
-    Computes the standard naval/aeronautics rotation matrix (Z-Y-X convention)
-    to rotate points based on leeway, trim, and heel angles.
-    
-    Parameters:
-    -----------
-    heel_deg : float
-        Heel angle (Roll) in degrees. Positive heels to starboard.
-    trim_deg : float
-        Trim angle (Pitch) in degrees. Positive is bow down.
-    leeway_deg : float
-        Leeway angle (Yaw) in degrees. Positive is leeway to starboard.
-        
-    Returns:
-    --------
-    R : numpy.ndarray
-        A 3x3 rotation matrix.
+    Compute the local ux and uy vectors from a waterplane normal, considered as uz, to complete the base.
+    ux is taken in the global ZX plane to remain on the hull centerline.
+
     """
-    # Convert angles to radians
-    phi = np.radians(heel)      # Roll
-    theta = np.radians(trim)    # Pitch
-    psi = np.radians(leeway)    # Yaw / Leeway
-
-    # Pre-compute sine and cosine values
-    c_phi, s_phi = np.cos(phi), np.sin(phi)
-    c_theta, s_theta = np.cos(theta), np.sin(theta)
-    c_psi, s_psi = np.cos(psi), np.sin(psi)
-
-    # Rotation around Z-axis (Leeway / Yaw)
-    R_z = np.array([
-        [c_psi, -s_psi, 0],
-        [s_psi,  c_psi, 0],
-        [0,      0,     1]
-    ])
-
-    # Rotation around Y-axis (Trim / Pitch)
-    R_y = np.array([
-        [ c_theta, 0, s_theta],
-        [ 0,       1, 0      ],
-        [-s_theta, 0, c_theta]
-    ])
-
-    # Rotation around X-axis (Heel / Roll)
-    R_x = np.array([
-        [1, 0,       0      ],
-        [0, c_phi, -s_phi],
-        [0, s_phi,  c_phi]
-    ])
-
-    # Combined matrix: R = Rz * Ry * Rx
-    R = R_z @ R_y @ R_x
-
-    return R
+    if type(normal) is str:
+        normal = axis_string_to_array(normal)
+        
+    # Normalize uz
+    uz = np.array(normal, dtype=float)
+    uz /= np.linalg.norm(uz)
+    
+    # ux is in the XZ-plane by construction: Y × uz gives a vector with no Y component
+    # when uz has no Y component, and degrades gracefully otherwise
+    ux = np.cross(np.array([[0.0, 1.0, 0.0]]), uz)
+    ux /= np.linalg.norm(ux)
+    
+    # Complete the right-handed basis
+    uy = np.cross(uz, ux)
+    uy /= np.linalg.norm(uy)
+    
+    return wide(ux), wide(uy), wide(uz)
 
 
 class ArchibaldPolygon(ArchibaldObject):
@@ -809,6 +775,8 @@ class ArchibaldMesh(ArchibaldObject):
             
         if self._data['tetrahedron_centers'] is None:
             self.compute_tetrahedron_centers()
+            
+        ux, uy, _ = complete_base_from_waterplane_normal(normal)
         
         # vertices signed distances from the waterplane, shape similar to self.faces
         # > 0 for wet, < 0 for dry
@@ -867,6 +835,9 @@ class ArchibaldMesh(ArchibaldObject):
         hydrostatics["cow"] = wide(self.weighted_area_centroid(weight=weights))
         hydrostatics["T"] = np.max(vdist)
         
+        hydrostatics["Ax"] = self.frontal_area(direction=ux, weight=weights)
+        hydrostatics["Ay"] = self.frontal_area(direction=uy, weight=weights)
+        
         #TODO
         """
         "cof"
@@ -875,6 +846,8 @@ class ArchibaldMesh(ArchibaldObject):
         "Bwl"
         "Ttr"
         "Atr"
+        "Ax"
+        "Ay"
         "Cx"
         "Cy"
         "Cb"
