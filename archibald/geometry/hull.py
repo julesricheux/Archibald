@@ -128,8 +128,8 @@ if __name__=="__main__":
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull(mesh=stl)
     
-    # T0, ref = 1.3, 116.487
-    T0, ref = 1.3, 200.
+    T0, ref = 1.3, 116.487
+    # T0, ref = 1.3, 200.
     
     op_point = OperatingPoint(dz=-T0, heel=0.)
     

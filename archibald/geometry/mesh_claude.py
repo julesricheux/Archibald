@@ -355,7 +355,7 @@ def wl_half_entrance_angle(
         sharpness=50.,
 ):
     """
-    Differentiable half-angle of entrance (ie) estimated by weighted linear
+    Differentiable half-angle of entrance ( ) estimated by weighted linear
     regression on waterplane intersection points near the bow.
 
     The bow region is soft-selected as points near u_fpp. Starboard (v > 0)

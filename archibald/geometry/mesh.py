@@ -97,6 +97,22 @@ def wl_soft_crossing_weight(
         + np.sigmoid(-da * sharpness) * np.sigmoid( db * sharpness)
     )
 
+def _weighted_slope(
+        u,
+        v,
+        w,
+):
+    """
+    Closed-form weighted least-squares slope for v = a*u + b.
+    Returns a = cov(u,v) / var(u), both weighted.
+    """
+    W      = np.sum(w) + 1e-12
+    u_mean = np.sum(w * u) / W
+    v_mean = np.sum(w * v) / W
+    cov_uv = np.sum(w * (u - u_mean) * (v - v_mean))
+    var_u  = np.sum(w * (u - u_mean) ** 2) + 1e-12
+    return cov_uv / var_u
+
 
 def wl_soft_extremum(
         x,
@@ -1025,8 +1041,14 @@ class ArchibaldMesh(ArchibaldObject):
         deepest_v = np.max(fdist, axis=1) # signed distance of the deepest vertex of each face
         
         corr = 1e3
-        wet = np.sigmoid(highest_v*corr) * np.sigmoid(deepest_v*corr) # boolean for fully wet faces
-        dry = np.sigmoid(-highest_v*corr) * np.sigmoid(-deepest_v*corr) # boolean for fully dry faces
+        wet = (                                     # ≈ 1 for fully wet faces
+            np.sigmoid( highest_v * corr)
+            * np.sigmoid( deepest_v * corr)
+        )
+        dry = (                                     # ≈ 1 for fully dry faces
+            np.sigmoid(-highest_v * corr)
+            * np.sigmoid(-deepest_v * corr)
+        )
         
         # weight = 1 for fully wet faces, 0 for fully dry faces,  
         weights = np.fmax(
@@ -1087,29 +1109,70 @@ class ArchibaldMesh(ArchibaldObject):
             alpha=soft_alpha,
         )
         
+        fpp_wp = point + u_fpp * ux # intersection between FPP and waterplane
+        app_wp = point + u_app * ux # intersection between APP and waterplane
+        
         ### Transom properties
         transom_vertices_weights = np.sigmoid(
             self.vertices_distances_to_plane(
-            point = (u_app + self.average_length/2.)*np.array([[1., 0., 0.]]), # point more or less 1/2 face forward of the aft-most waterplane point
+            point = (app_wp + self.average_length * ux/2.), # point more or less 1/2 face forward of the aft-most waterplane point
             normal = -ux
         )*1e6) * vdist
         
         transom_faces_weights = np.sigmoid(
             self.faces_distances_to_plane(
-            point = (u_app + self.average_length)*np.array([[1., 0., 0.]]), # point more or less 1 face forward of the aft-most waterplane point
+            point = (app_wp + self.average_length * ux), # point more or less 1 face forward of the aft-most waterplane point
             normal = -ux
         )*1e6) * weights
         
         Ttr = np.max(transom_vertices_weights)
         Atr = self.frontal_area(direction=ux, weight=transom_faces_weights)
         
-        ### Dimensionless hull-form coefficients
-        Cb  = volume / (Lwl * Bwl * T   + 1e-12)   # block coefficient
-        Cp  = volume / (Ax   * Lwl      + 1e-12)   # prismatic coefficient
-        Cx  = Ax     / (Bwl  * T        + 1e-12)   # midship section coefficient
-        Cy  = Ay     / (Lwl  * T        + 1e-12)   # longitudinal plane coefficient
-        # Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
+        ### Waterplane
         
+        # Weight selection for waterplane vertices
+        waterplane_vertices_weight = (
+            np.sigmoid((vdist + self.average_length/2.) * 1e3)
+            * np.sigmoid((-vdist + self.average_length/2.) * 1e3)
+        )
+        # Weight selection for waterplane faces
+        waterplane_faces_weight = (
+            np.sigmoid((fdist + self.average_length/2.) * 1e3)
+            * np.sigmoid((-fdist + self.average_length/2.) * 1e3)
+        )
+        
+        ### Half entry angle
+        
+        fpp_vdist = self.vertices_distances_to_plane(
+            point = fpp_wp, # point more or less 1 face backward of the fore-most waterplane point
+            normal = ux
+        )
+        
+        # Weight selection for bow vertices
+        bow_vertices_weight = (
+            np.sigmoid((fpp_vdist + self.average_length * 8.)*1e3)
+            * np.sigmoid((-(fpp_vdist + self.average_length * 2.))*1e3)
+        ) * waterplane_vertices_weight
+        
+        vectors_from_fpp = np.add(self.vertices, -fpp_wp) + tall(vdist) @ normal
+        
+        x = np.sum(vectors_from_fpp @ ux.T, axis=1)
+        y = np.sum(vectors_from_fpp @ uy.T, axis=1)
+        
+        angles = np.arctand(
+            y/(x+1e-12)
+        )
+
+        ie = np.sum(
+            np.abs(angles)*bow_vertices_weight,
+        ) / np.sum(bow_vertices_weight)
+        
+        ### Dimensionless hull-form coefficients
+        Cb  = volume / (Lwl * Bwl * T  + 1e-12)   # block coefficient
+        Cp  = volume / (Ax  * Lwl      + 1e-12)   # prismatic coefficient
+        Cx  = Ax     / (Bwl * T        + 1e-12)   # midship section coefficient
+        Cy  = Ay     / (Lwl * T        + 1e-12)   # longitudinal plane coefficient
+        # Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
         
         h = {}
         h["volume"] = volume
@@ -1126,25 +1189,22 @@ class ArchibaldMesh(ArchibaldObject):
         h["Ay"] = Ay
         h["Atr"] = Atr
         
-        h["Cb"]       = Cb
-        h["Cp"]       = Cp
-        h["Cx"]       = Cx
-        h["Cy"]       = Cy
-        # h["Cwp"]      = Cwp
+        h["Cb"] = Cb
+        h["Cp"] = Cp
+        h["Cx"] = Cx
+        h["Cy"] = Cy
+        h["ie"] = ie
+        # h["Cwp"] = Cwp
         
         #TODO
         """
         "cof"
         "Awp"
-        
-        "Ttr"
-        "Atr"
 
         "Cwp"
         "Abt"
         "hB"
         "lcb"
-        "ie"
         "LCB_fpp"
         "LCF_fpp"
         """
@@ -1253,12 +1313,12 @@ class ArchibaldMesh(ArchibaldObject):
             mesh = pv.PolyData(self.vertices, np.hstack([[3, *face] for face in self.faces]))
             
             if draw_plane:
-                weight = np.sigmoid(
-                    self.vertices_distances_to_plane(
-                        point,
-                        normal
-                    ) * 10./3.
+                vdist = self.vertices_distances_to_plane(
+                    point,
+                    normal
                 )
+                weight = np.sigmoid(vdist * 10./3.)
+                
                 plotter.add_mesh(
                     mesh,
                     show_edges=show_edges,
