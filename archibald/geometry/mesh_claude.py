@@ -4,7 +4,7 @@ Created on Sun Oct 27 23:38:18 2024
 
 @author: jrich
 """
-import casadi as ca
+# import casadi as ca
 import archibald.numpy as np
 
 from typing import Union, List
@@ -47,6 +47,15 @@ def complete_base_from_waterplane_normal(
     
     return wide(ux), wide(uy), wide(uz)
 
+
+# =============================================================================
+# Waterplane helper functions
+# Defined as module-level functions (not methods) so they can be moved to a
+# separate module. Each takes the mesh as its first argument.
+# All operations are differentiable w.r.t. mesh.vertices.
+# CasADi convention: vectors are (1,3) row vectors (wide); projections use
+# @ tall(vec) and are squeezed back to (nF,) via  or [:,0].
+# =============================================================================
 
 def wl_edge_intersection(
         Pa,
@@ -125,6 +134,7 @@ def wl_soft_extremum(
     exp_w = np.exp(logits_shifted)
     return np.sum(x * exp_w) / (np.sum(exp_w) + 1e-12)
 
+
 def wl_intersection_points(
         mesh,
         point,
@@ -185,6 +195,82 @@ def wl_intersection_points(
     return u01, v01, u12, v12, u20, v20, w01, w12, w20, Q01, Q12, Q20
 
 
+def wl_integrals(
+        mesh,
+        point,
+        normal,
+        ux,
+        uy,
+        vdist,
+):
+    """
+    Differentiable waterplane area (Awp) and center of flotation (cof)
+    computed via Green's theorem applied to the chord segments cut by the
+    waterplane across each mesh face.
+
+    Each crossing face contributes one chord (two crossing edges). The
+    signed area and its centroid are accumulated using the shoelace formula,
+    weighted by the product of the two soft crossing weights so that
+    non-crossing faces contribute ≈ 0.
+
+    Parameters
+    ----------
+    mesh   : ArchibaldMesh
+    point  : (1, 3) waterplane reference point
+    normal : (1, 3) waterplane normal
+    ux     : (1, 3) longitudinal in-plane basis vector
+    uy     : (1, 3) transverse  in-plane basis vector
+    vdist  : (nF, 3) signed vertex distances (positive = wet)
+
+    Returns
+    -------
+    Awp : scalar — waterplane area
+    cof : (1, 3) — center of flotation in 3-D
+    """
+    u01, v01, u12, v12, u20, v20, w01, w12, w20, _, _, _ = \
+        wl_intersection_points(mesh, point, normal, ux, uy, vdist)
+
+    def _green(
+            uA,
+            vA,
+            uB,
+            vB,
+            w,
+    ):
+        """
+        Green's theorem accumulator for one chord pair (A, B).
+
+        dA   = signed area element = 0.5*(uA*vB - uB*vA)*w
+        dcu  = centroid numerator along u = (uA+uB)*(uA*vB-uB*vA)*w
+        dcv  = centroid numerator along v = (vA+vB)*(uA*vB-uB*vA)*w
+        """
+        cross = uA * vB - uB * vA               # (nF,)
+        dA   = 0.5 * cross * w
+        dcu  = (uA + uB) * cross * w
+        dcv  = (vA + vB) * cross * w
+        return dA, dcu, dcv
+
+    dA_01_12, dcu_01_12, dcv_01_12 = _green(u01, v01, u12, v12, w01 * w12)
+    dA_12_20, dcu_12_20, dcv_12_20 = _green(u12, v12, u20, v20, w12 * w20)
+    dA_20_01, dcu_20_01, dcv_20_01 = _green(u20, v20, u01, v01, w20 * w01)
+
+    Awp_signed = np.sum(dA_01_12 + dA_12_20 + dA_20_01)
+    Awp        = np.abs(Awp_signed)
+
+    cu = np.sum(dcu_01_12 + dcu_12_20 + dcu_20_01)
+    cv = np.sum(dcv_01_12 + dcv_12_20 + dcv_20_01)
+
+    # Keep sign of Awp_signed so centroid direction is consistent
+    cof_u = cu / (6. * Awp_signed + 1e-12)     # scalar
+    cof_v = cv / (6. * Awp_signed + 1e-12)     # scalar
+
+    # Reconstruct 3-D center of flotation.
+    # point, ux, uy are all (1, 3); cof_u/cof_v are scalars → result (1, 3).
+    cof = point + cof_u * ux + cof_v * uy      # (1, 3)
+
+    return Awp, cof
+
+
 def wl_extents(
         mesh,
         point,
@@ -227,16 +313,10 @@ def wl_extents(
     v_all = np.concatenate([v01, v12, v20], axis=0)
     w_all = np.concatenate([w01, w12, w20], axis=0)
 
-    # u_max = wl_soft_extremum(u_all, w_all, alpha, "max")
-    # u_min = wl_soft_extremum(u_all, w_all, alpha, "min")
-    # v_max = wl_soft_extremum(v_all, w_all, alpha, "max")
-    # v_min = wl_soft_extremum(v_all, w_all, alpha, "min")
-    
-    # wl_extents — replace the four wl_soft_extremum calls:
-    u_max = np.max(u_all)   # Lwl / u_fpp
-    u_min = np.min(u_all)   # u_app
-    v_max = np.max(v_all)   # Bwl
-    v_min = np.min(v_all)
+    u_max = wl_soft_extremum(u_all, w_all, alpha, "max")
+    u_min = wl_soft_extremum(u_all, w_all, alpha, "min")
+    v_max = wl_soft_extremum(v_all, w_all, alpha, "max")
+    v_min = wl_soft_extremum(v_all, w_all, alpha, "min")
 
     Lwl   = u_max - u_min
     Bwl   = v_max - v_min
@@ -245,7 +325,167 @@ def wl_extents(
 
     return Lwl, Bwl, u_fpp, u_app, u_all, v_all, w_all
 
-#%% CLASSES
+
+def _weighted_slope(
+        u,
+        v,
+        w,
+):
+    """
+    Closed-form weighted least-squares slope for v = a*u + b.
+    Returns a = cov(u,v) / var(u), both weighted.
+    """
+    W      = np.sum(w) + 1e-12
+    u_mean = np.sum(w * u) / W
+    v_mean = np.sum(w * v) / W
+    cov_uv = np.sum(w * (u - u_mean) * (v - v_mean))
+    var_u  = np.sum(w * (u - u_mean) ** 2) + 1e-12
+    return cov_uv / var_u
+
+
+def wl_half_entrance_angle(
+        mesh,
+        point,
+        normal,
+        ux,
+        uy,
+        vdist,
+        u_fpp,
+        bow_fraction=0.1,
+        sharpness=50.,
+):
+    """
+    Differentiable half-angle of entrance (ie) estimated by weighted linear
+    regression on waterplane intersection points near the bow.
+
+    The bow region is soft-selected as points near u_fpp. Starboard (v > 0)
+    and portside (v < 0) are separated with soft masks and fitted independently
+    with closed-form weighted least-squares (v = a*u + b → slope a).
+    ie = mean of arctan(|a_stbd|) and arctan(|a_port|).
+
+    Parameters
+    ----------
+    mesh         : ArchibaldMesh
+    point        : (1, 3) waterplane reference point
+    normal       : (1, 3) waterplane normal
+    ux           : (1, 3) longitudinal in-plane basis vector
+    uy           : (1, 3) transverse  in-plane basis vector
+    vdist        : (nF, 3) signed vertex distances (positive = wet)
+    u_fpp        : scalar — longitudinal coordinate of the fore perpendicular
+    bow_fraction : fraction of Lwl behind u_fpp to include in the bow region
+    sharpness    : steepness of all soft selectors
+
+    Returns
+    -------
+    ie : scalar — half-angle of entrance in radians
+    """
+    u01, v01, u12, v12, u20, v20, w01, w12, w20, _, _, _ = \
+        wl_intersection_points(mesh, point, normal, ux, uy, vdist)
+
+    u_all   = np.concatenate([u01, u12, u20], axis=0)  # (3*nF,)
+    v_all   = np.concatenate([v01, v12, v20], axis=0)
+    w_cross = np.concatenate([w01, w12, w20], axis=0)
+
+    # Soft bow selector: sigmoid centred ~3/sharpness behind u_fpp
+    bow_weight = np.sigmoid((u_all - u_fpp) * sharpness + 3.)
+    w_bow = w_cross * bow_weight
+
+    # Soft port/starboard split
+    w_stbd = w_bow * np.sigmoid( v_all * sharpness)
+    w_port = w_bow * np.sigmoid(-v_all * sharpness)
+
+    a_stbd = _weighted_slope(u_all, v_all, w_stbd)
+    a_port = _weighted_slope(u_all, v_all, w_port)
+
+    ie = (np.arctan(np.abs(a_stbd)) + np.arctan(np.abs(a_port))) / 2.
+    return ie   # radians
+
+
+def wl_transom(
+        mesh,
+        point,
+        normal,
+        ux,
+        uy,
+        vdist,
+        u_app,
+        transom_fraction=0.001,
+        sharpness=1000.,
+):
+    """
+    Differentiable transom immersion depth (Ttr) and transom wetted area (Atr).
+ 
+    Transom faces are those simultaneously:
+      - near the aft perpendicular (soft longitudinal selector on face centroid)
+      - wetted (at least one vertex below the waterplane)
+ 
+    Ttr is the soft-maximum of the per-face average immersion depth over that
+    combined selection, reflecting the deepest point of the wetted transom.
+    Atr is the area of those same wetted transom faces.
+ 
+    Parameters
+    ----------
+    mesh              : ArchibaldMesh
+    point             : (1, 3) waterplane reference point
+    normal            : (1, 3) waterplane normal
+    ux                : (1, 3) longitudinal in-plane basis vector
+    uy                : (1, 3) transverse  in-plane basis vector
+    vdist             : (nF, 3) signed vertex distances (positive = wet)
+    u_app             : scalar — longitudinal coordinate of the aft perpendicular
+    transom_fraction  : fraction of Lwl used as the aft soft-selection window
+    sharpness         : steepness of the sigmoid selectors
+ 
+    Returns
+    -------
+    Ttr : scalar — maximum immersion depth of the wetted transom region (>= 0)
+    Atr : scalar — wetted transom area
+    """
+    P = mesh.vertices[mesh.faces]               # (nF, 3, 3)
+    face_centroids = np.mean(P, axis=1)         # (nF, 3)
+ 
+    # ── Longitudinal selector: faces near u_app ───────────────────────────
+    # fc_u: (nF, 1) squeezed to (nF,)
+    fc_u = np.squeeze(face_centroids @ tall(ux))    # (nF,)
+ 
+    # ≈ 1 for faces whose centroid is within ~3/sharpness of u_app
+    aft_w = np.sigmoid(-(fc_u - u_app) * sharpness + 0.)   # (nF,)
+ 
+    # ── Wetted selector: faces that have at least one wet vertex ─────────
+    # A face is wet when its deepest vertex (max vdist) > 0.
+    # Use a soft indicator: sigmoid(deepest_v * sharpness).
+    deepest_v = np.max(vdist, axis=1)               # (nF,)
+    wet_w = np.sigmoid(deepest_v * sharpness)        # (nF,) ≈ 1 if any vertex wet
+ 
+    # Combined transom weight: aft AND wet
+    transom_w = aft_w * wet_w                        # (nF,)
+ 
+    # ── Face areas ────────────────────────────────────────────────────────
+    e1 = P[:, 1, :] - P[:, 0, :]                    # (nF, 3)
+    e2 = P[:, 2, :] - P[:, 0, :]
+    face_areas = 0.5 * np.sqrt(
+        np.sum(np.cross(e1, e2) ** 2, axis=1) + 1e-12
+    )                                                # (nF,)
+ 
+    Atr = np.sum(face_areas * transom_w)
+ 
+    # ── Transom immersion depth ───────────────────────────────────────────
+    # Per-face average immersion (mean of the three vertex distances).
+    # Clamped to >= 0 so dry faces (negative avg) do not drag the maximum down.
+    face_avg_dist = np.fmax(np.mean(vdist, axis=1), 0.)    # (nF,)
+ 
+    # Soft maximum over the transom-selected faces.
+    Ttr = wl_soft_extremum(
+        face_avg_dist,
+        transom_w,
+        sharpness,
+        "max",
+    )
+ 
+    return Ttr, Atr
+
+
+
+# =============================================================================
 
 class ArchibaldPolygon(ArchibaldObject):
     """
@@ -757,10 +997,7 @@ class ArchibaldMesh(ArchibaldObject):
         if self._data['triangle_centers'] is None:
             self.compute_triangle_centers()
         
-        return np.add(
-            self._data['triangle_centers'],
-            -wide(point)
-        ) @ tall(normal)
+        return np.add(self._data['triangle_centers'], -wide(point)) @ normal
     
     def frontal_area(
         self,
@@ -967,8 +1204,8 @@ class ArchibaldMesh(ArchibaldObject):
             self,
             point: Union[np.ndarray, List] = np.zeros(3),
             normal: Union[np.ndarray, List, str] = "z",
-            aft_fraction: float = 1e-2,
-            fore_fraction: float = 1e-2,
+            transom_fraction: float = 1e-2,
+            bow_fraction: float = 1e-2,
             soft_alpha: float = 1e3,
         ):
         """
@@ -985,84 +1222,89 @@ class ArchibaldMesh(ArchibaldObject):
 
         Returns
         -------
-        dict with hydrostatics properties as its keys
-            
+        dict with keys:
+            volume, cob, Aws, cow, T,
+            Awp, cof, Lwl, Bwl,
+            Ax, Ay,
+            Ttr, Atr,
+            Cb, Cp, Cx, Cy, Cwp,
+            LCB_fpp, LCF_fpp,
+            ie
         """
-        
         if type(normal) is str:
             normal = axis_string_to_array(normal)
-        
+
         if self._data['cross_product'] is None:
             self.compute_cross_product()
-            
+
         if self._data['tetrahedron_centers'] is None:
             self.compute_tetrahedron_centers()
-            
+
         ux, uy, _ = complete_base_from_waterplane_normal(normal)
-        
-        # vertices signed distances from the waterplane, shape similar to self.faces
-        # > 0 for wet, < 0 for dry
+
+        # ── Signed distances of face vertices to the waterplane ───────────
+        # vertices_distances_to_plane returns (nV, 1); indexing by self.faces
+        # gives (nF, 3, 1) — squeeze the trailing dim to get (nF, 3).
+        # Sign convention: positive = wet (below waterplane).
         vdist = -self.vertices_distances_to_plane(
             point,
             normal
         )[self.faces]
-        
-        # avg_dist = self.average_length
+
+        # ── Soft wet/dry face weights ─────────────────────────────────────
         avg_dist = 1.
-        
+
         mix_weights = np.sigmoid(
             np.mean(
-                vdist/avg_dist, 
-                axis=1
-            ) * 10./3.
-            # ) * np.sqrt(10.)
-        ) # smooth clipping weight
-        # calibrated from the wet area variation of an equilateral triangle from
-        # the average of its vertices signed distances
-        
-        highest_v = np.min(vdist, axis=1) # signed distance of the highest vertex of each face
-        deepest_v = np.max(vdist, axis=1) # signed distance of the deepest vertex of each face
-        
+                vdist / avg_dist,
+                axis=1,
+            ) * 10. / 3.
+        )                                           # smooth clipping weight
+
+        highest_v = np.min(vdist, axis=1)           # signed dist of highest vertex
+        deepest_v = np.max(vdist, axis=1)           # signed dist of deepest  vertex
+
         corr = 1e3
-        wet = np.sigmoid(highest_v*corr) * np.sigmoid(deepest_v*corr) # boolean for fully wet faces
-        dry = np.sigmoid(-highest_v*corr) * np.sigmoid(-deepest_v*corr) # boolean for fully dry faces
-        
-        # weight = 1 for fully wet faces, 0 for fully dry faces,  
-        weights = np.fmax(
-            wet,
-            mix_weights
-        ) * (1-dry) 
-        
-        # compute tetrahedron volumes with reference point on the waterplane
+        wet = (                                     # ≈ 1 for fully wet faces
+            np.sigmoid( highest_v * corr)
+            * np.sigmoid( deepest_v * corr)
+        )
+        dry = (                                     # ≈ 1 for fully dry faces
+            np.sigmoid(-highest_v * corr)
+            * np.sigmoid(-deepest_v * corr)
+        )
+
+        weights = np.fmax(wet, mix_weights) * (1 - dry)
+
+        # ── Submerged volume and centre of buoyancy ───────────────────────
         self.compute_tetrahedron_volumes(point)
-        
-        ### Submerged volume and centre of buoyancy
-        
-        # total volume
+
         volume = self.weighted_volume(
             weight=weights,
             ref_point=point,
             recompute_tetrahedron_volumes=False,
         )
-        
-        # average weighted tetrahedron center i.e. center of buoyancy
+
         cob = self.weighted_volume_centroid(
             weight=weights,
             ref_point=point,
             recompute_tetrahedron_volumes=False,
+        )                                           # (1, 3) or (3,)
+
+        # ── Wetted surface area and its centroid ──────────────────────────
+        Aws = self.weighted_area(weight=weights)
+        cow = wide(self.weighted_area_centroid(weight=weights))
+
+        # ── Draft ─────────────────────────────────────────────────────────
+        # Soft version preserves differentiability through T → Cb, Cx, etc.
+        T = wl_soft_extremum(
+            np.reshape(vdist, (-1,)),
+            np.ones(np.reshape(vdist, (-1,)).shape[0]),
+            soft_alpha,
+            "max",
         )
-        
-        ### Wetted surface area and centroid
-        Aws = self.weighted_area(
-            weight=weights
-        )
-        cow = wide(
-            self.weighted_area_centroid(
-                weight=weights
-            )
-        )
-        
-        ### Frontal areas
+
+        # ── Frontal areas ─────────────────────────────────────────────────
         Ax = self.frontal_area(
             direction=ux,
             weight=weights,
@@ -1071,11 +1313,18 @@ class ArchibaldMesh(ArchibaldObject):
             direction=uy,
             weight=weights,
         )
-        
-        ### Draft
-        T = np.max(vdist)
-        
-        ### Waterline extents and FPP / APP
+
+        # ── Waterplane area and centre of flotation ───────────────────────
+        Awp, cof = wl_integrals(
+            self,
+            point,
+            normal,
+            ux,
+            uy,
+            vdist,
+        )
+
+        # ── Waterline extents and FPP / APP ───────────────────────────────
         Lwl, Bwl, u_fpp, u_app, u_wl, v_wl, w_wl = wl_extents(
             self,
             point,
@@ -1085,61 +1334,73 @@ class ArchibaldMesh(ArchibaldObject):
             vdist,
             alpha=soft_alpha,
         )
-        
-        ### Transom
-        transom_weights = np.clip(
-            self.faces_distances_to_plane(
-            point = (u_app + aft_fraction*Lwl)*np.array([[1., 0., 0.]]),
-            normal = -ux
-        )*1000, 0, 1.) * weights
-        
-        Atr = self.frontal_area(direction=ux, weight=transom_weights)
-        
-        ### Dimensionless hull-form coefficients
+
+        # ── LCB and LCF from FPP ─────────────────────────────────────────
+        # Project cob and cof onto the longitudinal axis; measure from FPP.
+        # cob / cof are (1,3) or (3,); @ tall(ux) gives a scalar or (1,1).
+        cob_u    = (wide(cob) @ tall(ux))
+        cof_u    = (cof       @ tall(ux))
+
+        LCB_fpp  = u_fpp - cob_u
+        LCF_fpp  = u_fpp - cof_u
+
+        # ── Transom ───────────────────────────────────────────────────────
+        Ttr, Atr = wl_transom(
+            self,
+            point,
+            normal,
+            ux,
+            uy,
+            vdist,
+            u_app,
+            transom_fraction=transom_fraction,
+            sharpness=soft_alpha,
+        )
+
+        # ── Half-angle of entrance ────────────────────────────────────────
+        ie = wl_half_entrance_angle(
+            self,
+            point,
+            normal,
+            ux,
+            uy,
+            vdist,
+            u_fpp,
+            bow_fraction=bow_fraction,
+            sharpness=soft_alpha,
+        )
+
+        # ── Dimensionless hull-form coefficients ──────────────────────────
         Cb  = volume / (Lwl * Bwl * T   + 1e-12)   # block coefficient
         Cp  = volume / (Ax   * Lwl      + 1e-12)   # prismatic coefficient
         Cx  = Ax     / (Bwl  * T        + 1e-12)   # midship section coefficient
         Cy  = Ay     / (Lwl  * T        + 1e-12)   # longitudinal plane coefficient
-        # Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
-        
-        
+        Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
+
+        # ── Pack and return ───────────────────────────────────────────────
         h = {}
-        h["volume"] = volume
-        h["cob"] = wide(cob)
-        h["Aws"] = Aws
-        h["cow"] = cow
-        h["T"] = T
-        
-        h["Lwl"] = Lwl
-        h["Bwl"] = Bwl
-        
-        h["Ax"] = Ax
-        h["Ay"] = Ay
-        h["Atr"] = Atr
-        
+        h["volume"]   = volume
+        h["cob"]      = wide(cob)
+        h["Aws"]      = Aws
+        h["cow"]      = cow
+        h["T"]        = T
+        h["Awp"]      = Awp
+        h["cof"]      = cof
+        h["Lwl"]      = Lwl
+        h["Bwl"]      = Bwl
+        h["Ax"]       = Ax
+        h["Ay"]       = Ay
+        h["Ttr"]      = Ttr
+        h["Atr"]      = Atr
         h["Cb"]       = Cb
         h["Cp"]       = Cp
         h["Cx"]       = Cx
         h["Cy"]       = Cy
-        # h["Cwp"]      = Cwp
-        
-        #TODO
-        """
-        "cof"
-        "Awp"
-        
-        "Ttr"
-        "Atr"
+        h["Cwp"]      = Cwp
+        h["LCB_fpp"]  = LCB_fpp
+        h["LCF_fpp"]  = LCF_fpp
+        h["ie"]       = ie
 
-        "Cwp"
-        "Abt"
-        "hB"
-        "lcb"
-        "ie"
-        "LCB_fpp"
-        "LCF_fpp"
-        """
-        
         return h
     
     
