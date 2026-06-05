@@ -131,7 +131,7 @@ def wl_intersection_points(
         normal,
         ux,
         uy,
-        vdist,
+        fdist,
 ):
     """
     Shared kernel: compute candidate waterplane intersection points for every
@@ -146,7 +146,7 @@ def wl_intersection_points(
     normal: (1, 3) waterplane normal (unit)
     ux    : (1, 3) longitudinal in-plane basis vector
     uy    : (1, 3) transverse  in-plane basis vector
-    vdist : (nF, 3) signed distances of face vertices to the waterplane
+    fdist : (nF, 3) signed distances of face vertices to the waterplane
             (positive = wet, i.e. below the waterplane)
 
     Returns
@@ -160,9 +160,9 @@ def wl_intersection_points(
     P  = mesh.vertices[mesh.faces]              # (nF, 3, 3)
     P0, P1, P2 = P[:, 0, :], P[:, 1, :], P[:, 2, :]   # each (nF, 3)
 
-    d0 = vdist[:, 0]                            # (nF,)
-    d1 = vdist[:, 1]
-    d2 = vdist[:, 2]
+    d0 = fdist[:, 0]                            # (nF,)
+    d1 = fdist[:, 1]
+    d2 = fdist[:, 2]
 
     Q01 = wl_edge_intersection(P0, P1, d0, d1)  # (nF, 3)
     Q12 = wl_edge_intersection(P1, P2, d1, d2)
@@ -191,7 +191,7 @@ def wl_extents(
         normal,
         ux,
         uy,
-        vdist,
+        fdist,
         alpha=50.,
 ):
     """
@@ -206,7 +206,7 @@ def wl_extents(
     normal : (1, 3) waterplane normal
     ux     : (1, 3) longitudinal in-plane basis vector
     uy     : (1, 3) transverse  in-plane basis vector
-    vdist  : (nF, 3) signed vertex distances (positive = wet)
+    fdist  : (nF, 3) signed vertex distances (positive = wet)
     alpha  : sharpness of soft extrema (higher → closer to true max/min)
 
     Returns
@@ -220,7 +220,7 @@ def wl_extents(
     w_all : (3*nF,) — pooled soft crossing weights
     """
     u01, v01, u12, v12, u20, v20, w01, w12, w20, _, _, _ = \
-        wl_intersection_points(mesh, point, normal, ux, uy, vdist)
+        wl_intersection_points(mesh, point, normal, ux, uy, fdist)
 
     # Pool all candidate intersection points — shape (3*nF,)
     u_all = np.concatenate([u01, u12, u20], axis=0)
@@ -1005,14 +1005,15 @@ class ArchibaldMesh(ArchibaldObject):
         vdist = -self.vertices_distances_to_plane(
             point,
             normal
-        )[self.faces]
+        )
+        fdist = vdist[self.faces]
         
         # avg_dist = self.average_length
         avg_dist = 1.
         
         mix_weights = np.sigmoid(
             np.mean(
-                vdist/avg_dist, 
+                fdist/avg_dist, 
                 axis=1
             ) * 10./3.
             # ) * np.sqrt(10.)
@@ -1020,8 +1021,8 @@ class ArchibaldMesh(ArchibaldObject):
         # calibrated from the wet area variation of an equilateral triangle from
         # the average of its vertices signed distances
         
-        highest_v = np.min(vdist, axis=1) # signed distance of the highest vertex of each face
-        deepest_v = np.max(vdist, axis=1) # signed distance of the deepest vertex of each face
+        highest_v = np.min(fdist, axis=1) # signed distance of the highest vertex of each face
+        deepest_v = np.max(fdist, axis=1) # signed distance of the deepest vertex of each face
         
         corr = 1e3
         wet = np.sigmoid(highest_v*corr) * np.sigmoid(deepest_v*corr) # boolean for fully wet faces
@@ -1073,7 +1074,7 @@ class ArchibaldMesh(ArchibaldObject):
         )
         
         ### Draft
-        T = np.max(vdist)
+        T = np.max(fdist)
         
         ### Waterline extents and FPP / APP
         Lwl, Bwl, u_fpp, u_app, u_wl, v_wl, w_wl = wl_extents(
@@ -1082,18 +1083,25 @@ class ArchibaldMesh(ArchibaldObject):
             normal,
             ux,
             uy,
-            vdist,
+            fdist,
             alpha=soft_alpha,
         )
         
-        ### Transom
-        transom_weights = np.clip(
-            self.faces_distances_to_plane(
-            point = (u_app + aft_fraction*Lwl)*np.array([[1., 0., 0.]]),
+        ### Transom properties
+        transom_vertices_weights = np.sigmoid(
+            self.vertices_distances_to_plane(
+            point = (u_app + self.average_length/2.)*np.array([[1., 0., 0.]]), # point more or less 1/2 face forward of the aft-most waterplane point
             normal = -ux
-        )*1000, 0, 1.) * weights
+        )*1e6) * vdist
         
-        Atr = self.frontal_area(direction=ux, weight=transom_weights)
+        transom_faces_weights = np.sigmoid(
+            self.faces_distances_to_plane(
+            point = (u_app + self.average_length)*np.array([[1., 0., 0.]]), # point more or less 1 face forward of the aft-most waterplane point
+            normal = -ux
+        )*1e6) * weights
+        
+        Ttr = np.max(transom_vertices_weights)
+        Atr = self.frontal_area(direction=ux, weight=transom_faces_weights)
         
         ### Dimensionless hull-form coefficients
         Cb  = volume / (Lwl * Bwl * T   + 1e-12)   # block coefficient
@@ -1109,6 +1117,7 @@ class ArchibaldMesh(ArchibaldObject):
         h["Aws"] = Aws
         h["cow"] = cow
         h["T"] = T
+        h["Ttr"] = Ttr
         
         h["Lwl"] = Lwl
         h["Bwl"] = Bwl
