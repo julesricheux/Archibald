@@ -825,7 +825,7 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_tetrahedron_volumes(ref_point)
         
         # Signed volume of tetrahedron formed with origin for each face
-        tetra_volumes = tall(self._data['tetrahedron_volumes']) * weight
+        tetra_volumes = tall(self._data['tetrahedron_volumes']) * tall(weight)
         
         # Total volume
         return np.sum(tetra_volumes)
@@ -847,7 +847,7 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_tetrahedron_centers()
         
         tetra_centers = self._data['tetrahedron_centers']
-        tetra_volumes = tall(self._data['tetrahedron_volumes']) * weight
+        tetra_volumes = tall(self._data['tetrahedron_volumes']) * tall(weight)
         
         # Weighted sum of centroids by volumes to get the total center of mass
         # return np.sum(wide(tetra_volumes) @ tetra_centers / np.sum(tetra_volumes), axis=0)
@@ -869,7 +869,7 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_triangle_areas()
         
         # Areas of each triangular faces
-        tri_areas = self._data['triangle_areas'] * weight
+        tri_areas = tall(self._data['triangle_areas']) * tall(weight)
         
         # Total area
         return np.sum(tri_areas)
@@ -888,7 +888,7 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_triangle_areas()
         
         tri_centers = self._data['triangle_centers']
-        tri_areas = tall(self._data['triangle_areas']) * weight
+        tri_areas = tall(self._data['triangle_areas']) * tall(weight)
         
         # Weighted sum of centroids by volumes to get the total center of mass
         return np.sum(
@@ -969,23 +969,33 @@ class ArchibaldMesh(ArchibaldObject):
             self.compute_bounds()
             
         return self._data['bounds']     
+    
+    @property
+    def n_vertices(self):
+        return self.vertices.shape[0]
+    
+    @property
+    def n_faces(self):
+        return self.faces.shape[0]
+    
+    @property
+    def n_edges(self):
+        return self.edges.shape[0]
         
     def __repr__(self):
         
         return (
             f"{self.__class__.__name__} instance "+\
-            f"with {self.vertices.shape[0]} vertices, "+\
-            f"{self.edges.shape[0]} edges "+\
-            f"and {self.faces.shape[0]} faces."
+            f"with {self.n_vertices} vertices, "+\
+            f"{self.n_edges} edges "+\
+            f"and {self.n_faces} faces."
         )
+    
     
     def hydrostatics(
             self,
             point: Union[np.ndarray, List] = np.zeros(3),
             normal: Union[np.ndarray, List, str] = "z",
-            aft_fraction: float = 1e-2,
-            fore_fraction: float = 1e-2,
-            soft_alpha: float = 1e3,
         ):
         """
         Compute hydrostatic quantities for the mesh at the given waterplane.
@@ -1014,6 +1024,9 @@ class ArchibaldMesh(ArchibaldObject):
         if self._data['tetrahedron_centers'] is None:
             self.compute_tetrahedron_centers()
             
+        point = wide(np.array(point))
+        normal = wide(np.array(normal))
+            
         ux, uy, _ = complete_base_from_waterplane_normal(normal)
         
         # vertices signed distances from the waterplane, shape similar to self.faces
@@ -1022,7 +1035,7 @@ class ArchibaldMesh(ArchibaldObject):
             point,
             normal
         )
-        fdist = vdist[self.faces]
+        fdist = vdist[self.faces].reshape((self.n_faces, 3))
         
         # avg_dist = self.average_length
         avg_dist = 1.
@@ -1042,8 +1055,8 @@ class ArchibaldMesh(ArchibaldObject):
         
         corr = 1e3
         wet = (                                     # ≈ 1 for fully wet faces
-            np.sigmoid( highest_v * corr)
-            * np.sigmoid( deepest_v * corr)
+            np.sigmoid(highest_v * corr)
+            * np.sigmoid(deepest_v * corr)
         )
         dry = (                                     # ≈ 1 for fully dry faces
             np.sigmoid(-highest_v * corr)
@@ -1099,18 +1112,73 @@ class ArchibaldMesh(ArchibaldObject):
         T = np.max(fdist)
         
         ### Waterline extents and FPP / APP
-        Lwl, Bwl, u_fpp, u_app, u_wl, v_wl, w_wl = wl_extents(
-            self,
-            point,
-            normal,
-            ux,
-            uy,
-            fdist,
-            alpha=soft_alpha,
+        
+        ### Waterplane
+        
+        # Weight selection for waterplane vertices
+        waterplane_vertices_weight = (
+            np.sigmoid((vdist + self.average_length/2.) * 1e3)
+            * np.sigmoid((-vdist + self.average_length/2.) * 1e3)
         )
+        # Weight selection for waterplane faces
+        waterplane_faces_weight = (
+            np.sigmoid((weights + self.average_length/2.) * 1e3)
+            * np.sigmoid((-weights + self.average_length/2.) * 1e3)
+        )
+        
+        x_vdist = self.vertices_distances_to_plane(
+            point=point,
+            normal=ux,
+        )
+        y_vdist = self.vertices_distances_to_plane(
+            point=point,
+            normal=uy,
+        )
+        
+        u_all = x_vdist * waterplane_vertices_weight
+        v_all = y_vdist * waterplane_vertices_weight
+        
+        u_max = np.max(u_all)   # u_fpp
+        u_min = np.min(u_all)   # u_app
+        v_max = np.max(v_all)
+        v_min = np.min(v_all)
+        
+        # Lwl, Bwl, u_fpp, u_app, u_wl, v_wl, w_wl = wl_extents(
+        #     self,
+        #     point,
+        #     normal,
+        #     ux,
+        #     uy,
+        #     fdist,
+        #     alpha=soft_alpha,
+        # )
+        
+        Lwl   = u_max - u_min
+        Bwl   = v_max - v_min
+        u_fpp = u_max
+        u_app = u_min
         
         fpp_wp = point + u_fpp * ux # intersection between FPP and waterplane
         app_wp = point + u_app * ux # intersection between APP and waterplane
+        
+        dummy_cof = wide(self.weighted_area_centroid(weight=waterplane_faces_weight))
+        
+        scaled_vertices = np.add(
+            np.add(self.vertices, -dummy_cof) * waterplane_vertices_weight,
+            dummy_cof
+        )
+        
+        waterplane_vertices = scaled_vertices - (
+            (
+                np.add(scaled_vertices, -point)
+            ) @ normal.T
+        ) @ normal
+        
+        wp = ArchibaldMesh(vertices=waterplane_vertices, faces=self.faces)
+        self.wp = wp
+        
+        cof = wp.weighted_area_centroid(weight=1-waterplane_faces_weight)
+        Awp = wp.frontal_area(direction=normal)
         
         ### Transom properties
         transom_vertices_weights = np.sigmoid(
@@ -1123,35 +1191,22 @@ class ArchibaldMesh(ArchibaldObject):
             self.faces_distances_to_plane(
             point = (app_wp + self.average_length * ux), # point more or less 1 face forward of the aft-most waterplane point
             normal = -ux
-        )*1e6) * weights
+        )*1e6) * tall(weights)
         
         Ttr = np.max(transom_vertices_weights)
         Atr = self.frontal_area(direction=ux, weight=transom_faces_weights)
         
-        ### Waterplane
-        
-        # Weight selection for waterplane vertices
-        waterplane_vertices_weight = (
-            np.sigmoid((vdist + self.average_length/2.) * 1e3)
-            * np.sigmoid((-vdist + self.average_length/2.) * 1e3)
-        )
-        # Weight selection for waterplane faces
-        waterplane_faces_weight = (
-            np.sigmoid((fdist + self.average_length/2.) * 1e3)
-            * np.sigmoid((-fdist + self.average_length/2.) * 1e3)
-        )
-        
         ### Half entry angle
         
         fpp_vdist = self.vertices_distances_to_plane(
-            point = fpp_wp, # point more or less 1 face backward of the fore-most waterplane point
+            point = fpp_wp,
             normal = ux
         )
         
         # Weight selection for bow vertices
         bow_vertices_weight = (
-            np.sigmoid((fpp_vdist + self.average_length * 8.)*1e3)
-            * np.sigmoid((-(fpp_vdist + self.average_length * 2.))*1e3)
+            np.sigmoid((fpp_vdist + self.average_length * 3.)*1e3)
+            * np.sigmoid((-(fpp_vdist + self.average_length))*1e3)
         ) * waterplane_vertices_weight
         
         vectors_from_fpp = np.add(self.vertices, -fpp_wp) + tall(vdist) @ normal
@@ -1159,12 +1214,14 @@ class ArchibaldMesh(ArchibaldObject):
         x = np.sum(vectors_from_fpp @ ux.T, axis=1)
         y = np.sum(vectors_from_fpp @ uy.T, axis=1)
         
-        angles = np.arctand(
-            y/(x+1e-12)
+        angles = tall(
+            np.arctand(
+                y/(x+1e-12)
+            )
         )
 
         ie = np.sum(
-            np.abs(angles)*bow_vertices_weight,
+            np.abs(angles)*tall(bow_vertices_weight),
         ) / np.sum(bow_vertices_weight)
         
         ### Dimensionless hull-form coefficients
@@ -1172,36 +1229,39 @@ class ArchibaldMesh(ArchibaldObject):
         Cp  = volume / (Ax  * Lwl      + 1e-12)   # prismatic coefficient
         Cx  = Ax     / (Bwl * T        + 1e-12)   # midship section coefficient
         Cy  = Ay     / (Lwl * T        + 1e-12)   # longitudinal plane coefficient
-        # Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
+        Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
         
         h = {}
         h["volume"] = volume
         h["cob"] = wide(cob)
         h["Aws"] = Aws
         h["cow"] = cow
+        h["cof"] = cof
         h["T"] = T
         h["Ttr"] = Ttr
         
         h["Lwl"] = Lwl
+        h["Lbp"] = Lwl # approx : Lbp = Lwl
         h["Bwl"] = Bwl
         
         h["Ax"] = Ax
         h["Ay"] = Ay
         h["Atr"] = Atr
+        h["Awp"] = Awp
         
         h["Cb"] = Cb
         h["Cp"] = Cp
         h["Cx"] = Cx
         h["Cy"] = Cy
+        h["Cwp"] = Cwp
+        
         h["ie"] = ie
-        # h["Cwp"] = Cwp
+        
+        h["fpp"] = fpp_wp
+        h["app"] = app_wp
         
         #TODO
         """
-        "cof"
-        "Awp"
-
-        "Cwp"
         "Abt"
         "hB"
         "lcb"

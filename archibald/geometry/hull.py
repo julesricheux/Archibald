@@ -129,6 +129,7 @@ if __name__=="__main__":
     hull = Hull(mesh=stl)
     
     T0, ref = 1.3, 116.487
+    T0, ref = 1.3, 130.487
     # T0, ref = 1.3, 200.
     
     op_point = OperatingPoint(dz=-T0, heel=0.)
@@ -138,7 +139,7 @@ if __name__=="__main__":
     opti = Opti()
     
     T = opti.variable(init_guess = T0)
-    # T = T0
+    T = T0
     
     op_point = OperatingPoint(
         dz=-T,
