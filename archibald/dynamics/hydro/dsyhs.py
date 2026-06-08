@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
 import io
 import archibald.numpy as np
+import archibald.toolbox.units as u
+
 from archibald.modeling import InterpolatedModel
 from archibald.dynamics.hydro.common import Cf_hull, transom_resistance
 
 # DSYHS residuary resistance coefs
 # Coefficients a0 to a7
 _keunig_coefs = {
-    'Fr': np.array([   0.15,    0.20,    0.25,    0.30,    0.35,    0.40,    0.45,    0.50,    0.55,    0.60,    0.65,    0.70,    0.75]),
-    'a0': np.array([-0.0005, -0.0003, -0.0002, -0.0009, -0.0026, -0.0064, -0.0218, -0.0388, -0.0347, -0.0361, +0.0008, +0.0108, +0.1023]),
-    'a1': np.array([+0.0023, +0.0059, -0.0156, +0.0016, -0.0567, -0.4034, -0.5261, -0.5986, -0.4764, +0.0037, +0.3728, -0.1238, +0.7726]),
-    'a2': np.array([-0.0086, -0.0064, +0.0031, +0.0337, +0.0446, -0.1250, -0.2945, -0.3038, -0.2361, -0.2960, -0.3667, -0.2026, +0.5040]),
-    'a3': np.array([-0.0015, +0.0070, -0.0021, -0.0285, -0.1091, +0.0273, +0.2485, +0.6033, +0.8726, +0.9661, +1.3957, +1.1282, +1.7867]),
-    'a4': np.array([+0.0061, +0.0014, -0.0070, -0.0367, -0.0707, -0.1341, -0.2428, -0.0430, +0.4219, +0.6123, +1.0343, +1.1836, +2.1934]),
-    'a5': np.array([+0.0010, +0.0013, +0.0148, +0.0218, +0.0914, +0.3578, +0.6293, +0.8332, +0.8990, +0.7534, +0.3230, +0.4973, -1.5479]),
-    'a6': np.array([+0.0001, +0.0005, +0.0010, +0.0015, +0.0021, +0.0045, +0.0081, +0.0106, +0.0096, +0.0100, +0.0072, +0.0038, -0.0115]),
-    'a7': np.array([+0.0052, -0.0020, -0.0043, -0.0172, -0.0078, +0.1115, +0.2086, +0.1336, -0.2272, -0.3352, -0.4632, -0.4477, -0.0977])
+    'Fr': np.array([0.,   0.15,    0.20,    0.25,    0.30,    0.35,    0.40,    0.45,    0.50,    0.55,    0.60,    0.65,    0.70,    0.75]),
+    'a0': np.array([0.,-0.0005, -0.0003, -0.0002, -0.0009, -0.0026, -0.0064, -0.0218, -0.0388, -0.0347, -0.0361, +0.0008, +0.0108, +0.1023]),
+    'a1': np.array([0.,+0.0023, +0.0059, -0.0156, +0.0016, -0.0567, -0.4034, -0.5261, -0.5986, -0.4764, +0.0037, +0.3728, -0.1238, +0.7726]),
+    'a2': np.array([0.,-0.0086, -0.0064, +0.0031, +0.0337, +0.0446, -0.1250, -0.2945, -0.3038, -0.2361, -0.2960, -0.3667, -0.2026, +0.5040]),
+    'a3': np.array([0.,-0.0015, +0.0070, -0.0021, -0.0285, -0.1091, +0.0273, +0.2485, +0.6033, +0.8726, +0.9661, +1.3957, +1.1282, +1.7867]),
+    'a4': np.array([0.,+0.0061, +0.0014, -0.0070, -0.0367, -0.0707, -0.1341, -0.2428, -0.0430, +0.4219, +0.6123, +1.0343, +1.1836, +2.1934]),
+    'a5': np.array([0.,+0.0010, +0.0013, +0.0148, +0.0218, +0.0914, +0.3578, +0.6293, +0.8332, +0.8990, +0.7534, +0.3230, +0.4973, -1.5479]),
+    'a6': np.array([0.,+0.0001, +0.0005, +0.0010, +0.0015, +0.0021, +0.0045, +0.0081, +0.0106, +0.0096, +0.0100, +0.0072, +0.0038, -0.0115]),
+    'a7': np.array([0.,+0.0052, -0.0020, -0.0043, -0.0172, -0.0078, +0.1115, +0.2086, +0.1336, -0.2272, -0.3352, -0.4632, -0.4477, -0.0977])
 }
 
 _keunig_interpolators = {}
@@ -297,7 +299,7 @@ def compute_Rrr_dsyhs(
     pass #TODO implement roughness influence
     
     
-def compute_Rtr_holtrop(
+def compute_Rtr_dsyhs(
         stw,
         Ttr,
         Atr,
@@ -311,7 +313,7 @@ def compute_Rtr_holtrop(
     
     Vms = stw * u.kt
     
-    Fr_T = Vms / np.sqrt(g * Ttr)
+    Fr_T = Vms / (np.sqrt(g * Ttr) + 1e-12)
     
     return transom_resistance(
             Vms,
@@ -337,21 +339,64 @@ if __name__=="__main__":
         'mu': 135.,
     }
     
-    hull_params = {
-        'Fr': 0.35,
-        # 'Fr': np.linspace(0.35, 0.5, 10),
-        'volume': 6.0,      # m^3 (approx 6 tons)
-        'LCB_fpp': 5.2,    # m
-        'Lwl': 10.0,      # m
-        'Cp': 0.55,
-        'Awp': 18.0,       # m^2
-        'Bwl': 3.0,       # m
-        'LCF_fpp': 5.4,    # m
-        'T': 0.8,        # m
-        'Cx': 0.70,
-        'kyy': 2.685, # m
+    # hull_params = {
+    #     'Fr': 0.35,
+    #     # 'Fr': np.linspace(0.35, 0.5, 10),
+    #     'volume': 6.0,      # m^3 (approx 6 tons)
+    #     'LCB_fpp': 5.2,    # m
+    #     'Lwl': 10.0,      # m
+    #     'Cp': 0.55,
+    #     'Awp': 18.0,       # m^2
+    #     'Bwl': 3.0,       # m
+    #     'LCF_fpp': 5.4,    # m
+    #     'T': 0.8,        # m
+    #     'Cx': 0.70,
+    #     'kyy': 2.685, # m
         
-        'Aws': 15.,
+    #     'Aws': 15.,
+    # }
+    
+    hull_params = {
+        'Fr': 0.03,
+    
+        'volume': 116.7926694549928,
+        'cob': np.array([12.2, 0.003, 0.494]),
+        'Aws': 157.1220345584358,
+        'cow': np.array([11.8, 0.00324, 0.510]),
+        'cof': np.array([10.9, 0.0065, 1.30]),
+    
+        'T': 1.299766705208458,
+        'Ttr': -0.0,
+    
+        'Lwl': 25.393312454223633,
+        'Lbp': 25.393312454223633,
+        'Bwl': 7.2994184494018555,
+    
+        'Ax': 7.2594194330079045,
+        'Ay': 26.872448496209117,
+        'Atr': 0.5045104756899772,
+        'Awp': 138.4459100965084,
+    
+        'Cb': 0.48477761712401507,
+        'Cp': 0.6335696116907322,
+        'Cx': 0.7651528864054807,
+        'Cy': 0.8141838335623939,
+        'Cwp': 0.7469172905442572,
+    
+        'ie': 18.520232193238826,
+    
+        'fpp': np.array([25.39, 0.0, 1.3]),
+        'app': np.array([0.0, 0.0, 1.3]),
+    
+        'LCB_fpp': 13.163823206145308,
+        'LCF_fpp': 14.520357168645651,
+        'lcb': -0.018397244545218405,
+    
+        'Abt': 0.0,
+        'hB': 0.649883352604229,
+    
+        # To be supplied separately:
+        # 'kyy': ...,
     }
     
     hull_params["stw"] = hull_params['Fr']*np.sqrt(env_params['g']*hull_params['Lwl'])/u.kt
@@ -359,7 +404,8 @@ if __name__=="__main__":
     
     Rf = compute_Rf_dsyhs(**hull_params, **env_params)
     Rw = compute_Rw_dsyhs(**hull_params, **env_params)
-    Raw = compute_Raw_dsyhs(**hull_params, **env_params)
+    # Raw = compute_Raw_dsyhs(**hull_params, **env_params)
+    Raw = 0.
     print(f"Boat speed: {hull_params['Fr']*np.sqrt(env_params['g']*hull_params['Lwl'])/u.kt:.2f} kts")
     print(f"Calculated Frictionnal Resistance: {Rf:.2f} N")
     print(f"Calculated Residuary Resistance: {Rw:.2f} N")
@@ -397,7 +443,8 @@ if __name__=="__main__":
         # by your compute_Raw_dsyhs signature, e.g., interp_a=interp_a_3d, etc.)
         Rf = compute_Rf_dsyhs(**hull_params, **env_params)
         Rw = compute_Rw_dsyhs(**hull_params, **env_params)
-        Raw = compute_Raw_dsyhs(**hull_params, **env_params)
+        # Raw = compute_Raw_dsyhs(**hull_params, **env_params)
+        Raw = 0.
         
         Rf_list.append(Rf)
         Rw_list.append(Rw)
