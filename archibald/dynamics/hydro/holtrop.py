@@ -8,8 +8,8 @@ HOLTROP-MENNEN 1984 METHOD FUNCTIONS
 import archibald.numpy as np
 import archibald.toolbox.units as u
 
-from archibald.dynamics.hydro.common import Cf_hull
 from archibald.toolbox.math_utils import ReLU
+from archibald.dynamics.hydro.common import Cf_hull, transom_resistance
 
 #%% INDIVIDUAL COEFFICIENTS
 
@@ -1102,13 +1102,18 @@ def compute_Rtr_holtrop(
     """
     Calculate transom resistance using the Holtrop-Mennen method.
     """
+    
     Vms = stw * u.kt
     
     Fr_T = Vms / np.sqrt(g * Ttr)
     
-    ctr = 0.2 * (1 - (0.2 * Fr_T))
-    ctr_ReLu = ReLU(ctr)
-    Rtr = 0.5 * rho * (Vms ** 2) * Atr * ctr_ReLu
+    transom_resistance(
+            Vms,
+            FrT,
+            Atr,
+            rho,
+            **kwargs,
+        )
     
     return Rtr
 

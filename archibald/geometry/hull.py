@@ -6,12 +6,18 @@ Created on Wed May 27 16:23:04 2026
 """
 
 import archibald.numpy as np
+import archibald.toolbox.units as u
+
+import archibald.dynamics.hydro.dsyhs as dsyhs
+import archibald.dynamics.hydro.holtrop as holtrop
 
 from typing import Union, List
 from archibald.common import ArchibaldObject
 from archibald.environment import Environment
 from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
+
+
 
 
 def tall(array):
@@ -121,9 +127,42 @@ class Hull(ArchibaldObject):
         return Fb, Mb
     
     
+    def _compute_resistance_dsyhs(
+            self,
+            stw,
+            rho: float = OperatingPoint().environment.water.density,
+            g : float = OperatingPoint().environment.gravity,
+            recompute_statics: bool = False,
+        ):
+        
+        if recompute_statics:
+            self.compute_hydrostatics_properties(op_point)
+            
+        V = stw * u.kt
+            
+        Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g)
+        
+        # Additionnal parameters needed to compute DSYHS resistance
+        env_params = {
+            'g': g,         # m/s^2
+            'rho': rho,     # kg/m^3 (seawater)
+        }
+        
+        state_params = {
+            'Fr': Fr,
+        }
+        
+        Rf = dsyhs.compute_Rf_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
+        Rw = dsyhs.compute_Rw_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
+        Rtr = dsyhs.compute_Rtr_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
+        
+        return Rf + Rw + Rtr
+    
+    
     def compute_resistance(
             self,
             op_point: OperatingPoint = OperatingPoint(),
+            method: str = str(),
             recompute_statics: bool = True,
         ):
         
@@ -134,17 +173,22 @@ class Hull(ArchibaldObject):
         rho = op_point.environment.water.density
         g = op_point.environment.gravity
         
-        R=0.
+        R = self._compute_resistance_dsyhs(
+            op_point.stw,
+            rho,
+            g,
+            recompute_statics=False,
+        )
         
-        Fb = wide(np.array([
+        Fh = wide(np.array([
             -R,
             0.,
             0.,
         ]))
         
-        Mb = np.cross(center, Fb)
+        Mh = np.cross(center, Fh)
         
-        return Fb, Mb
+        return Fh, Mh
         
         
 if __name__=="__main__":

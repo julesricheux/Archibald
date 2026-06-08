@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import io
 import archibald.numpy as np
-from archibald.modeling import InterpolatedModel, UnstructuredInterpolatedModel
-from archibald.dynamics.hydro.common import Cf_hull
+from archibald.modeling import InterpolatedModel
+from archibald.dynamics.hydro.common import Cf_hull, transom_resistance
 
 # DSYHS residuary resistance coefs
 # Coefficients a0 to a7
@@ -297,10 +297,28 @@ def compute_Rrr_dsyhs(
     pass #TODO implement roughness influence
     
     
-def compute_Rtr_dsyhs(
+def compute_Rtr_holtrop(
+        stw,
+        Ttr,
+        Atr,
+        rho,
+        g,
         **kwargs,
     ):
-    pass #TODO implement transom influence
+    """
+    Calculate transom resistance.
+    """
+    
+    Vms = stw * u.kt
+    
+    Fr_T = Vms / np.sqrt(g * Ttr)
+    
+    return transom_resistance(
+            Vms,
+            Fr_T,
+            Atr,
+            rho,
+        )
 
 
 if __name__=="__main__":
