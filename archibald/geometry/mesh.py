@@ -1007,10 +1007,6 @@ class ArchibaldMesh(ArchibaldObject):
         ----------
         point            : (1, 3) or (3,) reference point on the waterplane
         normal           : (1, 3), (3,) or str — waterplane outward normal
-        transom_fraction : fraction of Lwl used for the aft soft-selection window
-        bow_fraction     : fraction of Lwl used for the bow soft-selection window
-        soft_alpha       : sharpness of all soft extrema (higher → more accurate,
-                           lower → smoother gradients)
 
         Returns
         -------
@@ -1234,6 +1230,13 @@ class ArchibaldMesh(ArchibaldObject):
         Cy  = Ay     / (Lwl * T        + 1e-12)   # longitudinal plane coefficient
         Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
         
+        ### Additional distances and lengths
+        cob_u    = (wide(cob) @ tall(ux))
+        cof_u    = (wide(cof) @ tall(ux))
+
+        LCB_fpp  = u_fpp - cob_u # lcb from fpp / m
+        LCF_fpp  = u_fpp - cof_u # lcf from fpp / m
+        
         h = {}
         h["volume"] = volume
         h["cob"] = wide(cob)
@@ -1263,14 +1266,12 @@ class ArchibaldMesh(ArchibaldObject):
         h["fpp"] = fpp_wp
         h["app"] = app_wp
         
-        #TODO
-        """
-        "Abt"
-        "hB"
-        "lcb"
-        "LCB_fpp"
-        "LCF_fpp"
-        """
+        h["LCB_fpp"] = LCB_fpp
+        h["LCF_fpp"] = LCF_fpp
+        
+        # TODO refine computation for bulbous bow parameters
+        h["Abt"] = 0.
+        h["hB"] = T/2.
         
         return h
     

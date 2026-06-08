@@ -1093,8 +1093,6 @@ def compute_Rtr_holtrop(
         stw,
         Ttr,
         Atr,
-        Bwl,
-        Cwp,
         rho,
         g,
         **kwargs,
@@ -1107,15 +1105,12 @@ def compute_Rtr_holtrop(
     
     Fr_T = Vms / np.sqrt(g * Ttr)
     
-    transom_resistance(
+    return transom_resistance(
             Vms,
-            FrT,
+            Fr_T,
             Atr,
             rho,
-            **kwargs,
         )
-    
-    return Rtr
 
 
 def compute_Ra_holtrop(
