@@ -425,7 +425,10 @@ class ArchibaldPolygon(ArchibaldObject):
         tri_areas = self._data['triangle_areas'] * weight
         
         # Weighted sum of centroids by volumes to get the total center of mass
-        return np.sum((wide(tri_areas) @ tri_centers / np.sum(tri_areas)), axis=0)
+        return np.sum(
+            (wide(tri_areas) @ tri_centers / (np.sum(tri_areas) + 1e-12)),
+            axis=0
+        )
     
     @property
     def normals(self):
@@ -853,7 +856,7 @@ class ArchibaldMesh(ArchibaldObject):
         # return np.sum(wide(tetra_volumes) @ tetra_centers / np.sum(tetra_volumes), axis=0)
     
         return np.sum(
-            tetra_centers * tetra_volumes / np.sum(tetra_volumes),
+            tetra_centers * tetra_volumes / (np.sum(tetra_volumes) + 1e-12),
             axis=0
         )
     
@@ -892,7 +895,7 @@ class ArchibaldMesh(ArchibaldObject):
         
         # Weighted sum of centroids by volumes to get the total center of mass
         return np.sum(
-            tri_centers * tri_areas / np.sum(tri_areas),
+            tri_centers * tri_areas / (np.sum(tri_areas) + 1e-12),
             axis=0
         )
     
@@ -1222,7 +1225,7 @@ class ArchibaldMesh(ArchibaldObject):
 
         ie = np.sum(
             np.abs(angles)*tall(bow_vertices_weight),
-        ) / np.sum(bow_vertices_weight)
+        ) / (np.sum(bow_vertices_weight) + 1e-12)
         
         ### Dimensionless hull-form coefficients
         Cb  = volume / (Lwl * Bwl * T  + 1e-12)   # block coefficient
