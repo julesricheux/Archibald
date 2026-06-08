@@ -18,6 +18,15 @@ from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
 
 
+DEFAULT_RESISTANCE_METHODS = {
+    "dsyhs": {
+        "Rf": dsyhs.compute_Rf_dsyhs,
+        "Rw": dsyhs.compute_Rw_dsyhs,
+        "Rtr": dsyhs.compute_Rtr_dsyhs,
+    },
+    # "holtrop": {
+    # },
+}
 
 
 def tall(array):
@@ -48,6 +57,7 @@ class Hull(ArchibaldObject):
         self.mesh = mesh
         
         self.hydrostatics_data = {}
+        self.resistance_components = {}
         
     def __repr__(self):
         return f"Hull object '{self.name}'"
@@ -127,19 +137,20 @@ class Hull(ArchibaldObject):
         return Fb, Mb
     
     
-    def _compute_resistance_dsyhs(
+    def compute_resistance_components(
             self,
-            stw,
-            rho: float = OperatingPoint().environment.water.density,
-            nu: float = OperatingPoint().environment.water.kinematic_viscosity,
-            g : float = OperatingPoint().environment.gravity,
-            recompute_statics: bool = False,
+            op_point: OperatingPoint,
+            method: str = str(),
+            recompute_statics: bool = True,
         ):
         
         if recompute_statics:
             self.compute_hydrostatics_properties(op_point)
             
-        V = stw * u.kt
+        V = op_point.stw * u.kt
+        rho = op_point.environment.water.density
+        nu = op_point.environment.water.kinematic_viscosity
+        g = op_point.environment.gravity
             
         Re = V * self.hydrostatics_data["Lwl"] / nu
         Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g + 1e-12)
@@ -152,40 +163,48 @@ class Hull(ArchibaldObject):
         }
         
         state_params = {
-            'stw': stw,
+            'stw': op_point.stw,
             'Re': np.softplus(Re, beta=1e3),
             'Fr': np.softplus(Fr, beta=1e3),
         }
         
-        Rf = dsyhs.compute_Rf_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
-        Rw = dsyhs.compute_Rw_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
-        Rtr = dsyhs.compute_Rtr_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
+        if method in DEFAULT_RESISTANCE_METHODS.keys():
+            process = DEFAULT_RESISTANCE_METHODS[method]
+        elif type(method)==dict:
+            process = method
+        elif type(method)==str:
+            raise NotImplementedError(
+                f"Unknown method '{method}'. Should be in {list(DEFAULT_RESISTANCE_METHODS.keys())} or a custom dictionary of methods.")
+        else:
+            raise TypeError("method argument should be str or dict")
+            
+        r = {}
+        t = 0.
+        for name, func in process.items():
+            r[name] = func(**self.hydrostatics_data, **env_params, **state_params)
+            t += r[name]
         
-        return Rf + Rw + Rtr
+        r["_total"] = t
+        
+        return r
     
     
     def compute_resistance(
             self,
-            op_point: OperatingPoint = OperatingPoint(),
+            op_point: OperatingPoint,
             method: str = str(),
             recompute_statics: bool = True,
         ):
         
-        if recompute_statics:
-            self.compute_hydrostatics_properties(op_point)
-            
-        center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
-        rho = op_point.environment.water.density
-        nu = op_point.environment.water.kinematic_viscosity
-        g = op_point.environment.gravity
-        
-        R = self._compute_resistance_dsyhs(
-            op_point.stw,
-            rho,
-            nu,
-            g,
-            recompute_statics=False,
+        self.resistance_components = self.compute_resistance_components(
+            op_point=op_point,
+            method=method,
+            recompute_statics=recompute_statics,
         )
+        
+        center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
+        
+        R = self.resistance_components["_total"]
         
         Fh = wide(np.array([
             -1.,
@@ -232,6 +251,6 @@ if __name__=="__main__":
     
     # print(sol(T))
     
-    hull.compute_resistance(op_point)
+    hull.compute_resistance(op_point, "dsyhs")
     
     
