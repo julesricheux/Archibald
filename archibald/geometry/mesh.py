@@ -1237,6 +1237,8 @@ class ArchibaldMesh(ArchibaldObject):
         LCB_fpp  = u_fpp - cob_u # lcb from fpp / m
         LCF_fpp  = u_fpp - cof_u # lcf from fpp / m
         
+        lcb = 1/2 - LCB_fpp/Lwl # longitudinal centre of buoyancy, as % of Lwl from midship
+        
         h = {}
         h["volume"] = volume
         h["cob"] = wide(cob)
@@ -1268,6 +1270,7 @@ class ArchibaldMesh(ArchibaldObject):
         
         h["LCB_fpp"] = LCB_fpp
         h["LCF_fpp"] = LCF_fpp
+        h["lcb"] = lcb
         
         # TODO refine computation for bulbous bow parameters
         h["Abt"] = 0.

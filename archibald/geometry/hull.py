@@ -131,6 +131,7 @@ class Hull(ArchibaldObject):
             self,
             stw,
             rho: float = OperatingPoint().environment.water.density,
+            nu: float = OperatingPoint().environment.water.kinematic_viscosity,
             g : float = OperatingPoint().environment.gravity,
             recompute_statics: bool = False,
         ):
@@ -140,6 +141,7 @@ class Hull(ArchibaldObject):
             
         V = stw * u.kt
             
+        Re = V / (self.hydrostatics_data["Lwl"] * nu)
         Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g)
         
         # Additionnal parameters needed to compute DSYHS resistance
@@ -149,7 +151,8 @@ class Hull(ArchibaldObject):
         }
         
         state_params = {
-            'Fr': Fr,
+            'Re': np.softplus(Re, beta=1e3),
+            'Fr': np.softplus(Fr, beta=1e3),
         }
         
         Rf = dsyhs.compute_Rf_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
@@ -198,7 +201,7 @@ if __name__=="__main__":
     stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull(mesh=stl)
     
-    T0, ref = -1.3, 116.487
+    T0, ref = 1.3, 116.487
     
     op_point = OperatingPoint(dz=-T0, heel=0.)
     
