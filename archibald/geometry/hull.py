@@ -24,8 +24,13 @@ DEFAULT_RESISTANCE_METHODS = {
         "Rw": dsyhs.compute_Rw_dsyhs,
         "Rtr": dsyhs.compute_Rtr_dsyhs,
     },
-    # "holtrop": {
-    # },
+    "holtrop": {
+        "Rf": holtrop.compute_Rf_holtrop,
+        "Rw": holtrop.compute_Rw_holtrop,
+        "Rb": holtrop.compute_Rb_holtrop,
+        "Rtr": holtrop.compute_Rtr_holtrop,
+        "Ra": holtrop.compute_Ra_holtrop,
+    },
 }
 
 
@@ -142,6 +147,7 @@ class Hull(ArchibaldObject):
             op_point: OperatingPoint,
             method: str = str(),
             recompute_statics: bool = True,
+            **kwargs,
         ):
         
         if recompute_statics:
@@ -168,7 +174,7 @@ class Hull(ArchibaldObject):
             'Fr': np.softplus(Fr, beta=1e3),
         }
         
-        if method in DEFAULT_RESISTANCE_METHODS.keys():
+        if type(method)==str and method in DEFAULT_RESISTANCE_METHODS.keys():
             process = DEFAULT_RESISTANCE_METHODS[method]
         elif type(method)==dict:
             process = method
@@ -181,7 +187,7 @@ class Hull(ArchibaldObject):
         r = {}
         t = 0.
         for name, func in process.items():
-            r[name] = func(**self.hydrostatics_data, **env_params, **state_params)
+            r[name] = func(**self.hydrostatics_data, **env_params, **state_params, **kwargs)
             t += r[name]
         
         r["_total"] = t
@@ -194,12 +200,14 @@ class Hull(ArchibaldObject):
             op_point: OperatingPoint,
             method: str = str(),
             recompute_statics: bool = True,
+            **kwargs,
         ):
         
         self.resistance_components = self.compute_resistance_components(
             op_point=op_point,
             method=method,
             recompute_statics=recompute_statics,
+            **kwargs
         )
         
         center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
@@ -234,7 +242,7 @@ if __name__=="__main__":
     T = T0
     
     op_point = OperatingPoint(
-        stw=2.,
+        stw=6.,
         dz=-T,
         # leeway=45.,
         # trim=0.1,
@@ -251,6 +259,29 @@ if __name__=="__main__":
     
     # print(sol(T))
     
-    hull.compute_resistance(op_point, "dsyhs")
+    hull.compute_resistance(
+        op_point,
+        method="dsyhs",
+    )
+    print(hull.resistance_components)
+    
+    hull.compute_resistance(
+        op_point,
+        method="holtrop",
+        **{'Csternchoice': 1, 'Bulbchoice': 0}
+    )
+    print(hull.resistance_components)
+    
+    custom_process = {
+        "Rf": holtrop.compute_Rf_holtrop,
+        "Rw": dsyhs.compute_Rw_dsyhs,
+    }
+    
+    hull.compute_resistance(
+        op_point,
+        method=custom_process,
+        **{'Csternchoice': 1, 'Bulbchoice': 0}
+    )
+    print(hull.resistance_components)
     
     

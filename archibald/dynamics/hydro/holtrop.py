@@ -974,13 +974,19 @@ def compute_Rf_holtrop(
 
     dynamic_pressure = 0.5 * rho * Aws * Vms ** 2
     Rf = _1pk * Cf_hull(_Re + 10.) * dynamic_pressure
-
-    if uInterval:
-        RfMin = (_1pk - 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
-        RfMax = (_1pk + 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
-        return RfMin, RfMax
-
+    
+    if not np.is_casadi_type(Rf):
+        Rf = np.squeeze(Rf)
+        
     return Rf
+
+    # TODO implement correctly
+    # if uInterval:
+    #     RfMin = (_1pk - 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
+    #     RfMax = (_1pk + 2 * sigma_k) * Cf_hull(_Re + 10.) * dynamic_pressure
+    #     return RfMin, RfMax
+
+    
 
 
 def compute_Rw_holtrop(
@@ -1134,10 +1140,11 @@ def compute_Ra_holtrop(
     CA = C_A(Lwl)
     sigmaCA = 0.00021
         
-    if uInterval:
-        RaMin = 0.5 * rho * Aws * (Vms ** 2) * (CA - 2*sigmaCA)
-        RaMax = 0.5 * rho * Aws * (Vms ** 2) * (CA + 2*sigmaCA)
-        return RaMin, RaMax
+    # TODO implement correctly
+    # if uInterval:
+    #     RaMin = 0.5 * rho * Aws * (Vms ** 2) * (CA - 2*sigmaCA)
+    #     RaMax = 0.5 * rho * Aws * (Vms ** 2) * (CA + 2*sigmaCA)
+    #     return RaMin, RaMax
     
     Ra = 0.5 * rho * Aws * (Vms ** 2) * CA
     return Ra
