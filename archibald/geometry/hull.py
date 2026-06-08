@@ -119,6 +119,32 @@ class Hull(ArchibaldObject):
         Mb = np.cross(center, Fb)
         
         return Fb, Mb
+    
+    
+    def compute_resistance(
+            self,
+            op_point: OperatingPoint = OperatingPoint(),
+            recompute_statics: bool = True,
+        ):
+        
+        if recompute_statics:
+            self.compute_hydrostatics_properties(op_point)
+            
+        center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
+        rho = op_point.environment.water.density
+        g = op_point.environment.gravity
+        
+        R=0.
+        
+        Fb = wide(np.array([
+            -R,
+            0.,
+            0.,
+        ]))
+        
+        Mb = np.cross(center, Fb)
+        
+        return Fb, Mb
         
         
 if __name__=="__main__":

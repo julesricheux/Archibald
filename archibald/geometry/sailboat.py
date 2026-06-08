@@ -105,12 +105,37 @@ class Sailboat(ArchibaldObject):
         self.moments["Mb"] = wide(np.zeros(3))
         
         for i, hull in enumerate(self.hulls):
-            Fb_i, Mb_i = hull.compute_buoyancy(op_point, recompute_statics)
+            Fb_i, Mb_i = hull.compute_buoyancy(
+                op_point=op_point,
+                recompute_statics=recompute_statics,
+            )
             self.forces[f"Fb_{i}"] = Fb_i
             self.moments[f"Mb_{i}"] = Mb_i
             
             self.forces["Fb"] += Fb_i
             self.moments["Mb"] += Mb_i
+            
+            
+    def compute_resistance(
+            self,
+            op_point: OperatingPoint,
+            method: str,
+            recompute_statics: bool = True,
+        ):
+        self.forces["Fh"] = wide(np.zeros(3))
+        self.moments["Mh"] = wide(np.zeros(3))
+        
+        for i, hull in enumerate(self.hulls):
+            Fb_i, Mb_i = hull.compute_resistance(
+                op_point=op_point,
+                method=method,
+                recompute_statics=recompute_statics,
+            )
+            self.forces[f"Fh_{i}"] = Fb_i
+            self.moments[f"Mh_{i}"] = Mb_i
+            
+            self.forces["Fh"] += Fb_i
+            self.moments["Mh"] += Mb_i
             
         
     def compute_torsor(
