@@ -141,7 +141,7 @@ class Hull(ArchibaldObject):
             
         V = stw * u.kt
             
-        Re = V / (self.hydrostatics_data["Lwl"] * nu + 1e-12)
+        Re = V * self.hydrostatics_data["Lwl"] / nu
         Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g + 1e-12)
         
         # Additionnal parameters needed to compute DSYHS resistance
@@ -161,11 +161,6 @@ class Hull(ArchibaldObject):
         Rw = dsyhs.compute_Rw_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
         Rtr = dsyhs.compute_Rtr_dsyhs(**self.hydrostatics_data, **env_params, **state_params)
         
-        print(Fr)
-        print(Rf)
-        print(Rw)
-        print(Rtr)
-        
         return Rf + Rw + Rtr
     
     
@@ -181,11 +176,13 @@ class Hull(ArchibaldObject):
             
         center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
         rho = op_point.environment.water.density
+        nu = op_point.environment.water.kinematic_viscosity
         g = op_point.environment.gravity
         
         R = self._compute_resistance_dsyhs(
             op_point.stw,
             rho,
+            nu,
             g,
             recompute_statics=False,
         )
@@ -233,7 +230,7 @@ if __name__=="__main__":
     
     sol = opti.solve()
     
-    print(sol(T))
+    # print(sol(T))
     
     hull.compute_resistance(op_point)
     

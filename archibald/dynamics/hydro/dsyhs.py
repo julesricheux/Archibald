@@ -212,6 +212,9 @@ def compute_Rw_dsyhs(
     # Calculate the non-dimensional resistance coefficient
     resistance_coeff = a[0] + (term1 * vol_ratio) + (term2 * vol_ratio)
     
+    if not np.is_casadi_type(resistance_coeff):
+        resistance_coeff = np.squeeze(resistance_coeff)
+    
     # Convert back to dimensional resistance in Newtons
     Rw = resistance_coeff * volume * rho * g
     
@@ -357,7 +360,7 @@ if __name__=="__main__":
     # }
     
     hull_params = {
-        'Fr': 0.03,
+        'Fr': 0.3,
     
         'volume': 116.7926694549928,
         'cob': np.array([12.2, 0.003, 0.494]),
