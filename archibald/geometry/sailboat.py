@@ -316,7 +316,7 @@ if __name__=="__main__":
         "Rf": holtrop.compute_Rf_holtrop,
         "Rw": holtrop.compute_Rw_holtrop,
         # "Rw": dsyhs.compute_Rw_dsyhs,
-        # "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
+        "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
     }
     
     # hull.compute_resistance(
@@ -328,7 +328,8 @@ if __name__=="__main__":
     Ftot, Mtot = sailboat.compute_torsor(
         op_point,
         # method="dsyhs",
-        method=custom_process,
+        method="holtrop",
+        # method=custom_process,
         **{'Csternchoice': 1, 'Bulbchoice': 0}
     )
     

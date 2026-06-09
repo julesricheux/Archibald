@@ -316,7 +316,7 @@ def compute_Rtr_dsyhs(
     
     Vms = stw * u.kt
     
-    Fr_T = Vms / (np.sqrt(g * Ttr) + 1e-12)
+    Fr_T = Vms / (np.sqrt(g * Ttr + 1e-12) + 1e-12)
     
     return transom_resistance(
             Vms,
