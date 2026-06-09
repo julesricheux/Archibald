@@ -121,6 +121,7 @@ class Sailboat(ArchibaldObject):
             op_point: OperatingPoint,
             method: str,
             recompute_statics: bool = True,
+            **kwargs,
         ):
         self.forces["Fh"] = wide(np.zeros(3))
         self.moments["Mh"] = wide(np.zeros(3))
@@ -130,6 +131,7 @@ class Sailboat(ArchibaldObject):
                 op_point=op_point,
                 method=method,
                 recompute_statics=recompute_statics,
+                **kwargs,
             )
             self.forces[f"Fh_{i}"] = Fb_i
             self.moments[f"Mh_{i}"] = Mb_i
@@ -140,17 +142,27 @@ class Sailboat(ArchibaldObject):
         
     def compute_torsor(
             self,
-            op_point: OperatingPoint = OperatingPoint(),
+            op_point: OperatingPoint,
+            method: str,
+            recompute_statics: bool = True,
+            **kwargs,
         ):
         self.compute_aerodynamics(op_point)
         self.compute_hydrodynamics(op_point)
         self.compute_weight(op_point)
         self.compute_buoyancy(op_point)
+        self.compute_resistance(
+            op_point=op_point,
+            method=method,
+            recompute_statics=recompute_statics,
+            **kwargs,
+        )
         
-        self.forces["Ftot"] = self.forces["Fb"] + self.forces["Fw"]
-        self.moments["Mtot"] = self.moments["Mb"] + self.moments["Mw"]
+        self.forces["Ftot"] = self.forces["Fb"] + self.forces["Fw"] + self.forces["Fh"]
+        self.moments["Mtot"] = self.moments["Mb"] + self.moments["Mw"] + self.moments["Mh"]
         
         return self.forces["Ftot"], self.moments["Mtot"]
+    
     
     def _get_target_residual(
             self,
@@ -166,6 +178,7 @@ class Sailboat(ArchibaldObject):
         if target_name not in target_map:
             raise ValueError(f"Target '{target_name}' not recognized. Use one of: {list(target_map.keys())}")
         return target_map[target_name]
+
 
     def find_equilibrium(
             self,
@@ -264,19 +277,22 @@ if __name__=="__main__":
     import os
     from archibald.optimization import Opti
     
-    T0 = 1.3
-    heel0 = 0.
-    trim0 = 0.
-    leeway0 = 0.
+    stw = 10.
+    T = 1.3
+    heel = 0.
+    trim = 0.
+    leeway = 0.
     
     opti = Opti()
     
-    T = opti.variable(init_guess=T0)
-    heel = opti.variable(init_guess=heel0)
-    trim = opti.variable(init_guess=trim0)
-    leeway = opti.parameter(leeway0)
+    stw = opti.variable(init_guess=stw)
+    T = opti.variable(init_guess=T)
+    heel = opti.variable(init_guess=heel)
+    trim = opti.variable(init_guess=trim)
+    leeway = opti.parameter(leeway)
     
     op_point = OperatingPoint(
+        stw=stw,
         dz=-T,
         heel=heel,
         trim=trim,
@@ -293,15 +309,38 @@ if __name__=="__main__":
         hulls=[hull],
     )
     
+    import archibald.dynamics.hydro.holtrop as holtrop
+    import archibald.dynamics.hydro.dsyhs as dsyhs
+    
+    custom_process = {
+        "Rf": holtrop.compute_Rf_holtrop,
+        "Rw": holtrop.compute_Rw_holtrop,
+        # "Rw": dsyhs.compute_Rw_dsyhs,
+        # "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
+    }
+    
+    # hull.compute_resistance(
+    #     op_point,
+    #     method=custom_process,
+    #     **{'Csternchoice': 1, 'Bulbchoice': 0}
+    # )
+    
     Ftot, Mtot = sailboat.compute_torsor(
-        op_point
+        op_point,
+        # method="dsyhs",
+        method=custom_process,
+        **{'Csternchoice': 1, 'Bulbchoice': 0}
     )
     
-    opti.subject_to(Ftot[2] == 0)
+    Fprop = 15e3
+    Ffoil = 1000. * stw**2.
+    
+    opti.subject_to((Ftot[0] + Fprop) == 0)
+    opti.subject_to((Ftot[2] + Ffoil) == 0)
     opti.subject_to(Mtot[0] == 0)
     opti.subject_to(Mtot[1] == 0)
     
-    # opti.minimize(T)
+    opti.minimize(0.)
     
     sol = opti.solve()
     
@@ -313,7 +352,8 @@ if __name__=="__main__":
     final_op = sol(op_point)
     
     print("\n--- EQUILIBRIUM REACHED ---")
-    print(f"Draft (dz): {final_op.dz:.3f}")
+    print(f"STW: {final_op.stw:.1f} kts")
+    print(f"Draft (dz): {final_op.dz:.2f} m")
     print(f"Heel:       {final_op.heel:.3f} deg")
     print(f"Trim:       {final_op.trim:.3f} deg")
     print(f"Final Ftot: {sol(Ftot)}")
