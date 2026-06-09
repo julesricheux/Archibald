@@ -201,13 +201,23 @@ def compute_Rw_dsyhs(
         a.append(
             _keunig_interpolators[f"a{i}"](Fr)
         )
+        # print(f"{i}: {a[i]:.2f}")
     
     # Calculate dimensional ratios
-    vol_ratio = (volume**(1/3)) / Lwl
+    vol_ratio = (volume**(1/3)) / (Lwl + 1e-12)
     
     # Calculate terms inside the parentheses
-    term1 = (a[1] * LCB_fpp / Lwl) + (a[2] * Cp) + (a[3] * (volume**(2/3)) / Awp) + (a[4] * Bwl / Lwl)
-    term2 = (a[5] * LCB_fpp / LCF_fpp) + (a[6] * Bwl / T) + (a[7] * Cx)
+    term1 = (
+        (a[1] * LCB_fpp / (Lwl + 1e-12))
+        + (a[2] * Cp)
+        + (a[3] * (volume**(2/3)) / (Awp + 1e-12))
+        + (a[4] * Bwl / (Lwl + 1e-12))
+    )
+    term2 = (
+        (a[5] * LCB_fpp / (LCF_fpp + 1e-12))
+        + (a[6] * Bwl / (T + 1e-12))
+        + (a[7] * Cx)
+    )
     
     # Calculate the non-dimensional resistance coefficient
     resistance_coeff = a[0] + (term1 * vol_ratio) + (term2 * vol_ratio)

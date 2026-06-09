@@ -1108,7 +1108,10 @@ class ArchibaldMesh(ArchibaldObject):
         )
         
         ### Draft
-        T = np.max(fdist)
+        T = np.softplus(
+            np.max(fdist),
+            beta=1e3,
+        )
         
         ### Waterline extents and FPP / APP
         
@@ -1237,7 +1240,7 @@ class ArchibaldMesh(ArchibaldObject):
         LCB_fpp  = u_fpp - cob_u # lcb from fpp / m
         LCF_fpp  = u_fpp - cof_u # lcf from fpp / m
         
-        lcb = 1/2 - LCB_fpp/Lwl # longitudinal centre of buoyancy, as % of Lwl from midship
+        lcb = 1/2 - LCB_fpp/(Lwl + 1e-12) # longitudinal centre of buoyancy, as % of Lwl from midship
         
         h = {}
         h["volume"] = volume

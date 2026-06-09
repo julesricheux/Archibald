@@ -289,7 +289,7 @@ if __name__=="__main__":
     T = opti.variable(init_guess=T)
     heel = opti.variable(init_guess=heel)
     trim = opti.variable(init_guess=trim)
-    leeway = opti.parameter(leeway)
+    # leeway = opti.parameter(leeway)
     
     op_point = OperatingPoint(
         stw=stw,
@@ -313,10 +313,16 @@ if __name__=="__main__":
     import archibald.dynamics.hydro.dsyhs as dsyhs
     
     custom_process = {
+        # "Rf": holtrop.compute_Rf_holtrop,
+        # "Rw": holtrop.compute_Rw_holtrop,
+        # "Rf": dsyhs.compute_Rf_dsyhs,
+        # "Rw": dsyhs.compute_Rw_dsyhs,
+        # "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
         "Rf": holtrop.compute_Rf_holtrop,
         "Rw": holtrop.compute_Rw_holtrop,
-        # "Rw": dsyhs.compute_Rw_dsyhs,
-        "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
+        "Rb": holtrop.compute_Rb_holtrop,
+        "Rtr": holtrop.compute_Rtr_holtrop,
+        # "Ra": holtrop.compute_Ra_holtrop,
     }
     
     # hull.compute_resistance(
@@ -328,13 +334,13 @@ if __name__=="__main__":
     Ftot, Mtot = sailboat.compute_torsor(
         op_point,
         # method="dsyhs",
-        method="holtrop",
-        # method=custom_process,
+        # method="holtrop",
+        method=custom_process,
         **{'Csternchoice': 1, 'Bulbchoice': 0}
     )
     
-    Fprop = 15e3
-    Ffoil = 1000. * stw**2.
+    Fprop = 20e3
+    Ffoil = -200. * stw**2.
     
     opti.subject_to((Ftot[0] + Fprop) == 0)
     opti.subject_to((Ftot[2] + Ffoil) == 0)

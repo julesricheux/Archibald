@@ -102,10 +102,10 @@ def one_plus_k(
     return (
         0.93
         + 0.487118 * _c14
-        * (Bwl / Lwl) ** 1.06806
-        * (T / Lwl) ** 0.46106
-        * (Lwl / _Lr) ** 0.121563
-        * (Lwl ** 3 / volume) ** 0.36486
+        * (Bwl / (Lwl + 1e-12)) ** 1.06806
+        * (T / (Lwl + 1e-12)) ** 0.46106
+        * (Lwl / (_Lr + 1e-12)) ** 0.121563
+        * (Lwl ** 3 / (volume + 1e-12)) ** 0.36486
         * (1 - Cp) ** (-0.604247)
     )
 
@@ -181,13 +181,17 @@ def c_7(
     -------
     float, Coefficient c7 [-].
     """
+    
+    Bwl_to_Lbp = Bwl / (Lbp + 1e-12)
+    Lbp_to_Bwl = Lbp / (Bwl + 1e-12)
+    
     return np.where(
-        Bwl / Lbp < 0.11,
-        0.229577 * (Bwl / Lbp) ** 0.3333,
+        Bwl_to_Lbp < 0.11,
+        0.229577 * Bwl_to_Lbp ** 0.3333,
         np.where(
-            Bwl / Lbp <= 0.25,
-            Bwl / Lbp,
-            0.5 - 0.0625 * (Lbp / Bwl)
+            Bwl_to_Lbp <= 0.25,
+            Bwl_to_Lbp,
+            0.5 - 0.0625 * Lbp_to_Bwl
         )
     )
 
@@ -223,7 +227,7 @@ def c_1(
     return (
         2223105
         * _c7 ** 3.78613
-        * (T / Bwl) ** 1.07961
+        * (T / (Bwl + 1e-12)) ** 1.07961
         * (90 - ie) ** (-1.37565)
     )
 
@@ -255,7 +259,7 @@ def c_3(
     """
     return (
         (0.56 * Abt) ** 1.5
-        / (Bwl * T * (0.31 * np.sqrt(Abt) + T - hB))
+        / (Bwl * T * (0.31 * np.sqrt(Abt + 1e-12) + T - hB) + 1e-12)
     )
 
 
@@ -312,7 +316,7 @@ def c_5(
     -------
     float, Coefficient c5 [-].
     """
-    return 1 - 0.8 * (Atr / (Bwl * T * Cx))
+    return 1 - 0.8 * (Atr / (Bwl * T * Cx + 1e-12))
 
 
 def c_15(
@@ -341,13 +345,13 @@ def c_15(
     -------
     float, Coefficient c15 [-].
     """
-    L3_V = Lbp ** 3 / volume
+    L3_V = Lbp ** 3 / (volume + 1e-12)
     return np.where(
         L3_V < 512,
         -1.69385,
         np.where(
             L3_V < 1726.91,
-            -1.69385 + ((Lbp / volume ** (1/3)) - 8) / 2.36,
+            -1.69385 + ((Lbp / (volume + 1e-12) ** (1/3)) - 8) / 2.36,
             0.
         )
     )
@@ -412,9 +416,9 @@ def c_17(
     """
     return (
         6919.3
-        * Cx ** (-1.3346)
-        * (volume / Lbp ** 3) ** 2.00977
-        * (Lbp / Bwl - 2) ** 1.40692
+        * (Cx + 1e-12) ** (-1.3346)
+        * (volume / (Lbp + 1e-12) ** 3) ** 2.00977
+        * np.softplus(Lbp / (Bwl + 1e-12) - 2, beta=1e3) ** 1.40692
     )
 
 
@@ -447,9 +451,9 @@ def m_1(
     float, Coefficient m1 [-].
     """
     return (
-        0.014047 * (Lbp / T)
-        - (1.75254 * volume ** (1/3)) / Lbp
-        - 4.79323 * (Bwl / Lbp)
+        0.014047 * (Lbp / (T + 1e-12))
+        - (1.75254 * (volume + 1e-12) ** (1/3)) / (Lbp + 1e-12)
+        - 4.79323 * (Bwl / (Lbp + 1e-12))
         - c_16(Cp=Cp)
     )
 
@@ -481,8 +485,8 @@ def m_3(
     """
     return (
         -7.2035
-        * (Bwl / Lbp) ** 0.326869
-        * (T / Bwl) ** 0.605375
+        * (Bwl / (Lbp + 1e-12)) ** 0.326869
+        * (T / (Bwl + 1e-12)) ** 0.605375
     )
 
 
@@ -538,9 +542,10 @@ def lambda_(
     -------
     float, Coefficient lambda [-].
     """
+    Lbp_to_Bwl = Lbp / (Bwl + 1e-12)
     return np.where(
-        Lbp / Bwl < 12,
-        1.446 * Cp - 0.03 * (Lbp / Bwl),
+        Lbp_to_Bwl < 12,
+        1.446 * Cp - 0.03 * Lbp_to_Bwl,
         1.446 * Cp - 0.36
     )
 
@@ -1035,7 +1040,7 @@ def compute_Rw_holtrop(
     float, Wave-making resistance [N].
     """
     Vms = stw * u.kt
-    Fr   = np.softplus(Vms, beta=1e6) / np.sqrt(g * Lbp)
+    Fr   = np.softplus(Vms, beta=1e6) / (np.sqrt(g * Lbp + 1e-12) + 1e-12)
     d_   = -0.9
 
     _c1  = c_1(Lbp=Lbp, Bwl=Bwl, T=T, ie=ie)
@@ -1109,7 +1114,7 @@ def compute_Rtr_holtrop(
     
     Vms = stw * u.kt
     
-    Fr_T = Vms / (np.sqrt(g * Ttr) + 1e-12)
+    Fr_T = Vms / (np.sqrt(g * Ttr + 1e-12) + 1e-12)
     
     return transom_resistance(
             Vms,
