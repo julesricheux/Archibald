@@ -278,7 +278,10 @@ if __name__=="__main__":
     from archibald.optimization import Opti
     
     stw = 10.
-    T = 1.3
+    # T = 1.3
+    T = 0.5
+    # T = -4.483367256512539
+    # T = -0.1
     heel = 0.
     trim = 0.
     leeway = 0.
@@ -287,8 +290,8 @@ if __name__=="__main__":
     
     stw = opti.variable(init_guess=stw)
     T = opti.variable(init_guess=T)
-    heel = opti.variable(init_guess=heel)
-    trim = opti.variable(init_guess=trim)
+    # heel = opti.variable(init_guess=heel)
+    # trim = opti.variable(init_guess=trim)
     # leeway = opti.parameter(leeway)
     
     op_point = OperatingPoint(
@@ -313,15 +316,13 @@ if __name__=="__main__":
     import archibald.dynamics.hydro.dsyhs as dsyhs
     
     custom_process = {
+        "Rf": dsyhs.compute_Rf_dsyhs,
+        # "Rw": dsyhs.compute_Rw_dsyhs,
+        "Rtr": dsyhs.compute_Rtr_dsyhs,
         # "Rf": holtrop.compute_Rf_holtrop,
         # "Rw": holtrop.compute_Rw_holtrop,
-        # "Rf": dsyhs.compute_Rf_dsyhs,
-        # "Rw": dsyhs.compute_Rw_dsyhs,
-        # "Rtr": dsyhs.compute_Rtr_dsyhs, # TODO make Rtr compatible
-        "Rf": holtrop.compute_Rf_holtrop,
-        "Rw": holtrop.compute_Rw_holtrop,
-        "Rb": holtrop.compute_Rb_holtrop,
-        "Rtr": holtrop.compute_Rtr_holtrop,
+        # "Rb": holtrop.compute_Rb_holtrop,
+        # "Rtr": holtrop.compute_Rtr_holtrop,
         # "Ra": holtrop.compute_Ra_holtrop,
     }
     
@@ -339,15 +340,23 @@ if __name__=="__main__":
         **{'Csternchoice': 1, 'Bulbchoice': 0}
     )
     
-    Fprop = 20e3
-    Ffoil = -200. * stw**2.
+    Fprop = 12e3
+    Ffoil = 10000./np.abs(1+T) * stw**2. * (1+trim/10.) * 2.
+    # Ffoil = 1e4 / (1+np.abs(T-2))
+    Fhull = stw**2. * 1e2 * np.softplus(T)
+    Fdrag = Ffoil/100. + stw**2.
     
-    opti.subject_to((Ftot[0] + Fprop) == 0)
+    opti.subject_to((Ftot[0] + Fprop - Fdrag) == 0)
+    # opti.subject_to((Fprop - Fdrag - Fhull) == 0)
     opti.subject_to((Ftot[2] + Ffoil) == 0)
-    opti.subject_to(Mtot[0] == 0)
-    opti.subject_to(Mtot[1] == 0)
+    # opti.subject_to((Ftot[0] + Fprop - Fdrag) == 0)
+    # opti.subject_to((Ftot[2] + Ffoil) == 0)
+    # opti.subject_to((np.softplus(T, beta=1e3)*1e6 + sailboat.forces["Fw"][:,2] + Ffoil) == 0)
+    # opti.subject_to(Mtot[0] == 0)
+    # opti.subject_to(Mtot[1] == 0)
     
     opti.minimize(0.)
+    # opti.minimize(T)
     
     sol = opti.solve()
     
@@ -359,10 +368,12 @@ if __name__=="__main__":
     final_op = sol(op_point)
     
     print("\n--- EQUILIBRIUM REACHED ---")
-    print(f"STW: {final_op.stw:.1f} kts")
-    print(f"Draft (dz): {final_op.dz:.2f} m")
+    print(f"STW:        {final_op.stw:.1f} kts")
+    print(f"dz:         {final_op.dz:.2f} m")
     print(f"Heel:       {final_op.heel:.3f} deg")
     print(f"Trim:       {final_op.trim:.3f} deg")
+    print(f"Volume:       {sol(sailboat.hulls[0].hydrostatics_data['volume']):.1f} m3")
+    print(f"Foil%:       {sol(-Ffoil/forces['Fw'][2])*100.:.1f} %")
     print(f"Final Ftot: {sol(Ftot)}")
     print(f"Final Mtot: {sol(Mtot)}")
     

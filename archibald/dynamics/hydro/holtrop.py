@@ -153,7 +153,7 @@ def Re(
     -------
     float, Reynolds number [-].
     """
-    return (np.softplus(stw * u.kt, beta=1e6) * Lwl) / nu
+    return (np.softplus(stw * u.kt, beta=1e3) * Lwl) / nu
 
 
 def c_7(
@@ -414,11 +414,13 @@ def c_17(
     -------
     float, Coefficient c17 [-].
     """
+    Lbp_to_Bwl = np.softplus(Lbp / (Bwl + 1e-12) - 2, beta=1e3)
+    Lbp_to_Bwl = np.fmax(Lbp_to_Bwl, 1e-6)   # ← ADD THIS
     return (
         6919.3
         * (Cx + 1e-12) ** (-1.3346)
         * (volume / (Lbp + 1e-12) ** 3) ** 2.00977
-        * np.softplus(Lbp / (Bwl + 1e-12) - 2, beta=1e3) ** 1.40692
+        * Lbp_to_Bwl ** 1.40692
     )
 
 
@@ -450,10 +452,11 @@ def m_1(
     -------
     float, Coefficient m1 [-].
     """
+    Lbp_to_T = (Lbp / (T + 1e-1))
     return (
-        0.014047 * (Lbp / (T + 1e-12))
-        - (1.75254 * (volume + 1e-12) ** (1/3)) / (Lbp + 1e-12)
-        - 4.79323 * (Bwl / (Lbp + 1e-12))
+        0.014047 * Lbp_to_T
+        - (1.75254 * (volume + 1e-3) ** (1/3)) / (Lbp + 1e-12)
+        - 4.79323 * ((Bwl + 1e-12) / (Lbp + 1e-12))
         - c_16(Cp=Cp)
     )
 
@@ -605,7 +608,7 @@ def p_b(
     -------
     float, Emergence coefficient pb [-].
     """
-    return 0.56 * np.sqrt(Abt) / (T - 1.5 * hB)
+    return 0.56 * np.sqrt(Abt) / ((T - 1.5 * hB) + 1e-12)
 
 
 def Fr_T(
@@ -914,7 +917,7 @@ def C_V(
         * (1 - Cp) ** (-0.604247)
     )
     CA = C_A(Lbp)
-    Re = (np.softplus(stw * u.kt, beta=1e6) * Lbp) / 1.2e-6
+    Re = (np.softplus(stw * u.kt, beta=1e3) * Lbp) / 1.2e-6
     return one_plus_k * Cf_hull(Re + 10.0) + CA
 
 #%% RESISTANCE COMPONENTS
@@ -1040,8 +1043,17 @@ def compute_Rw_holtrop(
     float, Wave-making resistance [N].
     """
     Vms = stw * u.kt
-    Fr   = np.softplus(Vms, beta=1e6) / (np.sqrt(g * Lbp + 1e-12) + 1e-12)
+    Fr   = np.softplus(Vms, beta=1e3) / (np.sqrt(g * Lbp + 1e-12) + 1e-12) + 1e-12
     d_   = -0.9
+    
+    _c1  = 0.
+    _c2  = 0.
+    _c5  = 0.
+    _c17 = 0.
+    _m1  = 0.
+    _m3  = 0.
+    _m4  = 0.
+    _l   = 0.
 
     _c1  = c_1(Lbp=Lbp, Bwl=Bwl, T=T, ie=ie)
     _c2  = c_2(Bwl=Bwl, T=T, Abt=Abt, hB=hB)

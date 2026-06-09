@@ -201,12 +201,10 @@ def compute_Rw_dsyhs(
         a.append(
             _keunig_interpolators[f"a{i}"](Fr)
         )
-        # print(f"{i}: {a[i]:.2f}")
     
     # Calculate dimensional ratios
     vol_ratio = (volume**(1/3)) / (Lwl + 1e-12)
     
-    # Calculate terms inside the parentheses
     term1 = (
         (a[1] * LCB_fpp / (Lwl + 1e-12))
         + (a[2] * Cp)
@@ -337,7 +335,6 @@ def compute_Rtr_dsyhs(
 
 
 if __name__=="__main__":
-    import archibald.toolbox.units as u
     # VERIFICATION
     # --- Example Usage based on the image's check values ---
     # The image notes: Rb / (∇ * p * g) = 0.00649 at Fr = 0.35
@@ -430,7 +427,7 @@ if __name__=="__main__":
     # above this code block, along with `archibald.toolbox.units as u`.
     
     # 1. Define the range of Froude numbers to sweep (e.g., 0.15 to 0.60)
-    fr_array = np.linspace(0.0, 1.0, 50)
+    fr_array = np.linspace(0.0, 0.1, 50)
     
     # Arrays to store the calculated resistances
     Rf_list = []
