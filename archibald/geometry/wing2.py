@@ -1840,6 +1840,14 @@ if __name__ == "__main__":
     ).apply_operating_point(op_point)
     # ).translate([1, 0, 0])
     # wing.subdivide_sections(2).draw(thin_wings=False)
-    wing.draw(thin_wings=False)
+    # wing.draw(thin_wings=False)
 
+    from archibald.optimization import Opti
     
+    opti = Opti()
+    x = opti.variable(init_guess=0.)
+    wing.translate([x, 0, 0])
+    
+    opti.minimize((x - 2)**2)
+    
+    sol = opti.solve()
