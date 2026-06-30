@@ -331,7 +331,7 @@ class Airfoil(Polygon):
             if cache_filename is not None:
                 os.makedirs(os.path.dirname(cache_filename), exist_ok=True)
 
-            from archibald.aerodynamics.aero_2D import XFoil
+            from archibald.dynamics.aero_2D import XFoil
 
             def get_run_data(
                 Re,
@@ -1942,14 +1942,16 @@ if __name__ == "__main__":
             ax.T.flatten(),
             ["CL", "CD", "CM", "Cpmin", "mach_crit", "Top_Xtr", "Bot_Xtr", "Cpmin_0"],
         ):
-            a.plot(alpha, aero[key], **kwargs)
+            a.plot(alpha, aero[key], label=ms, **kwargs)
             if key == "CD":
                 a.set_yscale("log")
             a.set_ylabel(key)
+            
+    # plt.legend()
 
     p.show_plot()
 
-    # af.draw()
+    af.draw()
     # af.generate_polars(
     #     alphas=np.linspace(-10, 15, 61),
     # )
