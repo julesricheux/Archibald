@@ -12,14 +12,14 @@ AeroSandbox is distributed under its original MIT license.
 #%% DEPENDENCIES
 
 from typing import Tuple, Union, Dict, List
-from archibald2.tools.string_formatting import trim_string
+from archibald.toolbox.string_formatting import trim_string
 import inspect
 
-from archibald2.tools.env_utils import grad_wind
-from archibald2.environment.environment import Environment
-import archibald2.tools.units as u
+from archibald.toolbox.env_utils import grad_wind
+from archibald.environment.environment import Environment
+import archibald.toolbox.units as u
 
-import archibald2.numpy as np
+import archibald.numpy as np
 
 
 #%% FUNCTIONS
@@ -112,6 +112,7 @@ class OperatingPoint():
             p: float = 0.,
             q: float = 0.,
             r: float = 0.,
+            **kwargs,
         ):
         """
         An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
@@ -167,6 +168,8 @@ class OperatingPoint():
         self.p = p
         self.q = q
         self.r = r
+        
+        self.__dict__.update(kwargs)
     
     @property
     def stw(self):
@@ -664,21 +667,23 @@ class OperatingPoint():
 if __name__ == '__main__':
     # op_point = OperatingPoint()
     
-    import archibald2 as arb
+    from archibald.optimization import Opti
     
-    opti = arb.Opti()
+    opti = Opti()
 
     z = opti.variable(init_guess=2., lower_bound=0.)
     
     op_point = OperatingPoint(
-              stw=10., # kts
-              tws0=10., # kts
-              twa=45., # deg
-              z0=10., # m
-              a=0.12,
-              )
+        stw=10., # kts
+        tws0=10., # kts
+        twa=45., # deg
+        z0=10., # m
+        a=0.12,
+        rudder_angle = z
+    )
 
     obj = (op_point.tws(z) - 11.) ** 2
+    # obj = (op_point.rudder_angle - 11.) ** 2
 
     # opti.subject_to(
     #     aero["CL"] == 0.5
