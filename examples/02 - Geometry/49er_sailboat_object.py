@@ -8,6 +8,8 @@ Created on Wed Jul  1 14:37:22 2026
 import archibald.numpy as np
 from archibald.geometry.airfoil.thin_section import thin_airfoil
 from archibald.geometry import Hull, Sailboat, Rig, Sail, Airfoil, WingXSec, Appendage, Fin
+from archibald.geometry.mesh import ArchibaldMesh
+from archibald.toolbox.mesh_utils import load_stl
 from archibald.toolbox.geom_utils import dxf_to_le_chords
 
 
@@ -27,7 +29,9 @@ hull = Hull(
 
 #%% MESH
 
-meshStl = r'data/49er_data/wings.stl'
+wingsStl = r'data/49er_data/wings.stl'
+
+wings = ArchibaldMesh(*load_stl(wingsStl))
 
 #%% RIG
 
@@ -117,11 +121,12 @@ sailboat = Sailboat(
     hulls=[hull],
     rigs=[rig],
     appendages=[app],
+    fittings=[wings],
 )
 
 sailboat.draw(
     backend="pyvista",
-    # draw_plane=True,
-    # point=np.array([0, 0, 0]),
+    draw_plane=True,
+    point=np.array([0, 0, 0]),
     set_axis_visibility=True,
 )

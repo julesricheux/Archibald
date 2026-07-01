@@ -227,6 +227,15 @@ class Sailboat(ArchibaldObject):
                     plotter=plotter,
                     **kwargs,
                 )
+                
+            # --- Fittings ---
+            for fitting in self.fittings:
+                fitting.draw(
+                    backend="pyvista",
+                    show=False,
+                    plotter=plotter,
+                    **kwargs,
+                )
     
             if show:
                 plotter.show(**show_kwargs)
@@ -307,6 +316,15 @@ class Sailboat(ArchibaldObject):
                     fig=fig,
                     **kwargs,
                 )
+                
+            # --- Fittings ---
+            for fitting in self.fittings:
+                fitting.draw(
+                    backend="plotly",
+                    show=False,
+                    fig=fig,
+                    **kwargs,
+                )
     
             fig.update_layout(
                 scene=dict(
@@ -368,6 +386,15 @@ class Sailboat(ArchibaldObject):
             # --- Hulls ---
             for hull in self.hulls:
                 hull.draw(
+                    backend="matplotlib",
+                    show=False,
+                    ax=ax,
+                    **kwargs,
+                )
+                
+            # --- Fittings ---
+            for fitting in self.fittings:
+                fitting.draw(
                     backend="matplotlib",
                     show=False,
                     ax=ax,
