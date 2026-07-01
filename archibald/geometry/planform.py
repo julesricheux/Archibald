@@ -256,6 +256,67 @@ class Planform(ArchibaldObject):
         """Allows `"Main" in planform` to check whether a wing with that name exists."""
         return self._find_wing_by_name(name) is not None
     
+    def add_wing(self, wing: "Wing") -> None:
+        """
+        Adds a wing (or any Wing subclass, e.g. Sail, Fin) to this Planform, in-place.
+    
+        Args:
+            wing: The Wing (or subclass instance) to add. Appended to the end of `self.wings`.
+    
+        Returns:
+            None. (in-place)
+        """
+        if not isinstance(wing, Wing):
+            raise TypeError(f"Can only add Wing (or subclass) instances; got {type(wing)}.")
+    
+        if self._find_wing_by_name(wing.name) is not None:
+            import warnings
+    
+            warnings.warn(
+                f"A wing named '{wing.name}' already exists in Planform '{self.name}'; "
+                f"both will now coexist under the same name, so name-based lookup "
+                f"(e.g. `planform['{wing.name}']`) will only retrieve the first one.",
+                stacklevel=2,
+            )
+    
+        self.wings.append(wing)
+    
+    def remove_wing(self, wing: "str | int") -> "Wing":
+        """
+        Removes a wing (or any Wing subclass, e.g. Sail, Fin) from this Planform, in-place, identified either by
+        name or by index.
+    
+        Args:
+            wing: Either:
+    
+                * A string, giving the `.name` of the wing to remove (the first match is removed, if there are
+                  duplicate names).
+    
+                * An integer, giving the index (into `self.wings`) of the wing to remove.
+    
+        Returns:
+            The removed Wing (or subclass instance).
+        """
+        if isinstance(wing, str):
+            for i, w in enumerate(self.wings):
+                if w.name == wing:
+                    return self.wings.pop(i)
+            raise KeyError(f"No wing with name '{wing}' found in Planform '{self.name}'.")
+    
+        elif isinstance(wing, int):
+            try:
+                return self.wings.pop(wing)
+            except IndexError:
+                raise IndexError(
+                    f"Index {wing} out of range for Planform '{self.name}' "
+                    f"({len(self.wings)} wing{'s' if len(self.wings) != 1 else ''})."
+                )
+    
+        else:
+            raise TypeError(
+                f"`wing` must be a string (name) or an integer (index); got {type(wing)}."
+            )
+    
 
     def mesh_body(self,
                   method="quad",
@@ -1389,6 +1450,14 @@ class Rig(Planform):
     @sails.setter
     def sails(self, value: list["Sail"]) -> None:
         self.wings = value
+        
+    def add_sail(self, sail: "Sail") -> None:
+        """Alias for `add_wing`, for a more domain-appropriate name. See `Planform.add_wing`."""
+        self.add_wing(sail)
+
+    def remove_sail(self, sail: "str | int") -> "Sail":
+        """Alias for `remove_wing`, for a more domain-appropriate name. See `Planform.remove_wing`."""
+        return self.remove_wing(sail)
 
     def __repr__(self):
         n_sails = len(self.sails)
@@ -1424,6 +1493,14 @@ class Appendage(Planform):
     @fins.setter
     def fins(self, value: list["Fin"]) -> None:
         self.wings = value
+    
+    def add_fin(self, fin: "Fin") -> None:
+        """Alias for `add_wing`, for a more domain-appropriate name. See `Planform.add_wing`."""
+        self.add_wing(fin)
+    
+    def remove_fin(self, fin: "str | int") -> "Fin":
+        """Alias for `remove_wing`, for a more domain-appropriate name. See `Planform.remove_wing`."""
+        return self.remove_wing(fin)
 
     def __repr__(self):
         n_fins = len(self.fins)
@@ -1576,8 +1653,6 @@ if __name__ == '__main__':
     planform.draw()
     # planform.draw_three_view()
     # planform.export_XFLR5_xml("test.xml", mass_props=MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
-
-
 
 
 
