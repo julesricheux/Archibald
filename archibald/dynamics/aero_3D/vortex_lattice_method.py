@@ -23,7 +23,6 @@ if __root_dir not in sys.path:
 
 from archibald import ExplicitAnalysis
 from archibald.geometry import *
-from archibald.geometry.airfoil.thin_section import leading_edge_camber
 from archibald.performance.operating_point import OperatingPoint
 from archibald.environment.environment import Fluid
 from archibald.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import \

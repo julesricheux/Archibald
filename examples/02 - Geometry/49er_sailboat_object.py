@@ -6,7 +6,7 @@ Created on Wed Jul  1 14:37:22 2026
 """
 
 import archibald.numpy as np
-from archibald.geometry.airfoil.thin_section import thin_airfoil
+from archibald.geometry.airfoil import ThinAirfoil
 from archibald.geometry import Hull, Sailboat, Rig, Sail, Airfoil, WingXSec, Appendage, Fin
 from archibald.geometry.mesh import ArchibaldMesh
 from archibald.toolbox.mesh_utils import load_stl
@@ -47,10 +47,10 @@ rig = Rig(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=thin_airfoil(xc=0.4, mc=0.1)[0],
-                    twist=180.,
+                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
+                    twist=180.-i*5,
                 )
-            for xyz, c in zip(main_le, main_chords)]
+            for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
         Sail(
             name="jibsail",
@@ -58,12 +58,26 @@ rig = Rig(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=thin_airfoil(xc=0.4, mc=0.2)[0],
-                    twist=180.,
+                    airfoil=ThinAirfoil(xc=0.4, mc=0.2),
+                    twist=180.-i*5,
                 )
-            for xyz, c in zip(jib_le, jib_chords)]
+            for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
         ),
     ]
+)
+
+# SETTINGS
+
+rig["mainsail"] = rig["mainsail"].rotate_local(
+    angle_deg=-10.,
+    axis=jib_le[-1] - main_le[0],
+    origin=main_le[0]
+)
+
+rig["jibsail"] = rig["jibsail"].rotate_local(
+    angle_deg=-20.,
+    axis=jib_le[-1] - jib_le[0],
+    origin=jib_le[0]
 )
 
 #%% APPENDAGE
@@ -104,18 +118,6 @@ app = Appendage(
 # rig.draw(thin_wings=True)
 # rig.draw_three_view()
 # hull.draw_three_view()
-
-rig["mainsail"] = rig["mainsail"].rotate_local(
-    angle_deg=-45.,
-    axis=jib_le[-1] - main_le[0],
-    origin=main_le[0]
-)
-
-rig["jibsail"] = rig["jibsail"].rotate_local(
-    angle_deg=-45.,
-    axis=jib_le[-1] - jib_le[0],
-    origin=jib_le[0]
-)
 
 sailboat = Sailboat(
     displacement=200.5,
