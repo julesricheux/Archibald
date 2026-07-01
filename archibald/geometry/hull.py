@@ -46,11 +46,7 @@ class Hull(ArchibaldObject):
     def __init__(
             self,
             name: str = 'hull',
-            displacement: float = 0.0,
-            cog: Union[np.ndarray, List] = np.zeros(3),
             mesh: Union[ArchibaldMesh, str] = None,
-            inv_x: bool = True,
-            env: Environment = Environment()
         ):
         if type(mesh) == str:
             from archibald.toolbox.mesh_utils import load_stl
@@ -58,7 +54,6 @@ class Hull(ArchibaldObject):
             mesh = ArchibaldMesh(*load_stl(mesh_path))
         
         self.name = name
-        self.displacement = displacement
         self.mesh = mesh
         
         self.hydrostatics_data = {}
