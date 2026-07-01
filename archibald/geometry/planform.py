@@ -179,8 +179,83 @@ class Planform(ArchibaldObject):
         return f"Planform '{self.name}' " \
                f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
                f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
+               
+    def _find_wing_by_name(self, name: str) -> "Wing | None":
+        """Internal helper: returns the first wing in `self.wings` whose `.name` matches, or None."""
+        for wing in self.wings:
+            if wing.name == name:
+                return wing
+        return None
 
-    # TODO def add_wing(wing: 'Wing') -> None
+    def get_wing_by_name(self, name: str, raise_if_not_found: bool = True) -> "Wing | None":
+        """
+        Retrieves a wing (or any Wing subclass, e.g. Sail, Fin) from this Planform by its `name` attribute.
+
+        Args:
+            name: The name of the wing to search for. Matches against each wing's `.name` attribute exactly.
+
+            raise_if_not_found: If True (default), raises a ValueError if no wing with the given name is found.
+                If False, returns None instead.
+
+        Returns:
+            The first Wing (or subclass instance) in `self.wings` whose `.name` matches, or None / raises if not
+            found (see `raise_if_not_found`).
+        """
+        wing = self._find_wing_by_name(name)
+
+        if wing is None and raise_if_not_found:
+            raise ValueError(f"No wing with name '{name}' found in Planform '{self.name}'.")
+
+        return wing
+
+    def __getitem__(self, name: str) -> "Wing":
+        """
+        Allows dictionary-style retrieval of a wing by name, e.g. `planform["Main"]`.
+
+        Equivalent to `self.get_wing_by_name(name, raise_if_not_found=True)`. Raises KeyError (not ValueError) on
+        a missing name, to match standard `__getitem__` / dict-indexing conventions.
+        """
+        wing = self._find_wing_by_name(name)
+
+        if wing is None:
+            raise KeyError(f"No wing with name '{name}' found in Planform '{self.name}'.")
+
+        return wing
+    
+    def __setitem__(self, name: str, value: "Wing") -> None:
+        """
+        Allows dictionary-style assignment of a wing by name, e.g. `planform["Main"] = new_wing`.
+
+        If a wing with `name` already exists in `self.wings`, it is replaced in-place (same list position). If
+        no wing with that name exists yet, `value` is appended to `self.wings`.
+
+        `value.name` is set to `name` if it doesn't already match, so that `planform[name].name == name` always
+        holds after assignment (consistent with dict semantics, where the key is the source of truth).
+
+        Args:
+            name: The name of the wing to set/replace.
+            value: The Wing (or subclass instance, e.g. Sail, Fin) to assign.
+        """
+        if not isinstance(value, Wing):
+            raise TypeError(
+                f"Can only assign Wing (or subclass) instances via Planform indexing; got {type(value)}."
+            )
+
+        if value.name != name:
+            value = copy.copy(value)
+            value.name = name
+
+        for i, wing in enumerate(self.wings):
+            if wing.name == name:
+                self.wings[i] = value
+                return
+
+        self.wings.append(value)
+
+    def __contains__(self, name: str) -> bool:
+        """Allows `"Main" in planform` to check whether a wing with that name exists."""
+        return self._find_wing_by_name(name) is not None
+    
 
     def mesh_body(self,
                   method="quad",

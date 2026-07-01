@@ -39,7 +39,8 @@ main_le, main_chords = dxf_to_le_chords(r'data/49er_data/gv.dxf', 10)
 jib_le, jib_chords = dxf_to_le_chords(r'data/49er_data/jibsail.dxf', 7)
 
 rig = Rig(
-    wings=[
+    name="49er_rig",
+    sails=[
         Sail(
             name="mainsail",
             xsecs=[
@@ -71,7 +72,8 @@ dag_le, dag_chords = dxf_to_le_chords(r'data/49er_data/dagger.dxf', 10)
 rud_le, rud_chords = dxf_to_le_chords(r'data/49er_data/rudder.dxf', 7)
 
 app = Appendage(
-    wings=[
+    name="49er_appendages",
+    fins=[
         Fin(
             name="dagger",
             xsecs=[
@@ -103,13 +105,13 @@ app = Appendage(
 # rig.draw_three_view()
 # hull.draw_three_view()
 
-rig.wings[0] = rig.wings[0].rotate_local(
+rig["mainsail"] = rig["mainsail"].rotate_local(
     angle_deg=-45.,
     axis=jib_le[-1] - main_le[0],
     origin=main_le[0]
 )
 
-rig.wings[1] = rig.wings[1].rotate_local(
+rig["jibsail"] = rig["jibsail"].rotate_local(
     angle_deg=-45.,
     axis=jib_le[-1] - jib_le[0],
     origin=jib_le[0]
