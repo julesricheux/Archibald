@@ -49,7 +49,7 @@ class AeroBuildup(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: LiftingSet,
+        airplane: Planform,
         op_point: OperatingPoint,
         xyz_ref: Union[np.ndarray, List[float]] = None,
         model_size: str = "small",

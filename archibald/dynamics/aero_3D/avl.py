@@ -2,7 +2,7 @@ from archibald.common import ExplicitAnalysis
 import archibald.numpy as np
 import subprocess
 from pathlib import Path
-from archibald.geometry import LiftingSet, Rig, Appendage, Wing, WingXSec, Fuselage, ControlSurface
+from archibald.geometry import Planform, Rig, Appendage, Wing, WingXSec, Fuselage, ControlSurface
 from archibald.performance import OperatingPoint
 from typing import Union, List, Dict
 import tempfile
@@ -38,7 +38,7 @@ class AVL(ExplicitAnalysis):
     """
 
     default_analysis_specific_options = {
-        LiftingSet: dict(profile_drag_coefficient=0),
+        Planform: dict(profile_drag_coefficient=0),
         Wing: dict(
             wing_level_spanwise_spacing=True,
             spanwise_resolution=12,
@@ -84,7 +84,7 @@ class AVL(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: LiftingSet,
+        airplane: Planform,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         avl_command: str = "avl",

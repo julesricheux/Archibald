@@ -8,7 +8,7 @@ Last update: 22/10/2024
 @contributors: -
 
 Citation:
-    Adapted from:         airplane module in AeroSandbox
+    Adapted from:         planform module in AeroSandbox
     Author:               Peter D Sharpe
     Date of Retrieval:    22/10/2024
 
@@ -27,19 +27,14 @@ import copy
 import archibald.numpy as np
 
 
-class LiftingSet(ArchibaldObject):
+class Planform(ArchibaldObject):
     """
-    Definition for an airplane.
-    
-    Citation:
-        Adapted from:         geometry.airplane.Airplane in AeroSandbox
-        Author:               Peter D Sharpe
-        Date of Retrieval:    22/10/2024
+    Definition for an planform.
 
-    Anatomy of an Airplane:
+    Anatomy of an Planform:
 
-        An Airplane consists chiefly of a collection of wings and fuselages. These can be accessed with
-        `Airplane.wings` and `Airplane.fuselages`, which gives a list of those respective components. Each wing is a
+        An Planform consists chiefly of a collection of wings and fuselages. These can be accessed with
+        `Planform.wings` and `Planform.fuselages`, which gives a list of those respective components. Each wing is a
         Wing object, and each fuselage is a Fuselage object.
 
     """
@@ -56,22 +51,22 @@ class LiftingSet(ArchibaldObject):
                  analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
                  ):
         """
-        Defines a new airplane.
+        Defines a new planform.
 
         Args:
 
-            name: Name of the airplane [optional]. It can help when debugging to give the airplane a sensible name.
+            name: Name of the planform [optional]. It can help when debugging to give the planform a sensible name.
 
-            xyz_ref: An array-like that gives the x-, y-, and z- reference point of the airplane, used when computing
+            xyz_ref: An array-like that gives the x-, y-, and z- reference point of the planform, used when computing
             moments and stability derivatives. Generally, this should be the center of gravity.
 
-                # In a future version, this will be deprecated and replaced with asb.MassProperties.
+                # In a future version, this will be deprecated and replaced with MassProperties.
 
-            wings: A list of Wing objects that are a part of the airplane.
+            wings: A list of Wing objects that are a part of the planform.
 
-            fuselages: A list of Fuselage objects that are a part of the airplane.
+            fuselages: A list of Fuselage objects that are a part of the planform.
 
-            propulsors: A list of Propulsor objects that are a part of the airplane.
+            propulsors: A list of Propulsor objects that are a part of the planform.
 
             s_ref: Reference area. If undefined, it's set from the area of the first Wing object. # Note: will be deprecated
 
@@ -84,8 +79,8 @@ class LiftingSet(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of ExplicitAnalysis or
+                    ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -98,7 +93,7 @@ class LiftingSet(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }
@@ -148,7 +143,7 @@ class LiftingSet(ArchibaldObject):
                 else:
                     raise ValueError(
                         "`s_ref` was not provided, and a value cannot be inferred automatically from wings or fuselages.\n"
-                        "You must set this manually when instantiating your asb.Airplane object.")
+                        "You must set this manually when instantiating your Planform object.")
 
         if c_ref is not None:
             self.c_ref = c_ref
@@ -161,7 +156,7 @@ class LiftingSet(ArchibaldObject):
                 else:
                     raise ValueError(
                         "`c_ref` was not provided, and a value cannot be inferred automatically from wings or fuselages.\n"
-                        "You must set this manually when instantiating your asb.Airplane object."
+                        "You must set this manually when instantiating your Planform object."
                     )
 
         if b_ref is not None:
@@ -175,13 +170,13 @@ class LiftingSet(ArchibaldObject):
                 else:
                     raise ValueError(
                         "`b_ref` was not provided, and a value cannot be inferred automatically from wings or fuselages.\n"
-                        "You must set this manually when instantiating your asb.Airplane object."
+                        "You must set this manually when instantiating your Planform object."
                     )
 
     def __repr__(self):
         n_wings = len(self.wings)
         n_fuselages = len(self.fuselages)
-        return f"Airplane '{self.name}' " \
+        return f"Planform '{self.name}' " \
                f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
                f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
 
@@ -193,7 +188,7 @@ class LiftingSet(ArchibaldObject):
                   stack_meshes=True,
                   ):
         """
-        Returns a surface mesh of the Airplane, in (points, faces) format. For reference on this format,
+        Returns a surface mesh of the Planform, in (points, faces) format. For reference on this format,
         see the documentation in `archibald.geometry.mesh_utilities`.
 
         Args:
@@ -255,7 +250,7 @@ class LiftingSet(ArchibaldObject):
              show_kwargs: Dict = None,
              ):
         """
-        Produces an interactive 3D visualization of the airplane.
+        Produces an interactive 3D visualization of the planform.
 
         Args:
 
@@ -266,7 +261,7 @@ class LiftingSet(ArchibaldObject):
                 * "plotly" for a Plot.ly backend
                 * "trimesh" for a trimesh backend
 
-            thin_wings: A boolean that determines whether to draw the full airplane (i.e. thickened, 3D bodies), or to use a
+            thin_wings: A boolean that determines whether to draw the full planform (i.e. thickened, 3D bodies), or to use a
             thin-surface representation for any Wing objects.
 
             show: A boolean that determines whether to display the object after plotting it. If False, the object is
@@ -406,7 +401,7 @@ class LiftingSet(ArchibaldObject):
                        show: bool = True,
                        ):
         """
-        Draws a wireframe of the airplane on a Matplotlib 3D axis.
+        Draws a wireframe of the planform on a Matplotlib 3D axis.
 
         Args:
 
@@ -627,7 +622,7 @@ class LiftingSet(ArchibaldObject):
                         show: bool = True,
                         ):
         """
-        Draws a standard 4-panel three-view diagram of the airplane using Matplotlib backend. Creates a new figure.
+        Draws a standard 4-panel three-view diagram of the planform using Matplotlib backend. Creates a new figure.
 
         Args:
 
@@ -729,7 +724,7 @@ class LiftingSet(ArchibaldObject):
 
     def is_entirely_symmetric(self):
         """
-        Returns a boolean describing whether the airplane is geometrically entirely symmetric across the XZ-plane.
+        Returns a boolean describing whether the planform is geometrically entirely symmetric across the XZ-plane.
         :return: [boolean]
         """
         for wing in self.wings:
@@ -754,7 +749,7 @@ class LiftingSet(ArchibaldObject):
             Michael V., "Flight Dynamics Principles", 3rd Ed., Sect. 3.5.3 "Controls-fixed static stability". PDF:
             https://www.sciencedirect.com/science/article/pii/B9780080982427000031
 
-        Returns: The (x, y, z) coordinates of the aerodynamic center of the airplane.
+        Returns: The (x, y, z) coordinates of the aerodynamic center of the planform.
         """
         wing_areas = [wing.area(type="projected") for wing in self.wings]
         ACs = [wing.aerodynamic_center() for wing in self.wings]
@@ -773,9 +768,9 @@ class LiftingSet(ArchibaldObject):
 
     def with_control_deflections(self,
                                  control_surface_deflection_mappings: Dict[str, float]
-                                 ) -> "Airplane":
+                                 ) -> "Planform":
         """
-        Returns a copy of the airplane with the specified control surface deflections applied.
+        Returns a copy of the planform with the specified control surface deflections applied.
 
         Args:
             control_surface_deflection_mappings: A dictionary mapping control surface names to deflections.
@@ -784,14 +779,14 @@ class LiftingSet(ArchibaldObject):
 
                 * Values: Deflections, in degrees. Downwards-positive, following typical convention.
 
-        Returns: A copy of the airplane with the specified control surface deflections applied.
+        Returns: A copy of the planform with the specified control surface deflections applied.
 
         """
-        deflected_airplane = copy.deepcopy(self)
+        deflected_planform = copy.deepcopy(self)
 
         for name, deflection in control_surface_deflection_mappings.items():
 
-            for wi, wing in enumerate(deflected_airplane.wings):
+            for wi, wing in enumerate(deflected_planform.wings):
 
                 for xi, xsec in enumerate(wing.xsecs):
 
@@ -801,14 +796,14 @@ class LiftingSet(ArchibaldObject):
 
                             surf.deflection = deflection
 
-        return deflected_airplane
+        return deflected_planform
 
     def generate_cadquery_geometry(self,
                                    minimum_airfoil_TE_thickness: float = 0.001,
                                    fuselage_tol: float = 1e-4,
                                    ) -> "Workplane":
         """
-        Uses the CADQuery library (OpenCASCADE backend) to generate a 3D CAD model of the airplane.
+        Uses the CADQuery library (OpenCASCADE backend) to generate a 3D CAD model of the planform.
 
         Args:
 
@@ -819,7 +814,7 @@ class LiftingSet(ArchibaldObject):
 
             tol: The geometric tolerance (meters) to use when generating the CAD geometry. This is passed directly to the CADQuery
 
-        Returns: A CADQuery Workplane object containing the CAD geometry of the airplane.
+        Returns: A CADQuery Workplane object containing the CAD geometry of the planform.
 
         """
         import cadquery as cq
@@ -927,7 +922,7 @@ class LiftingSet(ArchibaldObject):
                                  minimum_airfoil_TE_thickness: float = 0.001
                                  ) -> None:
         """
-        Exports the airplane geometry to a STEP file.
+        Exports the planform geometry to a STEP file.
 
         Args:
             filename: The filename to export to. Should include the ".step" extension.
@@ -937,7 +932,7 @@ class LiftingSet(ArchibaldObject):
             necessary. This is useful for avoiding numerical issues in CAD software that can arise from extremely
             thin (i.e., <1e-6 meters) trailing edges.
 
-        Returns: None, but exports the airplane geometry to a STEP file.
+        Returns: None, but exports the planform geometry to a STEP file.
         """
         solid = self.generate_cadquery_geometry(
             minimum_airfoil_TE_thickness=minimum_airfoil_TE_thickness,
@@ -963,7 +958,7 @@ class LiftingSet(ArchibaldObject):
 
         from archibald.dynamics.aero_3D.avl import AVL
         avl = AVL(
-            airplane=self,
+            planform=self,
             op_point=None,
             xyz_ref=self.xyz_ref
         )
@@ -973,10 +968,10 @@ class LiftingSet(ArchibaldObject):
         import warnings
 
         warnings.warn(
-            "`Airplane.export_XFLR()` has been renamed to `Airplane.export_XFLR5_xml()`, to clarify\n"
+            "`Planform.export_XFLR()` has been renamed to `Planform.export_XFLR5_xml()`, to clarify\n"
             "that it exports to XFLR5's XML format, not to a XFL file.\n"
             "\n"
-            "Please update your code to use `Airplane.export_XFLR5_xml()` instead.\n"
+            "Please update your code to use `Planform.export_XFLR5_xml()` instead.\n"
             "\n"
             "This function will be removed in a future version of AeroSandbox.",
             PendingDeprecationWarning
@@ -992,12 +987,12 @@ class LiftingSet(ArchibaldObject):
                          fin: Wing = None,
                          ):
         """
-        Exports the airplane geometry to an XFLR5 `.xml` file.
+        Exports the planform geometry to an XFLR5 `.xml` file.
 
         Args:
             filename: The filename to export to. Should include the ".xml" extension.
 
-            mass_props: The MassProperties object to use when exporting the airplane. If not specified, will default to
+            mass_props: The MassProperties object to use when exporting the planform. If not specified, will default to
                 a 1 kg point mass at the origin.
 
                 - Note: XFLR5 does not natively support user-defined inertia tensors, so we have to synthesize an equivalent
@@ -1005,13 +1000,13 @@ class LiftingSet(ArchibaldObject):
 
             include_fuselages: Whether to include fuselages in the export.
 
-            mainwing: The main wing of the airplane. If not specified, will default to the first wing in the airplane.
+            mainwing: The main wing of the planform. If not specified, will default to the first wing in the planform.
 
-            elevator: The elevator of the airplane. If not specified, will default to the second wing in the airplane.
+            elevator: The elevator of the planform. If not specified, will default to the second wing in the planform.
 
-            fin: The fin of the airplane. If not specified, will default to the third wing in the airplane.
+            fin: The fin of the planform. If not specified, will default to the third wing in the planform.
 
-        Returns: None, but exports the airplane geometry to an XFLR5 `.xml` file.
+        Returns: None, but exports the planform geometry to an XFLR5 `.xml` file.
 
             To import the `.xml` file into XFLR5, go to File -> Import -> Import from XML.
         """
@@ -1294,106 +1289,75 @@ class LiftingSet(ArchibaldObject):
         return xml_string
     
     
-class Rig(LiftingSet):
+class Rig(Planform):
     """
-    Definition of a rig.
-    
-    Citation:
-        Adapted from:         geometry.airplane.Airplane in AeroSandbox
-        Author:               Peter D Sharpe
-        Date of Retrieval:    22/10/2024
+    Definition for a Rig.
 
-    """
-
-    def __init__(self,
-                 name: Optional[str] = None,
-                 xyz_ref: Union[np.ndarray, List] = None,
-                 wings: Optional[List[Wing]] = None,
-                 fuselages: Optional[List[Fuselage]] = None,
-                 propulsors: Optional[List[Propulsor]] = None,
-                 s_ref: Optional[float] = None,
-                 c_ref: Optional[float] = None,
-                 b_ref: Optional[float] = None,
-                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
-                 ):
-        
-        super().__init__(name,
-                         xyz_ref,
-                         wings,
-                         fuselages,
-                         propulsors,
-                         s_ref,
-                         c_ref,
-                         b_ref,
-                         analysis_specific_options
-                         )
-    
-    
-class Appendage(LiftingSet):
-    """
-    Definition of an appendage set.
-    
-    Citation:
-        Adapted from:         geometry.airplane.Airplane in AeroSandbox
-        Author:               Peter D Sharpe
-        Date of Retrieval:    22/10/2024
-
+    A Rig is functionally a Planform (see `Planform` for the full anatomy of wings/fuselages), specialized to
+    represent a boat's above-deck sail plan -- e.g., the collection of sails (as `Sail` wings) and any supporting
+    structure (masts/booms, as `Fuselage` objects) that make up the rig. Inherits all `Planform` behavior as-is;
+    this subclass exists as a distinct type so that rig-specific analyses and methods can be attached to it
+    separately from generic planforms and from `Appendage`.
     """
 
-    def __init__(self,
-                 name: Optional[str] = None,
-                 xyz_ref: Union[np.ndarray, List] = None,
-                 wings: Optional[List[Wing]] = None,
-                 fuselages: Optional[List[Fuselage]] = None,
-                 propulsors: Optional[List[Propulsor]] = None,
-                 s_ref: Optional[float] = None,
-                 c_ref: Optional[float] = None,
-                 b_ref: Optional[float] = None,
-                 analysis_specific_options: Optional[Dict[type, Dict[str, Any]]] = None
-                 ):
-        
-        super().__init__(name,
-                         xyz_ref,
-                         wings,
-                         fuselages,
-                         propulsors,
-                         s_ref,
-                         c_ref,
-                         b_ref,
-                         analysis_specific_options
-                         )
+    def __repr__(self):
+        n_wings = len(self.wings)
+        n_fuselages = len(self.fuselages)
+        return f"Rig '{self.name}' " \
+               f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
+               f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
+
+
+class Appendage(Planform):
+    """
+    Definition for an Appendage.
+
+    An Appendage is functionally a Planform (see `Planform` for the full anatomy of wings/fuselages), specialized
+    to represent a boat's underwater/below-deck componentry -- e.g., the collection of fins (as `Fin` wings, such
+    as a keel, rudder, or daggerboard) and any supporting structure (as `Fuselage` objects) that make up the
+    appendage set. Inherits all `Planform` behavior as-is; this subclass exists as a distinct type so that
+    appendage-specific analyses and methods can be attached to it separately from generic planforms and from
+    `Rig`.
+    """
+
+    def __repr__(self):
+        n_wings = len(self.wings)
+        n_fuselages = len(self.fuselages)
+        return f"Appendage '{self.name}' " \
+               f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
+               f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
 
 
 if __name__ == '__main__':
-    import archibald as asb
-    # import archibald.numpy as np
+    import archibald.numpy as np
     import archibald.toolbox.units as u
+    from archibald.geometry import Airfoil, WingXSec, ControlSurface, FuselageXSec
 
 
     def ft(feet, inches=0):  # Converts feet (and inches) to meters
         return feet * u.foot + inches * u.inch
 
 
-    naca2412 = asb.Airfoil("naca2412")
-    naca0012 = asb.Airfoil("naca0012")
+    naca2412 = Airfoil("naca2412")
+    naca0012 = Airfoil("naca0012")
 
-    airplane = LiftingSet(
+    planform = Planform(
         name="Cessna 152",
         wings=[
-            asb.Wing(
+            Wing(
                 name="Wing",
                 xsecs=[
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[0, 0, 0],
                         chord=ft(5, 4),
                         airfoil=naca2412
                     ),
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[0, ft(7), ft(7) * np.sind(1)],
                         chord=ft(5, 4),
                         airfoil=naca2412,
                         control_surfaces=[
-                            asb.ControlSurface(
+                            ControlSurface(
                                 name="aileron",
                                 symmetric=False,
                                 hinge_point=0.8,
@@ -1401,7 +1365,7 @@ if __name__ == '__main__':
                             )
                         ]
                     ),
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[
                             ft(4, 3 / 4) - ft(3, 8 + 1 / 2),
                             ft(33, 4) / 2,
@@ -1413,16 +1377,16 @@ if __name__ == '__main__':
                 ],
                 symmetric=True
             ),
-            asb.Wing(
+            Wing(
                 name="Horizontal Stabilizer",
                 xsecs=[
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[0, 0, 0],
                         chord=ft(3, 8),
                         airfoil=naca0012,
                         twist=-2,
                         control_surfaces=[
-                            asb.ControlSurface(
+                            ControlSurface(
                                 name="elevator",
                                 symmetric=True,
                                 hinge_point=0.75,
@@ -1430,7 +1394,7 @@ if __name__ == '__main__':
                             )
                         ]
                     ),
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[ft(1), ft(10) / 2, 0],
                         chord=ft(2, 4 + 3 / 8),
                         airfoil=naca0012,
@@ -1439,27 +1403,27 @@ if __name__ == '__main__':
                 ],
                 symmetric=True
             ).translate([ft(13, 3), 0, ft(-2)]),
-            asb.Wing(
+            Wing(
                 name="Vertical Stabilizer",
                 xsecs=[
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[ft(-5), 0, 0],
                         chord=ft(8, 8),
                         airfoil=naca0012,
                     ),
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[ft(0), 0, ft(1)],
                         chord=ft(3, 8),
                         airfoil=naca0012,
                         control_surfaces=[
-                            asb.ControlSurface(
+                            ControlSurface(
                                 name="rudder",
                                 hinge_point=0.75,
                                 deflection=0
                             )
                         ]
                     ),
-                    asb.WingXSec(
+                    WingXSec(
                         xyz_le=[ft(0, 8), 0, ft(5)],
                         chord=ft(2, 8),
                         airfoil=naca0012,
@@ -1468,33 +1432,33 @@ if __name__ == '__main__':
             ).translate([ft(16, 11) - ft(3, 8), 0, ft(-2)])
         ],
         fuselages=[
-            asb.Fuselage(
+            Fuselage(
                 xsecs=[
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[0, 0, ft(-1)],
                         radius=0,
                     ),
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[0, 0, ft(-1)],
                         radius=ft(1.5),
                         shape=3,
                     ),
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[ft(3), 0, ft(-0.85)],
                         radius=ft(1.7),
                         shape=7,
                     ),
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[ft(5), 0, ft(0)],
                         radius=ft(2.7),
                         shape=7,
                     ),
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[ft(10, 4), 0, ft(0.3)],
                         radius=ft(2.3),
                         shape=7,
                     ),
-                    asb.FuselageXSec(
+                    FuselageXSec(
                         xyz_c=[ft(21, 11), 0, ft(0.8)],
                         radius=ft(0.3),
                         shape=3,
@@ -1504,9 +1468,9 @@ if __name__ == '__main__':
         ]
     )
 
-    airplane.draw()
-    # airplane.draw_three_view()
-    # airplane.export_XFLR5_xml("test.xml", mass_props=asb.MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
+    planform.draw()
+    # planform.draw_three_view()
+    # planform.export_XFLR5_xml("test.xml", mass_props=MassProperties(mass=1, Ixx=1, Iyy=1, Izz=1))
 
 
 

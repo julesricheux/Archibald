@@ -15,7 +15,7 @@ import copy
 from typing import List, Dict, Union, Optional, Tuple
 
 from archibald.geometry.hull import Hull
-from archibald.geometry.lifting_set import Rig, Appendage
+from archibald.geometry.planform import Rig, Appendage
 from archibald.geometry.propeller import Propeller, BSeriesPropeller
 
 from archibald.performance.operating_point import OperatingPoint

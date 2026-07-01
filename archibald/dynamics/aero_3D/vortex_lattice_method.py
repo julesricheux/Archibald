@@ -34,7 +34,7 @@ from abc import abstractmethod
 
 from archibald.toolbox.geom_utils import *
 from archibald.toolbox.math_utils import rotation_matrix, ramp, ReLU
-from archibald.geometry.lifting_set import LiftingSet, Rig, Appendage
+from archibald.geometry.planform import Planform, Rig, Appendage
 
 from typing import Tuple, Union, Dict, List
 

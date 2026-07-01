@@ -46,7 +46,7 @@ class NonlinearLiftingLine(ImplicitAnalysis):
     @ImplicitAnalysis.initialize
     def __init__(
         self,
-        airplane: LiftingSet,
+        airplane: Planform,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         run_symmetric_if_possible: bool = False,

@@ -47,7 +47,7 @@ class LiftingLine(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: LiftingSet,
+        airplane: Planform,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         model_size: str = "medium",
