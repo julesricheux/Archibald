@@ -128,9 +128,27 @@ sailboat = Sailboat(
     fittings=[wings],
 )
 
-sailboat.draw(
-    backend="pyvista",
-    draw_plane=True,
-    point=np.array([0, 0, 0]),
-    set_axis_visibility=True,
+# sailboat.draw(
+#     backend="pyvista",
+#     draw_plane=True,
+#     point=np.array([0, 0, 0]),
+#     set_axis_visibility=True,
+# )
+
+#%%
+from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod
+from archibald.performance import OperatingPoint
+
+op_point = OperatingPoint(
+    stw=10.,
+    tws=10., 
+    twa = 90.,
+    dz=0,
+    heel=0.,
+    trim=0.,
+    leeway=0.,
 )
+
+aeroVLM = AeroVortexLatticeMethod(rig, op_point)
+
+res = aeroVLM.run()
