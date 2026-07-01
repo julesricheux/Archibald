@@ -1357,38 +1357,41 @@ class ArchibaldMesh(ArchibaldObject):
             
     def draw(
         self,
-        color='orange',
-        opacity=0.3,
-        show_edges=True,
-        draw_plane=False,
-        point=np.zeros(3),
-        normal=np.array([0., 0., 1.]),
-        mesh_color='grey',
-        cmap="RdYlGn",
-        plane_color='blue',
-        plane_opacity=0.2,
+        color = 'grey',
+        opacity = 1.,
+        show_edges = True,
+        draw_plane = False,
+        point = np.zeros(3),
+        normal = np.array([0., 0., 1.]),
+        mesh_color = 'grey',
+        cmap = "RdYlGn",
+        plane_color = 'blue',
+        plane_opacity = 0.2,
         backend: str = 'pyvista',
         show: bool = True,
+        plotter=None,
+        fig=None,
         ax=None,
-        plotter=None,  # Added to accept external canvas
-        set_axis_visibility=None,
-        **kwargs,      # Added to safely swallow unexpected arguments
+        set_axis_visibility = None,
     ):
         
         if backend == 'pyvista':
             import pyvista as pv
             
-            # Use the provided plotter if available, else create one
-            p = plotter if plotter is not None else pv.Plotter()
+            # Create a PyVista plotter
+            plotter = plotter if plotter is not None else pv.Plotter()
             
             # Create the mesh
             mesh = pv.PolyData(self.vertices, np.hstack([[3, *face] for face in self.faces]))
             
             if draw_plane:
-                vdist = self.vertices_distances_to_plane(point, normal)
+                vdist = self.vertices_distances_to_plane(
+                    point,
+                    normal
+                )
                 weight = np.sigmoid(vdist * 10./3.)
                 
-                p.add_mesh(
+                plotter.add_mesh(
                     mesh,
                     show_edges=show_edges,
                     scalars=weight,
@@ -1409,13 +1412,13 @@ class ArchibaldMesh(ArchibaldObject):
                     direction=normal,
                     i_size=diag, j_size=diag,
                 )
-                p.add_mesh(
+                plotter.add_mesh(
                     plane,
                     color=plane_color,
                     opacity=plane_opacity
                 )
             else:
-                p.add_mesh(
+                plotter.add_mesh(
                     mesh,
                     show_edges=show_edges,
                     color=color,
@@ -1423,48 +1426,208 @@ class ArchibaldMesh(ArchibaldObject):
                 )
                 
             if set_axis_visibility:
-                p.add_axes()
-                p.show_grid(color='gray')
+                plotter.add_axes()
+                plotter.show_grid(color='gray')
             
-            # Show only if we created the plotter locally
-            if show and plotter is None:
-                p.show()
-            return p
+            if show:
+                # Display the plot
+                plotter.show()
+            return plotter
             
         elif backend == 'plotly':
             import plotly.graph_objects as go
-            fig = go.Figure()
-            # ... (Keep your existing Plotly logic) ...
+            
+            fig = fig if fig is not None else go.Figure()
+            
+            x, y, z = self.vertices.T
+            i, j, k = self.faces.T
+            
+            if draw_plane:
+                # Compute weights
+                weight = np.sigmoid(
+                    self.vertices_distances_to_plane(point, normal) * 10. / 3.
+                )
+                
+                # Draw the main mesh mapped to the colorscale
+                fig.add_trace(
+                    go.Mesh3d(
+                        x=x, y=y, z=z,
+                        i=i, j=j, k=k,
+                        intensity=weight,
+                        colorscale=cmap,
+                        showscale=False,
+                    )
+                )
+                
+                # Calculate the plane boundaries
+                b = self.bounds
+                diag = np.linalg.norm(b[:, 1] - b[:, 0])
+                projected_centroid = (
+                    self.area_centroid
+                    - np.dot(
+                        wide(self.area_centroid) - wide(point),
+                        tall(normal),
+                    )
+                ).flatten()
+                
+                if np.allclose(normal[:2], 0):
+                    v1 = np.array([1., 0., 0.])
+                else:
+                    v1 = np.array([-normal[1], normal[0], 0.])
+                v1 /= np.linalg.norm(v1)
+                v2 = np.cross(normal, v1)
+                v2 /= np.linalg.norm(v2)
+                
+                half_size = diag / 2.0 * 1.2
+                p1 = projected_centroid - half_size * v1 - half_size * v2
+                p2 = projected_centroid + half_size * v1 - half_size * v2
+                p3 = projected_centroid + half_size * v1 + half_size * v2
+                p4 = projected_centroid - half_size * v1 + half_size * v2
+                
+                # Draw the plane as two triangles (0,1,2 and 0,2,3)
+                fig.add_trace(
+                    go.Mesh3d(
+                        x=[p1[0], p2[0], p3[0], p4[0]],
+                        y=[p1[1], p2[1], p3[1], p4[1]],
+                        z=[p1[2], p2[2], p3[2], p4[2]],
+                        i=[0, 0],
+                        j=[1, 2],
+                        k=[2, 3],
+                        color=plane_color,
+                        opacity=plane_opacity,
+                    )
+                )
+            else:
+                # Standard drawing without a plane
+                fig.add_trace(
+                    go.Mesh3d(
+                        x=x, y=y, z=z,
+                        i=i, j=j, k=k,
+                        opacity=opacity,
+                        color=color,
+                    )
+                )
+            
+            # Setup scene aspect and axis visibility
+            scene_layout = dict(aspectmode='data')
+            
+            if set_axis_visibility is False:
+                scene_layout.update(
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                    zaxis=dict(visible=False)
+                )
+            elif set_axis_visibility is True:
+                scene_layout.update(
+                    xaxis=dict(visible=True),
+                    yaxis=dict(visible=True),
+                    zaxis=dict(visible=True)
+                )
+                
+            fig.update_layout(scene=scene_layout)
+
+            if show:
+                from plotly.offline import plot
+                plot(fig)
             return fig
             
         elif backend == 'matplotlib':
             import matplotlib.pyplot as plt
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
             
+            # 1. Setup or verify the 3D axis
             if ax is None:
                 fig = plt.figure(figsize=(8, 8))
                 ax = fig.add_subplot(111, projection='3d')
                 
+            # Convert faces to a safe list of arrays for inhomogeneous shapes
             mesh_polys = [self.vertices[face] for face in self.faces]
+            
+            # Disable default shading to prevent immediate ValueError
             mesh_collection = Poly3DCollection(mesh_polys, shade=False)
             
+            # 3. Handle Coloring and Shading Styles
             if draw_plane:
-                weight = np.sigmoid(self.vertices_distances_to_plane(point, normal) * 10. / 3.)
+                weight = np.sigmoid(
+                    self.vertices_distances_to_plane(point, normal) * 10. / 3.
+                )
+                # Compute face weights safely using list comprehension
                 face_weights = np.array([np.mean(weight[face]) for face in self.faces])
-                face_colors = plt.get_cmap(cmap)(face_weights)
+                cmap_callable = plt.get_cmap(cmap)
+                face_colors = cmap_callable(face_weights)
                 mesh_collection.set_facecolor(face_colors)
             else:
                 mesh_collection.set_facecolor(color)
                 mesh_collection.set_alpha(opacity)
                 
-            mesh_collection.set_edgecolor('grey' if show_edges else 'none')
-            mesh_collection.set_linewidth(0.5)
+            if show_edges:
+                mesh_collection.set_edgecolor('grey')
+                mesh_collection.set_linewidth(0.5)
+            else:
+                mesh_collection.set_edgecolor('none')
+                
             ax.add_collection3d(mesh_collection)
             
-            # ... [Maintain your existing plane/axis logic] ...
+            # 4. Handle Waterplane Drawing (if requested)
+            if draw_plane:
+                b = self.bounds
+                diag = np.linalg.norm(b[:, 1] - b[:, 0]) * 1.2
+                projected_centroid = (
+                    self.area_centroid
+                    - np.dot(
+                        wide(self.area_centroid) - wide(point),
+                        tall(normal),
+                    )
+                )
+                
+                if np.allclose(normal[:2], 0):
+                    v1 = np.array([1., 0., 0.])
+                else:
+                    v1 = np.array([-normal[1], normal[0], 0.])
+                v1 /= np.linalg.norm(v1)
+                v2 = np.cross(normal, v1)
+                v2 /= np.linalg.norm(v2)
+                
+                half_size = diag / 2.0
+                p1 = projected_centroid - half_size * v1 - half_size * v2
+                p2 = projected_centroid + half_size * v1 - half_size * v2
+                p3 = projected_centroid + half_size * v1 + half_size * v2
+                p4 = projected_centroid - half_size * v1 + half_size * v2
+                
+                plane_collection = Poly3DCollection(
+                    [p1, p2, p3, p4], 
+                    facecolors=plane_color, 
+                    alpha=plane_opacity,
+                    shade=False
+                )
+                ax.add_collection3d(plane_collection)
             
-            if show and plotter is None:
+            # 5. Apply view limits & visibility toggles requested by draw_three_view
+            ax.auto_scale_xyz(self.vertices[:, 0], self.vertices[:, 1], self.vertices[:, 2])
+            
+            # FORCE UNCONSTRAINED ASPECT RATIO
+            ax.set_box_aspect(None)  # Resets any forced 1:1:1 box aspects
+                
+            # ax.auto_scale_xyz(self.vertices[:, 0], self.vertices[:, 1], self.vertices[:, 2])
+            
+            if set_axis_visibility is False:
+                ax.set_axis_off()
+            elif set_axis_visibility is True:
+                ax.set_axis_on()
+            
+            # set adequate zoom and scale
+            b = self.bounds
+            c = self.area_centroid
+            main_dim = np.max(b[:, 1] - b[:, 0])
+            
+            ax.set_xlim(c[0] - main_dim/2., c[0] + main_dim/2.)
+            ax.set_ylim(c[1] - main_dim/2., c[1] + main_dim/2.)
+            ax.set_zlim(c[2] - main_dim/2., c[2] + main_dim/2.)
+                
+            if show:
                 plt.show()
+                
             return ax
+            
         else:
             raise NotImplementedError(f'{backend} is not a supported drawing module.')

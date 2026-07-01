@@ -1161,48 +1161,48 @@ class Wing(ArchibaldObject):
 
     def draw(self, *args, **kwargs):
         """
-        An alias to the more general LiftingSet.draw() method. See there for documentation.
+        An alias to the more general Planform.draw() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to LiftingSet.draw()
-            **kwargs: Keyword arguments to pass through to LiftingSet.draw()
+            *args: Arguments to pass through to Planform.draw()
+            **kwargs: Keyword arguments to pass through to Planform.draw()
 
-        Returns: Same return as LiftingSet.draw()
+        Returns: Same return as Planform.draw()
 
         """
-        from archibald.geometry.lifting_set import LiftingSet
+        from archibald.geometry.planform import Planform
         
-        return LiftingSet(wings=[self]).draw(*args, **kwargs)
+        return Planform(wings=[self]).draw(*args, **kwargs)
 
     def draw_wireframe(self, *args, **kwargs):
         """
-        An alias to the more general LiftingSet.draw_wireframe() method. See there for documentation.
+        An alias to the more general Planform.draw_wireframe() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to LiftingSet.draw_wireframe()
-            **kwargs: Keyword arguments to pass through to LiftingSet.draw_wireframe()
+            *args: Arguments to pass through to Planform.draw_wireframe()
+            **kwargs: Keyword arguments to pass through to Planform.draw_wireframe()
 
-        Returns: Same return as LiftingSet.draw_wireframe()
+        Returns: Same return as Planform.draw_wireframe()
 
         """
-        from archibald.geometry.lifting_set import LiftingSet
+        from archibald.geometry.planform import Planform
         
-        return LiftingSet(wings=[self]).draw_wireframe(*args, **kwargs)
+        return Planform(wings=[self]).draw_wireframe(*args, **kwargs)
 
     def draw_three_view(self, *args, **kwargs):
         """
-        An alias to the more general LiftingSet.draw_three_view() method. See there for documentation.
+        An alias to the more general Planform.draw_three_view() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to LiftingSet.draw_three_view()
-            **kwargs: Keyword arguments to pass through to LiftingSet.draw_three_view()
+            *args: Arguments to pass through to Planform.draw_three_view()
+            **kwargs: Keyword arguments to pass through to Planform.draw_three_view()
 
-        Returns: Same return as LiftingSet.draw_three_view()
+        Returns: Same return as Planform.draw_three_view()
 
         """
-        from archibald.geometry.lifting_set import LiftingSet
+        from archibald.geometry.planform import Planform
         
-        return LiftingSet(wings=[self]).draw_three_view(*args, **kwargs)
+        return Planform(wings=[self]).draw_three_view(*args, **kwargs)
 
     def subdivide_sections(
         self,

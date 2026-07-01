@@ -68,7 +68,7 @@ rud_le, rud_chords = dxf_to_le_chords(r'data/49er_data/rudder.dxf', 7)
 
 app = Appendage(
     wings=[
-        Sail(
+        Fin(
             name="dagger",
             xsecs=[
                 WingXSec(
@@ -79,7 +79,7 @@ app = Appendage(
                 )
             for xyz, c in zip(dag_le, dag_chords)]
         ),
-        Sail(
+        Fin(
             name="rudder",
             xsecs=[
                 WingXSec(
@@ -98,6 +98,18 @@ app = Appendage(
 # rig.draw(thin_wings=True)
 # rig.draw_three_view()
 # hull.draw_three_view()
+
+rig.wings[0] = rig.wings[0].rotate_local(
+    angle_deg=-45.,
+    axis=jib_le[-1] - main_le[0],
+    origin=main_le[0]
+)
+
+rig.wings[1] = rig.wings[1].rotate_local(
+    angle_deg=-45.,
+    axis=jib_le[-1] - jib_le[0],
+    origin=jib_le[0]
+)
 
 sailboat = Sailboat(
     displacement=200.5,
