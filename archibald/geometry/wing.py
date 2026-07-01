@@ -1658,6 +1658,40 @@ class Wing(ArchibaldObject):
             xsec.sweep += self._chord_rotation_angle_deg(c0, c1, zg0, zg1)
 
         return new_wing
+    
+    
+class Fin(Wing):
+    """
+    Definition for a Fin.
+
+    A Fin is functionally a Wing (see `Wing` for the full anatomy/xsec model), specialized to represent a boat's
+    fin -- e.g., a centerboard, daggerboard, keel fin, or rudder blade. Inherits all `Wing` geometry, meshing, and
+    transformation methods as-is; this subclass exists as a distinct type so that fin-specific analyses and
+    methods can be attached to it separately from generic wings and from `Sail`.
+    """
+
+    def __repr__(self) -> str:
+        n_xsecs = len(self.xsecs)
+        symmetry_description = "symmetric" if self.symmetric else "asymmetric"
+        return f"Fin '{self.name}' ({len(self.xsecs)} {'xsec' if n_xsecs == 1 else 'xsecs'}, {symmetry_description})"
+
+
+class Sail(Wing):
+    """
+    Definition for a Sail.
+
+    A Sail is functionally a Wing (see `Wing` for the full anatomy/xsec model), specialized to represent a boat's
+    sail -- e.g., a mainsail, jib, or spinnaker. Inherits all `Wing` geometry, meshing, and transformation methods
+    as-is; this subclass exists as a distinct type so that sail-specific analyses and methods (e.g., trim,
+    camber/twist control specific to soft sails) can be attached to it separately from generic wings and from
+    `Fin`.
+    """
+
+    def __repr__(self) -> str:
+        n_xsecs = len(self.xsecs)
+        symmetry_description = "symmetric" if self.symmetric else "asymmetric"
+        return f"Sail '{self.name}' ({len(self.xsecs)} {'xsec' if n_xsecs == 1 else 'xsecs'}, {symmetry_description})"
+
 
 
 class WingXSec(ArchibaldObject):
