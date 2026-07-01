@@ -68,31 +68,16 @@ class Hull(ArchibaldObject):
         return f"Hull object '{self.name}'"
     
     def draw(
-            self,
-            op_point: OperatingPoint = None,
-            set_axis_visibility: bool = None
+            self, 
+            backend: str = "pyvista",
+            **kwargs
         ):
+        """
+        Standardized Hull draw method to behave like a component of the Sailboat.
+        """
         if self.mesh:
-            if op_point is None:
-                self.mesh.draw(backend="matplotlib", set_axis_visibility=set_axis_visibility)
-            else:
-                # Bring the global water plane into the boat's local frame
-                point = op_point.apply_transformations(
-                    geometry=np.array([[0., 0., 0.]]), 
-                    inverse=True,
-                )
-                normal = op_point.apply_transformations(
-                    geometry=np.array([[0., 0., 1.]]), 
-                    inverse=True,
-                    is_vector=True,
-                )
-                self.mesh.draw(
-                    point=point,
-                    normal=normal,
-                    draw_plane=True,
-                    backend="pyvista",
-                    set_axis_visibility=set_axis_visibility,
-                )
+            # Pass all kwargs (like draw_plane, opacity, etc.) directly to the mesh
+            return self.mesh.draw(backend=backend, **kwargs)
             
     def compute_hydrostatics_properties(
             self,

@@ -15,7 +15,7 @@ import copy
 from typing import List, Dict, Union, Optional, Tuple
 
 from archibald.geometry.hull import Hull
-from archibald.geometry.planform import Rig, Appendage
+from archibald.geometry.planform import Rig, Appendage, Planform
 from archibald.geometry.propeller import Propeller, BSeriesPropeller
 
 from archibald.performance.operating_point import OperatingPoint
@@ -46,13 +46,16 @@ class Sailboat(ArchibaldObject):
             xyz_ref: Union[np.ndarray, List] = None,
             displacement: Union[np.ndarray, float] = None,
             cog: Union[np.ndarray, List] = None,
-            rig: Rig = None,
-            app: Appendage = None,
             hulls: List[Hull] = [],
+            rigs: List[Rig] = [],
+            appendages: List[Appendage] = [],
             propellers: List[Propeller] = [],
         ):
         
         self.hulls = hulls
+        self.rigs = rigs
+        self.appendages = appendages
+        self.propellers = propellers
         self.displacement = displacement
         self.cog = wide(np.array(cog))
         
@@ -162,6 +165,193 @@ class Sailboat(ArchibaldObject):
         self.moments["Mtot"] = self.moments["Mb"] + self.moments["Mw"] + self.moments["Mh"]
         
         return self.forces["Ftot"], self.moments["Mtot"]
+    
+    
+    # def draw(self,
+    #          backend: str = "pyvista",
+    #          thin_wings: bool = False,
+    #          ax=None,
+    #          mesh_color: str = 'lightgrey',
+    #          show: bool = True,
+    #          set_axis_visibility: bool = True,
+    #          show_kwargs: Dict = None,
+    #          **kwargs):
+    #     """
+    #     Visualizes the sailboat by aggregating all wings, rigs, and hull meshes.
+    #     """
+    #     if show_kwargs is None:
+    #         show_kwargs = {}
+
+    #     # 1. Collect all meshes from the sailboat's components
+    #     all_points = []
+    #     all_faces = []
+        
+    #     # Add Rigs (assuming rigs are objects with a mesh_body method)
+    #     for rig in self.rigs:
+    #         p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
+    #         all_points.append(p)
+    #         all_faces.append(f)
+            
+    #     # Add Hulls
+    #     for h in self.hulls:
+    #         if hasattr(h, 'mesh') and h.mesh:
+    #             # Assuming h.mesh has .vertices and .faces
+    #             all_points.append(h.mesh.vertices)
+    #             all_faces.append(h.mesh.faces)
+
+    #     # 2. Visualization Logic
+    #     if backend == "pyvista":
+    #         import pyvista as pv
+    #         import archibald.toolbox.mesh_utils as mesh_utils
+            
+    #         meshes = []
+    #         for p, f in zip(all_points, all_faces):
+    #             meshes.append(pv.PolyData(*mesh_utils.convert_mesh_to_polydata_format(p, f)))
+            
+    #         fig = meshes[0]
+    #         for m in meshes[1:]:
+    #             fig = fig.merge(m)
+            
+    #         if show:
+    #             fig.plot(show_edges=True, show_grid=True, **show_kwargs)
+    #         return fig
+
+    #     elif backend == "plotly":
+    #         import plotly.graph_objects as go
+            
+    #         data = []
+    #         for p, f in zip(all_points, all_faces):
+    #             # Convert quads to triangles if needed for Mesh3d
+    #             i, j, k = f[:, [0, 1, 2]].T
+    #             data.append(go.Mesh3d(x=p[:,0], y=p[:,1], z=p[:,2], i=i, j=j, k=k, 
+    #                                   color=mesh_color, opacity=1.0))
+            
+    #         fig = go.Figure(data=data)
+    #         # Setup scene aspect and axis visibility
+    #         scene_layout = dict(aspectmode='data')
+            
+    #         if set_axis_visibility is False:
+    #             scene_layout.update(
+    #                 xaxis=dict(visible=False),
+    #                 yaxis=dict(visible=False),
+    #                 zaxis=dict(visible=False)
+    #             )
+    #         elif set_axis_visibility is True:
+    #             scene_layout.update(
+    #                 xaxis=dict(visible=True),
+    #                 yaxis=dict(visible=True),
+    #                 zaxis=dict(visible=True)
+    #             )
+                
+    #         fig.update_layout(scene=scene_layout)
+
+    #         if show:
+    #             from plotly.offline import plot
+    #             plot(fig)
+    #         return fig
+
+    #     elif backend == "matplotlib":
+    #         import matplotlib.pyplot as plt
+    #         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+            
+    #         fig = plt.figure()
+    #         ax = fig.add_subplot(111, projection='3d')
+    #         for p, f in zip(all_points, all_faces):
+    #             ax.add_collection(Poly3DCollection(p[f], facecolors=mesh_color, alpha=0.8))
+            
+    #         if show:
+    #             plt.show()
+    #         return ax
+    
+    def draw(self,
+             backend: str = "pyvista",
+             thin_wings: bool = False,
+             mesh_color: str = 'lightgrey',
+             show: bool = True,
+             show_kwargs: Dict = None,
+             **kwargs):
+        """
+        Visualizes the sailboat by aggregating all wings, rigs, and hull meshes
+        into a single unified scene.
+        """
+        if show_kwargs is None:
+            show_kwargs = {}
+
+        # --- PYVISTA BACKEND ---
+        if backend == "pyvista":
+            import pyvista as pv
+            import archibald.toolbox.mesh_utils as mesh_utils
+            
+            # Create the master plotter for the whole sailboat
+            plotter = pv.Plotter()
+
+            # 1. Add Rigs
+            for rig in self.rigs:
+                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
+                mesh = pv.PolyData(*mesh_utils.convert_mesh_to_polydata_format(p, f))
+                plotter.add_mesh(mesh, color=mesh_color, show_edges=True)
+                
+            for app in self.appendages:
+                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
+                mesh = pv.PolyData(*mesh_utils.convert_mesh_to_polydata_format(p, f))
+                plotter.add_mesh(mesh, color=mesh_color, show_edges=True)
+
+            # 2. Add Hulls
+            for h in self.hulls:
+                # We pass the shared plotter so the hull adds itself to the sailboat's scene
+                # We also pass **kwargs to ensure draw_plane, point, normal, etc., are passed down
+                h.draw(backend="pyvista", show=False, plotter=plotter, **kwargs)
+
+            if show:
+                plotter.show(**show_kwargs)
+            return plotter
+
+        # --- PLOTLY BACKEND ---
+        elif backend == "plotly":
+            import plotly.graph_objects as go
+            fig = go.Figure()
+
+            # 1. Add Rigs
+            for rig in self.rigs:
+                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
+                i, j, k = f[:, [0, 1, 2]].T
+                fig.add_trace(go.Mesh3d(x=p[:,0], y=p[:,1], z=p[:,2], i=i, j=j, k=k, 
+                                        color=mesh_color, opacity=1.0))
+                
+            for app in self.appendages:
+                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
+                i, j, k = f[:, [0, 1, 2]].T
+                fig.add_trace(go.Mesh3d(x=p[:,0], y=p[:,1], z=p[:,2], i=i, j=j, k=k, 
+                                        color=mesh_color, opacity=1.0))
+
+            # 2. Add Hulls
+            for h in self.hulls:
+                h.draw(backend="plotly", show=False, fig=fig, **kwargs)
+
+            fig.update_layout(scene=dict(aspectmode='data'))
+            if show:
+                fig.show()
+            return fig
+
+        # --- MATPLOTLIB BACKEND ---
+        elif backend == "matplotlib":
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            
+            for rig in self.rigs:
+                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
+                # ... (add rig poly collection to ax)
+                
+            for app in self.appendages:
+                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
+                # ... (add rig poly collection to ax)
+                
+            for h in self.hulls:
+                h.draw(backend="matplotlib", show=False, ax=ax, **kwargs)
+            
+            if show: plt.show()
+            return ax
     
     
     def _get_target_residual(
