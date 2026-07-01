@@ -1298,13 +1298,28 @@ class Rig(Planform):
     structure (masts/booms, as `Fuselage` objects) that make up the rig. Inherits all `Planform` behavior as-is;
     this subclass exists as a distinct type so that rig-specific analyses and methods can be attached to it
     separately from generic planforms and from `Appendage`.
+
+    Note: Internally, sails are still stored in the inherited `self.wings` list (so that generic `Planform`
+    methods continue to work unmodified); `self.sails` is a read/write alias for `self.wings`, provided for a
+    more domain-appropriate name.
     """
 
+    def __init__(self, name=None, sails: list["Sail"] | None = None, fuselages=None, **kwargs):
+        super().__init__(name=name, wings=sails, fuselages=fuselages, **kwargs)
+
+    @property
+    def sails(self) -> list["Sail"]:
+        return self.wings
+
+    @sails.setter
+    def sails(self, value: list["Sail"]) -> None:
+        self.wings = value
+
     def __repr__(self):
-        n_wings = len(self.wings)
+        n_sails = len(self.sails)
         n_fuselages = len(self.fuselages)
         return f"Rig '{self.name}' " \
-               f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
+               f"({n_sails} {'sail' if n_sails == 1 else 'sails'}, " \
                f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
 
 
@@ -1318,13 +1333,28 @@ class Appendage(Planform):
     appendage set. Inherits all `Planform` behavior as-is; this subclass exists as a distinct type so that
     appendage-specific analyses and methods can be attached to it separately from generic planforms and from
     `Rig`.
+
+    Note: Internally, fins are still stored in the inherited `self.wings` list (so that generic `Planform`
+    methods continue to work unmodified); `self.fins` is a read/write alias for `self.wings`, provided for a
+    more domain-appropriate name.
     """
 
+    def __init__(self, name=None, fins: list["Fin"] | None = None, fuselages=None, **kwargs):
+        super().__init__(name=name, wings=fins, fuselages=fuselages, **kwargs)
+
+    @property
+    def fins(self) -> list["Fin"]:
+        return self.wings
+
+    @fins.setter
+    def fins(self, value: list["Fin"]) -> None:
+        self.wings = value
+
     def __repr__(self):
-        n_wings = len(self.wings)
+        n_fins = len(self.fins)
         n_fuselages = len(self.fuselages)
         return f"Appendage '{self.name}' " \
-               f"({n_wings} {'wing' if n_wings == 1 else 'wings'}, " \
+               f"({n_fins} {'fin' if n_fins == 1 else 'fins'}, " \
                f"{n_fuselages} {'fuselage' if n_fuselages == 1 else 'fuselages'})"
 
 
