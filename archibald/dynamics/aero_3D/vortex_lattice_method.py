@@ -31,6 +31,8 @@ from typing import Dict, Any, List, Callable
 import copy
 from abc import abstractmethod
 
+from archibald.toolbox import mesh_utils
+
 from archibald.toolbox.geom_utils import *
 from archibald.toolbox.math_utils import rotation_matrix, ramp, ReLU
 from archibald.geometry.planform import Planform, Rig, Appendage

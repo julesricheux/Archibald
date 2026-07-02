@@ -106,6 +106,8 @@ class Wing(ArchibaldObject):
         self.symmetric = symmetric
         self.color = color
         self.analysis_specific_options = analysis_specific_options
+        
+        self.is_soft = False
 
         ### Handle deprecated parameters
         if "xyz_le" in locals():

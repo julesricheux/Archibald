@@ -38,6 +38,9 @@ wings = ArchibaldMesh(*load_stl(wingsStl))
 main_le, main_chords = dxf_to_le_chords(r'data/49er_data/gv.dxf', 10)
 jib_le, jib_chords = dxf_to_le_chords(r'data/49er_data/jibsail.dxf', 7)
 
+main_le[:, 0] *= -1.
+jib_le[:, 0] *= -1.
+
 rig = Rig(
     name="49er_rig",
     sails=[
@@ -47,8 +50,8 @@ rig = Rig(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
-                    twist=180.-i*5,
+                    airfoil=ThinAirfoil(xc=0.4, mc=0.05),
+                    twist=-i*2,
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
@@ -58,8 +61,8 @@ rig = Rig(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=ThinAirfoil(xc=0.4, mc=0.2),
-                    twist=180.-i*5,
+                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
+                    twist=-i*4,
                 )
             for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
         ),
@@ -69,13 +72,13 @@ rig = Rig(
 # SETTINGS
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
-    angle_deg=-10.,
+    angle_deg=-1.,
     axis=jib_le[-1] - main_le[0],
     origin=main_le[0]
 )
 
 rig["jibsail"] = rig["jibsail"].rotate_local(
-    angle_deg=-20.,
+    angle_deg=-10.,
     axis=jib_le[-1] - jib_le[0],
     origin=jib_le[0]
 )
@@ -140,15 +143,17 @@ from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMe
 from archibald.performance import OperatingPoint
 
 op_point = OperatingPoint(
-    stw=10.,
+    stw=1e-3,
     tws=10., 
-    twa = 90.,
+    twa = 30.,
     dz=0,
     heel=0.,
     trim=0.,
     leeway=0.,
 )
 
-aeroVLM = AeroVortexLatticeMethod(rig, op_point)
+aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
 res = aeroVLM.run()
+
+aeroVLM.draw()
