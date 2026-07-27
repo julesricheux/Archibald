@@ -273,7 +273,44 @@ class Wing(ArchibaldObject):
             span = half_span
 
         return span
+    
+    def sectional_chords(
+        self,
+        type: str = "planform",
+    ) -> float | list[float]:
 
+        # Handle overloaded names
+        if type == "projected" or type == "top":
+            type = "xy"
+
+        elif type == "side":
+            type = "xz"
+
+        # Compute sectional areas. Each method must compute the sectional spans and the effective chords at each
+        # cross-section to use.
+        if type == "planform":
+            xsec_chords = [xsec.chord for xsec in self.xsecs]
+
+        elif type == "wetted":
+            xsec_chords = [xsec.chord * xsec.airfoil.perimeter() for xsec in self.xsecs]
+
+        elif type == "xy":
+            xsec_chords = [xsec.chord for xsec in self.xsecs]
+
+        elif type == "yz":
+            raise ValueError("Area of wing projected to the YZ plane is zero.")
+
+        elif type == "xz":
+            xsec_chords = [xsec.chord for xsec in self.xsecs]
+
+        else:
+            raise ValueError("Bad value of `type`!")
+        
+        return [
+            (inner_chord + outer_chord) / 2
+            for inner_chord, outer_chord in zip(xsec_chords[1:], xsec_chords[:-1])
+        ]
+        
     def area(
         self,
         type: str = "planform",
@@ -366,6 +403,8 @@ class Wing(ArchibaldObject):
             (inner_chord + outer_chord) / 2
             for inner_chord, outer_chord in zip(xsec_chords[1:], xsec_chords[:-1])
         ]
+        
+        sectional_chords = self.sectional_chords(type=type)
 
         sectional_areas = [
             span * chord for span, chord in zip(sectional_spans, sectional_chords)
@@ -1765,7 +1804,7 @@ class Wing(ArchibaldObject):
     
 
     def _compute_frame_of_section(
-        self, index: int
+        self, index: int, flow_direction: str = "-x"
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Computes the local reference frame associated with a particular section. (Note that sections and cross
@@ -1784,9 +1823,9 @@ class Wing(ArchibaldObject):
 
         """
         in_front = self._compute_xyz_le_of_WingXSec(index)
-        in_back = self._compute_xyz_te_of_WingXSec(index)
+        in_back = self._compute_xyz_te_of_WingXSec(index, flow_direction=flow_direction)
         out_front = self._compute_xyz_le_of_WingXSec(index + 1)
-        out_back = self._compute_xyz_te_of_WingXSec(index + 1)
+        out_back = self._compute_xyz_te_of_WingXSec(index + 1, flow_direction=flow_direction)
 
         diag1 = out_back - in_front
         diag2 = out_front - in_back

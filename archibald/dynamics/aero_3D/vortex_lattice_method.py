@@ -112,7 +112,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
     Usage example:
         >>> analysis = asb.VortexLatticeMethod(
-        >>>     airplane=my_airplane,
+        >>>     planform=my_planform,
         >>>     op_point=asb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
@@ -128,7 +128,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
     # @abstractmethod
     def __init__(self,
-                 airplane: Rig,
+                 planform: Rig,
                  op_point: OperatingPoint,
                  xyz_ref: List[float] = None,
                  IZsym: bool = False,
@@ -146,10 +146,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         ### Set defaults
         if xyz_ref is None:
-            xyz_ref = airplane.xyz_ref
+            xyz_ref = planform.xyz_ref
 
         ### Initialize
-        self.airplane = airplane
+        self.planform = planform
         self.op_point = op_point
         self.xyz_ref = xyz_ref
         self.verbose = verbose
@@ -164,21 +164,21 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.IZsym = IZsym
         
         if to_sym is None:
-            to_sym = [IZsym] * len(self.airplane.wings)
+            to_sym = [IZsym] * len(self.planform.wings)
         self.to_sym = to_sym
         
         self.fluid = Fluid()
         
         self.visc_corr = 0.
         
-        self.wing_spanwise_resolution = [(len(w.xsecs)-1)*self.spanwise_resolution*(1+w.symmetric) for w in self.airplane.wings]
+        self.wing_spanwise_resolution = [(len(w.xsecs)-1)*self.spanwise_resolution*(1+w.symmetric) for w in self.planform.wings]
         # Total number of spanwise cells for all wings
         self.total_spanwise_resolution = np.sum(self.wing_spanwise_resolution)
         
         
     def __repr__(self):
         return self.__class__.__name__ + "(\n\t" + "\n\t".join([
-            f"airplane={self.airplane}",
+            f"planform={self.planform}",
             f"op_point={self.op_point}",
             f"xyz_ref={self.xyz_ref}",
         ]) + "\n)"
@@ -338,7 +338,23 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         is_soft = []
 
-        for i, wing in enumerate(self.airplane.wings):
+        strips_x = []
+        strips_y = []
+        strips_z = []
+        strips_chords = []
+        strips_areas = []
+        strips_quarters = []
+        
+        for i, wing in enumerate(self.planform.wings):
+            all_frames = [wing._compute_frame_of_section(i) for i in range(len(wing.xsecs) - 1)]
+            strips_x += [wide(frame[0]) for frame in all_frames]
+            strips_y += [wide(frame[1]) for frame in all_frames]
+            strips_z += [wide(frame[2]) for frame in all_frames]
+            
+            strips_chords += wing.sectional_chords(type="planform")
+            strips_areas += wing.area(type="planform", _sectional=True)
+            strips_quarters += wing.aerodynamic_center(0.25, _sectional=True)
+            
             if self.spanwise_resolution > 1:
                 wing = wing.subdivide_sections(
                     ratio=self.spanwise_resolution,
@@ -420,44 +436,6 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 0.5 * (0.25 * front_right_vertices + 0.75 * back_right_vertices)
         )
         
-        # Compute local strips axes
-        
-        ### Compute spanwise directions by strips (i.e. local vectors along leading and trailing edges)
-        le_idx = np.arange(is_leading_edge.shape[0])[is_leading_edge]
-        te_idx = np.arange(is_trailing_edge.shape[0])[is_trailing_edge]
-        
-        # le_minus = front_left_vertices[is_leading_edge]
-        # le_plus = front_right_vertices[is_leading_edge]
-        # te_minus = back_left_vertices[is_trailing_edge]
-        # te_plus = back_right_vertices[is_trailing_edge]
-        le_minus = front_left_vertices[le_idx, :]
-        le_plus = front_right_vertices[le_idx, :]
-        te_minus = back_left_vertices[te_idx, :]
-        te_plus = back_right_vertices[te_idx, :]
-        
-        le_vec = le_plus-le_minus # Leading edge-wise local vectors by strips
-        te_vec = te_plus-te_minus # Trailing edge-wise local vectors by strips
-        
-        strips_span_vec = (le_vec + te_vec) / 2 # Mean spanwise local vectors by strips
-        
-        ### Compute chordwise directions by strips
-        strips_chord_vec_minus = te_minus - le_minus
-        strips_chord_vec_plus = te_plus - le_plus
-        strips_chord_vec = (strips_chord_vec_minus + strips_chord_vec_plus) / 2 # Mean chordwise local vectors by strips
-        
-        # le_mid = (le_minus + le_plus) / 2
-        # te_mid = (te_minus + te_plus) / 2
-        
-        ### Compute strips X and Y by normalizing spanwise and chordwise local directions
-        # strips_x = strips_chord_vec / np.tile(np.linalg.norm(strips_chord_vec, axis=1), (3,1)).T # strips X from chordwise local vectors
-        # strips_y = strips_span_vec / np.tile(np.linalg.norm(strips_span_vec, axis=1), (3,1)).T # strips Y from spanwise local vectors
-            
-        strips_x = normalize(strips_chord_vec)
-        strips_y = normalize(strips_span_vec)
-        
-        ### Compute strips chords
-        strips_chords = np.linalg.norm(strips_chord_vec, axis=1)
-
         ### Save things to the instance for later access
         self.front_left_vertices = front_left_vertices
         self.back_left_vertices = back_left_vertices
@@ -480,12 +458,13 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.is_soft = is_soft
         
-        self.strips_x = strips_x
-        self.strips_y = strips_y
-        self.strips_chords = strips_chords
-        self.strips_areas = self.sum_by_strips(tall(self.areas))
-        self.strips_centers = self.sum_by_strips(tall(self.areas) * self.vortex_centers) / tall(self.strips_areas)
-        self.strips_quarters = self.strips_centers - self.strips_x*tall(self.strips_chords)/4
+        self.strips_x = np.concatenate(strips_x)
+        self.strips_y = np.concatenate(strips_y)
+        self.strips_z = np.concatenate(strips_z)
+        self.strips_chords = np.concatenate(tall(strips_chords))
+        self.strips_areas = np.concatenate(tall(strips_areas))
+        self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
+
         
     def get_freestream_velocity_at_points(self,
                                           points: np.ndarray,
@@ -622,7 +601,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.strips_freestream_x = normalize(self.strips_freestream_in_strips_planes) # strips Y from spanwise local vectors
         
         ### Compute strips Z
-        self.strips_z = normalize(np.cross(self.strips_freestream_x, self.strips_y))  # (n, 3)
+        # self.strips_z = normalize(np.cross(self.strips_freestream_x, self.strips_y))  # (n, 3)
 
         ### Join strips X, Y and Z 
         
@@ -677,7 +656,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         ### Get airfoils by strips
         airfoils = []
-        for i, w in enumerate(self.airplane.wings):
+        for i, w in enumerate(self.planform.wings):
             for i in range(len(w.xsecs)-1):
                 # Add mean strip airfoil for each strip
                 airfoils += [w.xsecs[i].airfoil.blend_with_another_airfoil(w.xsecs[i+1].airfoil)]*\
@@ -738,13 +717,13 @@ class VortexLatticeMethod(ExplicitAnalysis):
             self.is_soft[le_idx], # < 0 when stalled, >= 0 when laminar
         )# 0 when stalled, 1 when laminar
         
-        # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.airplane.wings)))
-        # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.airplane.wings)))
+        # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
+        # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
         self.vertices_soft_stall_fac = []
         self.vertices_stall_fac = []
         
         # extend the stall factors to the borders of strips (useful for 3D animated display)
-        for i, wing in enumerate(self.airplane.wings):
+        for i, wing in enumerate(self.planform.wings):
             wing_spanwise_resolution = self.wing_spanwise_resolution[i]
             
             start = i*(wing_spanwise_resolution)
@@ -790,10 +769,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.strips_CF = np.sqrt(self.strips_CL**2 + self.strips_CD**2)
         self.strips_CM = np.array([res['CM'][0] for res in self.nf_results])
         
-        self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2 *\
+        self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2 *\
             tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
             
-        self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2
+        self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2
         
         self.strips_Li = tall(self.strips_forces_strips_freestream[:, 2])
         
@@ -918,7 +897,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             
         # TODO: find a more specific way to compute alpha stall
 
-        Nondimensional values are nondimensionalized using reference values in the VortexLatticeMethod.airplane object.
+        Nondimensional values are nondimensionalized using reference values in the VortexLatticeMethod.planform object.
         """
 
         if self.verbose:
@@ -1096,9 +1075,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         # Calculate nondimensional forces
         q = self.fluid_dynamic_pressure()
-        s_ref = self.airplane.s_ref
-        b_ref = self.airplane.b_ref
-        c_ref = self.airplane.c_ref
+        s_ref = self.planform.s_ref
+        b_ref = self.planform.b_ref
+        c_ref = self.planform.c_ref
         CL = L / q / s_ref
         CDi = Di / q / s_ref
         CDv = Dv / q / s_ref
@@ -1175,7 +1154,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                                        r=True,
                                        ):
         """
-                Computes the aerodynamic forces and moments on the airplane, and the stability derivatives.
+                Computes the aerodynamic forces and moments on the planform, and the stability derivatives.
 
                 Arguments essentially determine which stability derivatives are computed. If a stability derivative is not
                 needed, leaving it False will speed up the computation.
@@ -1221,7 +1200,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                         - 'x_np', the neutral point location in the x direction [m]
 
                     Nondimensional values are nondimensionalized using reference values in the
-                    VortexLatticeMethod.airplane object.
+                    VortexLatticeMethod.planform object.
 
                     Data types:
                         - The "L", "Y", "D", "l_b", "m_b", "n_b", "CL", "CY", "CD", "Cl", "Cm", and "Cn" keys are:
@@ -1246,16 +1225,16 @@ class VortexLatticeMethod(ExplicitAnalysis):
         finite_difference_amounts = {
             "alpha": 0.001,
             "beta" : 0.001,
-            "p"    : 0.001 * (2 * self.op_point.velocity) / self.airplane.b_ref,
-            "q"    : 0.001 * (2 * self.op_point.velocity) / self.airplane.c_ref,
-            "r"    : 0.001 * (2 * self.op_point.velocity) / self.airplane.b_ref,
+            "p"    : 0.001 * (2 * self.op_point.velocity) / self.planform.b_ref,
+            "q"    : 0.001 * (2 * self.op_point.velocity) / self.planform.c_ref,
+            "r"    : 0.001 * (2 * self.op_point.velocity) / self.planform.b_ref,
         }
         scaling_factors = {
             "alpha": np.degrees(1),
             "beta" : np.degrees(1),
-            "p"    : (2 * self.op_point.velocity) / self.airplane.b_ref,
-            "q"    : (2 * self.op_point.velocity) / self.airplane.c_ref,
-            "r"    : (2 * self.op_point.velocity) / self.airplane.b_ref,
+            "p"    : (2 * self.op_point.velocity) / self.planform.b_ref,
+            "q"    : (2 * self.op_point.velocity) / self.planform.c_ref,
+            "r"    : (2 * self.op_point.velocity) / self.planform.b_ref,
         }
 
         original_op_point = self.op_point
@@ -1309,11 +1288,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
             ### Try to compute and append neutral point, if possible
             if derivative_denominator == "alpha":
                 run_base["x_np"] = self.xyz_ref[0] - (
-                        run_base["Cma"] * (self.airplane.c_ref / run_base["CLa"])
+                        run_base["Cma"] * (self.planform.c_ref / run_base["CLa"])
                 )
             if derivative_denominator == "beta":
                 run_base["x_np_lateral"] = self.xyz_ref[0] - (
-                        run_base["Cnb"] * (self.airplane.b_ref / run_base["CYb"])
+                        run_base["Cnb"] * (self.planform.b_ref / run_base["CYb"])
                 )
 
         return run_base
@@ -1438,7 +1417,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         if self.verbose:
             print("Calculating streamlines...")
         if length is None:
-            length = self.airplane.c_ref * 5
+            length = self.planform.c_ref * 5
         if seed_points is None:
             left_TE_vertices = self.back_left_vertices[self.is_trailing_edge.astype(bool)]
             right_TE_vertices = self.back_right_vertices[self.is_trailing_edge.astype(bool)]
@@ -1530,7 +1509,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 plotter.add_axes()
                 plotter.show_grid(color='gray')
 
-            ### Draw the airplane mesh
+            ### Draw the planform mesh
             points = np.concatenate([
                 self.front_left_vertices,
                 self.back_left_vertices,
@@ -1681,7 +1660,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
 
     Usage example:
         >>> analysis = asb.VortexLatticeMethod(
-        >>>     airplane=my_airplane,
+        >>>     planform=my_planform,
         >>>     op_point=asb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
@@ -1696,7 +1675,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
     """
 
     def __init__(self,
-                 airplane: Rig,
+                 planform: Rig,
                  op_point: OperatingPoint,
                  xyz_ref: List[float] = None,
                  IZsym: int = 0,
@@ -1711,7 +1690,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
                  align_trailing_vortices_with_wind: bool = True,
                  ):
         
-        super().__init__(airplane,
+        super().__init__(planform,
                          op_point,
                          xyz_ref,
                          IZsym,
@@ -1781,7 +1760,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
 
 #     """
 #     def __init__(self,
-#                  airplane: Appendage,
+#                  planform: Appendage,
 #                  op_point: OperatingPoint,
 #                  xyz_ref: List[float] = None,
 #                  IZsym: int = 0,
@@ -1798,7 +1777,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
 #                  SR: float = 1.
 #                  ):
         
-#         super().__init__(airplane,
+#         super().__init__(planform,
 #                          op_point,
 #                          xyz_ref,
 #                          IZsym,
@@ -1820,7 +1799,7 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
 
     Usage example:
         >>> analysis = asb.VortexLatticeMethod(
-        >>>     airplane=my_airplane,
+        >>>     planform=my_planform,
         >>>     op_point=asb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
@@ -1835,7 +1814,7 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
     """
 
     def __init__(self,
-                 airplane: Appendage,
+                 planform: Appendage,
                  op_point: OperatingPoint,
                  xyz_ref: List[float] = None,
                  IZsym: int = 0,
@@ -1850,7 +1829,7 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
                  align_trailing_vortices_with_wind: bool = True,
                  ):
         
-        super().__init__(airplane,
+        super().__init__(planform,
                          op_point,
                          xyz_ref,
                          IZsym,
@@ -1897,11 +1876,11 @@ if __name__ == '__main__':
     
     pass
 
-#     from archibald.dynamics.aero_3D.test_aero_3D.geometries.vanilla import airplane as vanilla
+#     from archibald.dynamics.aero_3D.test_aero_3D.geometries.vanilla import planform as vanilla
 
 #     ### Do the AVL run
 #     vlm = HydroVortexLatticeMethod(
-#         airplane=vanilla,
+#         planform=vanilla,
 #         op_point=OperatingPoint(
 #             stw=10.,
 #             tws0=10.,

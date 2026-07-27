@@ -51,7 +51,7 @@ rig = Rig(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.4, mc=0.05),
-                    twist=-i*2,
+                    twist=-i/6 * 20,
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
@@ -59,7 +59,7 @@ rig = Rig(
             name="jibsail",
             xsecs=[
                 WingXSec(
-                    xyz_le=xyz,
+                    xyz_le=xyz,                    
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.4, mc=0.1),
                     twist=-i*4,
@@ -72,18 +72,18 @@ rig = Rig(
 # SETTINGS
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
-    angle_deg=-1.,
+    angle_deg=-5.,
     axis=jib_le[-1] - main_le[0],
-    origin=main_le[0]
+    origin=main_le[0],
 )
 
 rig["jibsail"] = rig["jibsail"].rotate_local(
-    angle_deg=-10.,
+    angle_deg=-10,
     axis=jib_le[-1] - jib_le[0],
-    origin=jib_le[0]
+    origin=jib_le[0],
 )
 
-rig.draw()
+# rig.draw()
 
 #%% APPENDAGE
 
@@ -133,20 +133,23 @@ sailboat = Sailboat(
     fittings=[wings],
 )
 
-sailboat.draw(
-    backend="pyvista",
-    draw_plane=True,
-    point=np.array([0, 0, 0]),
-    set_axis_visibility=True,
-)
+# sailboat.draw(
+#     backend="pyvista",
+#     draw_plane=True,
+#     point=np.array([0, 0, 0]),
+#     set_axis_visibility=True,
+# )
 
 #%%
 from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod
 from archibald.performance import OperatingPoint
+from archibald.optimization import Opti
+
+opti = Opti()
 
 op_point = OperatingPoint(
     stw=1.,
-    tws0=15., 
+    tws0=opti.variable(init_guess=15.), 
     twa = 30.,
     z0=1.,
     a=0.01,
@@ -156,10 +159,21 @@ op_point = OperatingPoint(
     leeway=0.,
 )
 
+# rig["mainsail"] = rig["mainsail"].rotate_local(
+#     angle_deg=opti.variable(init_guess=-5.),
+#     axis=jib_le[-1] - main_le[0],
+#     origin=main_le[0],
+# )
+
 aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
 res = aeroVLM.run()
 
-print(res)
+# print(res)
+# aeroVLM.draw_flow()
+# aeroVLM.draw()
 
-aeroVLM.draw()
+opti.minimize((res["L"] + 700)**2)
+
+
+sol = opti.solve()
