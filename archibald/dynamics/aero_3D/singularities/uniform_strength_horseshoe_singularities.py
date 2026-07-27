@@ -13,6 +13,162 @@ Citation:
 Now handle variable trailing vorticies directions to take into account vertical wind gradient.
 
 """
+# import archibald.numpy as np
+# from typing import Union
+
+
+# def calculate_induced_velocity_horseshoe(
+#         x_field: Union[float, np.ndarray],
+#         y_field: Union[float, np.ndarray],
+#         z_field: Union[float, np.ndarray],
+#         x_left: Union[float, np.ndarray],
+#         y_left: Union[float, np.ndarray],
+#         z_left: Union[float, np.ndarray],
+#         x_right: Union[float, np.ndarray],
+#         y_right: Union[float, np.ndarray],
+#         z_right: Union[float, np.ndarray],
+#         gamma: Union[float, np.ndarray] = 1,
+#         trailing_vortex_direction: np.ndarray = None,
+#         vortex_core_radius: float = 0,
+# ) -> [Union[float, np.ndarray], Union[float, np.ndarray], Union[float, np.ndarray]]:
+#     """
+#     Calculates the induced velocity at a point:
+#         [x_field, y_field, z_field]
+#     in a 3D potential-flow flowfield.
+
+#     In this flowfield, the following singularity elements are assumed:
+#         * A single horseshoe vortex consisting of a bound leg and two trailing legs
+
+#     This function consists entirely of scalar, elementwise NumPy ufunc operations - so it can be vectorized as
+#     desired assuming input dimensions/broadcasting are compatible.
+
+#     Args:
+#         x_field: x-coordinate of the field point
+
+#         y_field: y-coordinate of the field point
+
+#         z_field: z-coordinate of the field point
+
+#         x_left: x-coordinate of the left vertex of the bound vortex
+
+#         y_left: y-coordinate of the left vertex of the bound vortex
+
+#         z_left: z-coordinate of the left vertex of the bound vortex
+
+#         x_right: x-coordinate of the right vertex of the bound vortex
+
+#         y_right: y-coordinate of the right vertex of the bound vortex
+
+#         z_right: z-coordinate of the right vertex of the bound vortex
+
+#         gamma: The strength of the horseshoe vortex filament.
+
+#         trailing_vortex_direction: The direction that the trailing legs of the horseshoe vortex extend. Usually,
+#         this is modeled as the direction of the freestream.
+
+#         vortex_core_radius: To prevent a vortex singularity, here we use a Kaufmann vortex model. This parameter
+#         governs the radius of this vortex model. It should be significantly smaller (e.g., at least an order of
+#         magnitude smaller) than the smallest bound leg in the analysis in question.
+
+#     Returns: u, v, and w:
+#         The x-, y-, and z-direction induced velocities.
+#     """
+
+
+#     np.assert_equal_shape({
+#         "x_field": x_field,
+#         "y_field": y_field,
+#         "z_field": z_field,
+#     })
+#     np.assert_equal_shape({
+#         "x_left" : x_left,
+#         "y_left" : y_left,
+#         "z_left" : z_left,
+#         "x_right": x_right,
+#         "y_right": y_right,
+#         "z_right": z_right,
+#     })
+
+#     a_x = np.add(x_field, -x_left)
+#     a_y = np.add(y_field, -y_left)
+#     a_z = np.add(z_field, -z_left)
+
+#     b_x = np.add(x_field, -x_right)
+#     b_y = np.add(y_field, -y_right)
+#     b_z = np.add(z_field, -z_right)
+    
+#     if trailing_vortex_direction is None:
+#         trailing_vortex_direction = np.array([[1., 0., 0.],])
+
+#     u_x = trailing_vortex_direction[:, 0]
+#     u_y = trailing_vortex_direction[:, 1]
+#     u_z = trailing_vortex_direction[:, 2]
+
+#     # Handle the special case where the field point is on one of the legs (either bound or trailing)
+#     def smoothed_inv(x):
+#         "Approximates 1/x with a function that sharply goes to 0 in the x -> 0 limit."
+#         if not np.all(vortex_core_radius == 0):
+#             return x / (x ** 2 + vortex_core_radius ** 2)
+#         else:
+#             return 1 / x
+
+#     ### Do some useful arithmetic
+
+#     a_cross_b_x = a_y * b_z - a_z * b_y
+#     a_cross_b_y = a_z * b_x - a_x * b_z
+#     a_cross_b_z = a_x * b_y - a_y * b_x
+#     a_dot_b = a_x * b_x + a_y * b_y + a_z * b_z
+
+#     a_cross_u_x = a_y * u_z - a_z * u_y
+#     a_cross_u_y = a_z * u_x - a_x * u_z
+#     a_cross_u_z = a_x * u_y - a_y * u_x
+#     a_dot_u = a_x * u_x + a_y * u_y + a_z * u_z
+
+#     b_cross_u_x = b_y * u_z - b_z * u_y
+#     b_cross_u_y = b_z * u_x - b_x * u_z
+#     b_cross_u_z = b_x * u_y - b_y * u_x
+#     b_dot_u = b_x * u_x + b_y * u_y + b_z * u_z
+
+#     norm_a = (a_x ** 2 + a_y ** 2 + a_z ** 2) ** 0.5
+#     norm_b = (b_x ** 2 + b_y ** 2 + b_z ** 2) ** 0.5
+#     norm_a_inv = smoothed_inv(norm_a)
+#     norm_b_inv = smoothed_inv(norm_b)
+
+#     ### Calculate Vij
+
+#     term1 = (norm_a_inv + norm_b_inv) * smoothed_inv(norm_a * norm_b + a_dot_b)
+#     term2 = norm_a_inv * smoothed_inv(norm_a - a_dot_u)
+#     term3 = norm_b_inv * smoothed_inv(norm_b - b_dot_u)
+
+#     constant = np.array(gamma) / (4 * np.pi)
+
+#     u = np.multiply(
+#         constant,
+#         (
+#                 a_cross_b_x * term1 +
+#                 a_cross_u_x * term2 -
+#                 b_cross_u_x * term3
+#         )
+#     )
+#     v = np.multiply(
+#         constant,
+#         (
+#                 a_cross_b_y * term1 +
+#                 a_cross_u_y * term2 -
+#                 b_cross_u_y * term3
+#         )
+#     )
+#     w = np.multiply(
+#         constant,
+#         (
+#                 a_cross_b_z * term1 +
+#                 a_cross_u_z * term2 -
+#                 b_cross_u_z * term3
+#         )
+#     )
+
+#     return u, v, w
+
 import archibald.numpy as np
 from typing import Union
 
@@ -28,8 +184,9 @@ def calculate_induced_velocity_horseshoe(
         y_right: Union[float, np.ndarray],
         z_right: Union[float, np.ndarray],
         gamma: Union[float, np.ndarray] = 1,
-        trailing_vortex_direction: np.ndarray = None,
+        trailing_vortex_direction: Union[np.ndarray, str] = None,
         vortex_core_radius: float = 0,
+        flow_direction: str = "+x",
 ) -> [Union[float, np.ndarray], Union[float, np.ndarray], Union[float, np.ndarray]]:
     """
     Calculates the induced velocity at a point:
@@ -44,36 +201,24 @@ def calculate_induced_velocity_horseshoe(
 
     Args:
         x_field: x-coordinate of the field point
-
         y_field: y-coordinate of the field point
-
         z_field: z-coordinate of the field point
-
         x_left: x-coordinate of the left vertex of the bound vortex
-
         y_left: y-coordinate of the left vertex of the bound vortex
-
         z_left: z-coordinate of the left vertex of the bound vortex
-
         x_right: x-coordinate of the right vertex of the bound vortex
-
         y_right: y-coordinate of the right vertex of the bound vortex
-
         z_right: z-coordinate of the right vertex of the bound vortex
-
         gamma: The strength of the horseshoe vortex filament.
-
-        trailing_vortex_direction: The direction that the trailing legs of the horseshoe vortex extend. Usually,
-        this is modeled as the direction of the freestream.
-
-        vortex_core_radius: To prevent a vortex singularity, here we use a Kaufmann vortex model. This parameter
-        governs the radius of this vortex model. It should be significantly smaller (e.g., at least an order of
-        magnitude smaller) than the smallest bound leg in the analysis in question.
+        trailing_vortex_direction: The direction that the trailing legs extend.
+            Can be a 3D vector array or a string flag ('+x' or '-x').
+            If None, defaults based on `flow_direction`.
+        vortex_core_radius: Kaufmann vortex model core radius parameter.
+        flow_direction: Freestream flow convention ('+x' for flow along +X, '-x' for flow along -X).
 
     Returns: u, v, and w:
         The x-, y-, and z-direction induced velocities.
     """
-
 
     np.assert_equal_shape({
         "x_field": x_field,
@@ -97,12 +242,27 @@ def calculate_induced_velocity_horseshoe(
     b_y = np.add(y_field, -y_right)
     b_z = np.add(z_field, -z_right)
     
+    # Resolve trailing vortex direction based on user parameter/flag
     if trailing_vortex_direction is None:
-        trailing_vortex_direction = np.array([[1., 0., 0.],])
+        if str(flow_direction).lower() in ["-x", "-1", "reverse"]:
+            trailing_vortex_direction = np.array([[-1., 0., 0.]])
+        else:
+            trailing_vortex_direction = np.array([[1., 0., 0.]])
+    elif isinstance(trailing_vortex_direction, str):
+        if trailing_vortex_direction.lower() in ["-x", "-1", "reverse"]:
+            trailing_vortex_direction = np.array([[-1., 0., 0.]])
+        else:
+            trailing_vortex_direction = np.array([[1., 0., 0.]])
 
-    u_x = trailing_vortex_direction[:, 0]
-    u_y = trailing_vortex_direction[:, 1]
-    u_z = trailing_vortex_direction[:, 2]
+    # Extract direction vector components safely regardless of 1D or 2D array shape
+    if len(trailing_vortex_direction.shape) == 1:
+        u_x = trailing_vortex_direction[0]
+        u_y = trailing_vortex_direction[1]
+        u_z = trailing_vortex_direction[2]
+    else:
+        u_x = trailing_vortex_direction[:, 0]
+        u_y = trailing_vortex_direction[:, 1]
+        u_z = trailing_vortex_direction[:, 2]
 
     # Handle the special case where the field point is on one of the legs (either bound or trailing)
     def smoothed_inv(x):

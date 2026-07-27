@@ -203,6 +203,7 @@ class Wing(ArchibaldObject):
                 i,
                 x_nondim=0.25,
                 z_nondim=0,
+                flow_direction="-x",
             )
             for i in i_range
         ]
@@ -382,6 +383,7 @@ class Wing(ArchibaldObject):
                     i,
                     x_nondim=0.25,
                     z_nondim=0,
+                    flow_direction="-x",
                 )
 
                 half_span_to_centerline = np.minimum(
@@ -533,10 +535,10 @@ class Wing(ArchibaldObject):
             The mean sweep angle, in degrees.
         """
         root_quarter_chord = self._compute_xyz_of_WingXSec(
-            0, x_nondim=x_nondim, z_nondim=0
+            0, x_nondim=x_nondim, z_nondim=0, flow_direction="-x",
         )
         tip_quarter_chord = self._compute_xyz_of_WingXSec(
-            -1, x_nondim=x_nondim, z_nondim=0
+            -1, x_nondim=x_nondim, z_nondim=0, flow_direction="-x",
         )
 
         vec = tip_quarter_chord - root_quarter_chord
@@ -572,10 +574,10 @@ class Wing(ArchibaldObject):
 
         """
         root_quarter_chord = self._compute_xyz_of_WingXSec(
-            0, x_nondim=x_nondim, z_nondim=0
+            0, x_nondim=x_nondim, z_nondim=0, flow_direction="-x",
         )
         tip_quarter_chord = self._compute_xyz_of_WingXSec(
-            -1, x_nondim=x_nondim, z_nondim=0
+            -1, x_nondim=x_nondim, z_nondim=0, flow_direction="-x",
         )
 
         vec = tip_quarter_chord - root_quarter_chord
@@ -795,7 +797,7 @@ class Wing(ArchibaldObject):
             control_surface_area *= 2
 
         return control_surface_area
-
+    
     def mesh_body(
         self,
         method="quad",
@@ -807,6 +809,7 @@ class Wing(ArchibaldObject):
         mesh_tips: bool = True,
         mesh_trailing_edge: bool = True,
         mesh_symmetric: bool = True,
+        flow_direction: str = "-x",
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Meshes the outer mold line surface of the wing.
@@ -864,6 +867,9 @@ class Wing(ArchibaldObject):
             mesh_symmetric: Has no effect if the wing is not symmetric. If the wing is symmetric this determines whether
             the generated mesh is also symmetric, or if if only one side of the wing (right side) is meshed.
 
+            flow_direction: Freestream flow orientation convention ('+x' or '-x'). If None, defaults to `self.flow_direction`
+            if set, or '+x'.
+
         Returns: Standard unstructured mesh format: A tuple of `points` and `faces`, where:
 
             * `points` is a `n x 3` array of points, where `n` is the number of points in the mesh.
@@ -873,6 +879,8 @@ class Wing(ArchibaldObject):
                 * Each row of `faces` is a list of indices into `points`, which specifies a face.
 
         """
+        if flow_direction is None:
+            flow_direction = getattr(self, "flow_direction", "+x")
 
         airfoil_nondim_coordinates = np.array(
             [
@@ -895,6 +903,7 @@ class Wing(ArchibaldObject):
                         x_nondim=x_n,
                         z_nondim=y_n,
                         add_camber=False,
+                        flow_direction=flow_direction,
                     ),
                     axis=0,
                 )
@@ -970,6 +979,7 @@ class Wing(ArchibaldObject):
             [float, float, float], np.ndarray
         ] = np.cosspace,
         add_camber: bool = True,
+        flow_direction: str = "-x",
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Meshes the mean camber line of the wing as a thin-sheet body.
@@ -1015,6 +1025,9 @@ class Wing(ArchibaldObject):
             add_camber: Controls whether to mesh the thin surface with camber (i.e., mean camber line), or to just
             mesh the flat planform. [bool]
 
+            flow_direction: Freestream flow orientation convention ('+x' or '-x'). If None, defaults to `self.flow_direction`
+            if set, or '+x'.
+
         Returns: Standard unstructured mesh format: A tuple of `points` and `faces`, where:
 
             * `points` is a `n x 3` array of points, where `n` is the number of points in the mesh.
@@ -1023,8 +1036,10 @@ class Wing(ArchibaldObject):
 
                 * Each row of `faces` is a list of indices into `points`, which specifies a face.
 
-
         """
+        if flow_direction is None:
+            flow_direction = getattr(self, "flow_direction", "+x")
+
         x_nondim = chordwise_spacing_function(0, 1, chordwise_resolution + 1)
 
         spanwise_strips = []
@@ -1035,6 +1050,7 @@ class Wing(ArchibaldObject):
                         x_nondim=x_n,
                         z_nondim=0,
                         add_camber=add_camber,
+                        flow_direction=flow_direction,
                     ),
                     axis=0,
                 )
@@ -1044,8 +1060,8 @@ class Wing(ArchibaldObject):
 
         faces = []
 
-        num_i = np.length(spanwise_strips[0])  # spanwise
-        num_j = np.length(spanwise_strips)  # chordwise
+        num_i = len(spanwise_strips[0])  # spanwise
+        num_j = len(spanwise_strips)     # chordwise
 
         def index_of(iloc, jloc):
             return iloc + jloc * num_i
@@ -1061,14 +1077,14 @@ class Wing(ArchibaldObject):
         for i in range(num_i - 1):
             for j in range(num_j - 1):
                 add_face(  # On right wing:
-                    index_of(i, j),  # Front-left
-                    index_of(i, j + 1),  # Back-left
+                    index_of(i, j),          # Front-left
+                    index_of(i, j + 1),      # Back-left
                     index_of(i + 1, j + 1),  # Back-right
-                    index_of(i + 1, j),  # Front-right
+                    index_of(i + 1, j),      # Front-right
                 )
 
         if self.symmetric:
-            index_offset = np.length(points)
+            index_offset = len(points)
 
             points = np.concatenate(
                 [points, np.multiply(points, np.array([[1, -1, 1]]))]
@@ -1080,10 +1096,10 @@ class Wing(ArchibaldObject):
             for i in range(num_i - 1):
                 for j in range(num_j - 1):
                     add_face(  # On left wing:
-                        index_of(i + 1, j),  # Front-left
+                        index_of(i + 1, j),      # Front-left
                         index_of(i + 1, j + 1),  # Back-left
-                        index_of(i, j + 1),  # Back-right
-                        index_of(i, j),  # Front-right
+                        index_of(i, j + 1),      # Back-right
+                        index_of(i, j),          # Front-right
                     )
 
         faces = np.array(faces)
@@ -1095,6 +1111,7 @@ class Wing(ArchibaldObject):
         x_nondim: float | Sequence[float] = 0.25,
         z_nondim: float | Sequence[float] = 0,
         add_camber: bool = True,
+        flow_direction: str = "-x",
     ) -> list[np.ndarray]:
         """
         Meshes a line that goes through each of the WingXSec objects in this wing.
@@ -1113,10 +1130,16 @@ class Wing(ArchibaldObject):
             add_camber: Controls whether the camber of each cross-section's airfoil should be added to the line or
             not. Essentially modifies `z_nondim` to be `z_nondim + camber`.
 
+            flow_direction: Freestream flow orientation convention ('+x' or '-x'). If None, defaults to `self.flow_direction`
+            if set, or '+x'.
+
         Returns: A list of points, where each point is a 3-element array of the form `[x, y, z]`. Goes from the root
         to the tip. Ignores any wing symmetry (e.g., only gives one side).
 
         """
+        if flow_direction is None:
+            flow_direction = getattr(self, "flow_direction", "+x")
+
         points_on_line: list[np.ndarray] = []
 
         try:
@@ -1148,18 +1171,394 @@ class Wing(ArchibaldObject):
 
             if add_camber:
                 xsec_z_nondim = xsec_z_nondim + xsec.airfoil.local_camber(
-                    x_over_c=x_nondim
+                    x_over_c=xsec_x_nondim
                 )
 
-            points_on_line.append(
-                self._compute_xyz_of_WingXSec(
+            # Pass flow_direction into cross-section coordinate calculator if accepted
+            try:
+                pt = self._compute_xyz_of_WingXSec(
                     i,
                     x_nondim=xsec_x_nondim,
                     z_nondim=xsec_z_nondim,
+                    flow_direction=flow_direction,
                 )
-            )
+            except TypeError:
+                pt = self._compute_xyz_of_WingXSec(
+                    i,
+                    x_nondim=xsec_x_nondim,
+                    z_nondim=xsec_z_nondim,
+                    flow_direction=flow_direction,
+                    
+                )
+
+            points_on_line.append(pt)
 
         return points_on_line
+
+    # def mesh_body(
+    #     self,
+    #     method="quad",
+    #     chordwise_resolution: int = 36,
+    #     chordwise_spacing_function_per_side: Callable[
+    #         [float, float, float], np.ndarray
+    #     ] = np.cosspace,
+    #     mesh_surface: bool = True,
+    #     mesh_tips: bool = True,
+    #     mesh_trailing_edge: bool = True,
+    #     mesh_symmetric: bool = True,
+    # ) -> tuple[np.ndarray, np.ndarray]:
+    #     """
+    #     Meshes the outer mold line surface of the wing.
+
+    #     Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
+    #     `archibald.geometry.mesh_utilities`.
+
+    #     Order of faces:
+
+    #         * On the right wing (or, if `Wing.symmetric` is `False`, just the wing itself):
+
+    #             * If `mesh_surface` is `True`:
+
+    #                 * First face is nearest the top-side trailing edge of the wing root.
+
+    #                 * Proceeds chordwise, along the upper surface of the wing from back to front. Upon reaching the
+    #                 leading edge, continues along the lower surface of the wing from front to back.
+
+    #                 * Then, repeats this process for the next spanwise slice of the wing, and so on.
+
+    #             * If `mesh_trailing_edge` is `True`:
+
+    #                 * Continues by meshing the trailing edge of the wing. Meshes the inboard trailing edge first, then
+    #                 proceeds spanwise to the outboard trailing edge.
+
+    #             * If `mesh_tips` is `True`:
+
+    #                 * Continues by meshing the wing tips. Meshes the inboard tip first, then meshes the outboard tip.
+
+    #                 * Within each tip, meshes from the
+
+    #     Args:
+
+    #         method: One of the following options, as a string:
+
+    #             * "tri": Triangular mesh.
+
+    #             * "quad": Quadrilateral mesh.
+
+    #         chordwise_resolution: Number of points to use per wing chord, per wing section.
+
+    #         chordwise_spacing_function_per_side: A function that determines how to space points in the chordwise
+    #         direction along the top and bottom surfaces. Common values would be `np.linspace` or `np.cosspace`,
+    #         but it can be any function with the call signature `f(a, b, n)` that returns a spaced array of `n` points
+    #         between `a` and `b`. [function]
+
+    #         mesh_surface: If True, includes the actual wing surface in the mesh.
+
+    #         mesh_tips: If True, includes the wing tips (both on the inboard-most section and on the outboard-most
+    #         section) in the mesh.
+
+    #         mesh_trailing_edge: If True, includes the wing trailing edge in the mesh, if the trailing-edge thickness
+    #         is nonzero.
+
+    #         mesh_symmetric: Has no effect if the wing is not symmetric. If the wing is symmetric this determines whether
+    #         the generated mesh is also symmetric, or if if only one side of the wing (right side) is meshed.
+
+    #     Returns: Standard unstructured mesh format: A tuple of `points` and `faces`, where:
+
+    #         * `points` is a `n x 3` array of points, where `n` is the number of points in the mesh.
+
+    #         * `faces` is a `m x 3` array of faces if `method` is "tri", or a `m x 4` array of faces if `method` is "quad".
+
+    #             * Each row of `faces` is a list of indices into `points`, which specifies a face.
+
+    #     """
+
+    #     airfoil_nondim_coordinates = np.array(
+    #         [
+    #             xsec.airfoil.repanel(
+    #                 n_points_per_side=chordwise_resolution + 1,
+    #                 spacing_function_per_side=chordwise_spacing_function_per_side,
+    #             ).coordinates
+    #             for xsec in self.xsecs
+    #         ]
+    #     )
+
+    #     x_nondim = airfoil_nondim_coordinates[:, :, 0].T
+    #     y_nondim = airfoil_nondim_coordinates[:, :, 1].T
+
+    #     spanwise_strips = []
+    #     for x_n, y_n in zip(x_nondim, y_nondim):
+    #         spanwise_strips.append(
+    #             np.stack(
+    #                 self.mesh_line(
+    #                     x_nondim=x_n,
+    #                     z_nondim=y_n,
+    #                     add_camber=False,
+    #                 ),
+    #                 axis=0,
+    #             )
+    #         )
+
+    #     points = np.concatenate(spanwise_strips, axis=0)
+
+    #     faces = []
+
+    #     num_i = len(self.xsecs) - 1
+    #     num_j = len(spanwise_strips) - 1
+
+    #     def index_of(iloc, jloc):
+    #         return iloc + jloc * (num_i + 1)
+
+    #     def add_face(*indices):
+    #         entry = list(indices)
+    #         if method == "quad":
+    #             faces.append(entry)
+    #         elif method == "tri":
+    #             faces.append([entry[0], entry[1], entry[3]])
+    #             faces.append([entry[1], entry[2], entry[3]])
+
+    #     if mesh_surface:
+    #         for i in range(num_i):
+    #             for j in range(num_j):
+    #                 add_face(
+    #                     index_of(i, j),
+    #                     index_of(i + 1, j),
+    #                     index_of(i + 1, j + 1),
+    #                     index_of(i, j + 1),
+    #                 )
+
+    #     if mesh_tips:
+    #         for j in range(num_j // 2):
+    #             add_face(  # Mesh the root face
+    #                 index_of(0, num_j - j),
+    #                 index_of(0, j),
+    #                 index_of(0, j + 1),
+    #                 index_of(0, num_j - j - 1),
+    #             )
+    #             add_face(  # Mesh the tip face
+    #                 index_of(num_i, j),
+    #                 index_of(num_i, j + 1),
+    #                 index_of(num_i, num_j - j - 1),
+    #                 index_of(num_i, num_j - j),
+    #             )
+    #     if mesh_trailing_edge:
+    #         for i in range(num_i):
+    #             add_face(
+    #                 index_of(i + 1, 0),
+    #                 index_of(i + 1, num_j),
+    #                 index_of(i, num_j),
+    #                 index_of(i, 0),
+    #             )
+
+    #     faces = np.array(faces)
+
+    #     if mesh_symmetric and self.symmetric:
+    #         flipped_points = np.multiply(points, np.array([[1, -1, 1]]))
+
+    #         points, faces = mesh_utils.stack_meshes(
+    #             (points, faces), (flipped_points, faces)
+    #         )
+
+    #     return points, faces
+
+    # def mesh_thin_surface(
+    #     self,
+    #     method="tri",
+    #     chordwise_resolution: int = 36,
+    #     chordwise_spacing_function: Callable[
+    #         [float, float, float], np.ndarray
+    #     ] = np.cosspace,
+    #     add_camber: bool = True,
+    # ) -> tuple[np.ndarray, np.ndarray]:
+    #     """
+    #     Meshes the mean camber line of the wing as a thin-sheet body.
+
+    #     Uses the `(points, faces)` standard mesh format. For reference on this format, see the documentation in
+    #     `archibald.geometry.mesh_utilities`.
+
+    #     Order of faces:
+    #         * On the right wing (or, if `Wing.symmetric` is `False`, just the wing itself):
+    #             * First face is the face nearest the leading edge of the wing root.
+    #             * Proceeds along a chordwise strip to the trailing edge.
+    #             * Then, goes to the subsequent spanwise location and does another chordwise strip, et cetera until
+    #               we get to the wing tip.
+    #         * On the left wing (applicable only if `Wing.symmetric` is `True`):
+    #             * Same order: Starts at the root leading edge, goes in chordwise strips.
+
+    #     Order of vertices within each face:
+    #         * On the right wing (or, if `Wing.symmetric` is `False`, just the wing itself):
+    #             * Front-left
+    #             * Back-left
+    #             * Back-right
+    #             * Front-right
+    #         * On the left wing (applicable only if `Wing.symmetric` is `True`):
+    #             * Front-left
+    #             * Back-left
+    #             * Back-right
+    #             * Front-right
+
+    #     Args:
+
+    #         method: A string, which determines whether to mesh the fuselage as a series of quadrilaterals or triangles.
+
+    #             * "quad" meshes the fuselage as a series of quadrilaterals.
+
+    #             * "tri" meshes the fuselage as a series of triangles.
+
+    #         chordwise_resolution: Determines the number of chordwise panels to use in the meshing. [int]
+
+    #         chordwise_spacing_function: Determines how to space the chordwise panels. Can be `np.linspace` or
+    #         `np.cosspace`, or any other function of the call signature `f(a, b, n)` that returns a spaced array of
+    #         `n` points between `a` and `b`. [function]
+
+    #         add_camber: Controls whether to mesh the thin surface with camber (i.e., mean camber line), or to just
+    #         mesh the flat planform. [bool]
+
+    #     Returns: Standard unstructured mesh format: A tuple of `points` and `faces`, where:
+
+    #         * `points` is a `n x 3` array of points, where `n` is the number of points in the mesh.
+
+    #         * `faces` is a `m x 3` array of faces if `method` is "tri", or a `m x 4` array of faces if `method` is "quad".
+
+    #             * Each row of `faces` is a list of indices into `points`, which specifies a face.
+
+
+    #     """
+    #     x_nondim = chordwise_spacing_function(0, 1, chordwise_resolution + 1)
+
+    #     spanwise_strips = []
+    #     for x_n in x_nondim:
+    #         spanwise_strips.append(
+    #             np.stack(
+    #                 self.mesh_line(
+    #                     x_nondim=x_n,
+    #                     z_nondim=0,
+    #                     add_camber=add_camber,
+    #                 ),
+    #                 axis=0,
+    #             )
+    #         )
+
+    #     points = np.concatenate(spanwise_strips)
+
+    #     faces = []
+
+    #     num_i = np.length(spanwise_strips[0])  # spanwise
+    #     num_j = np.length(spanwise_strips)  # chordwise
+
+    #     def index_of(iloc, jloc):
+    #         return iloc + jloc * num_i
+
+    #     def add_face(*indices):
+    #         entry = list(indices)
+    #         if method == "quad":
+    #             faces.append(entry)
+    #         elif method == "tri":
+    #             faces.append([entry[0], entry[1], entry[3]])
+    #             faces.append([entry[1], entry[2], entry[3]])
+
+    #     for i in range(num_i - 1):
+    #         for j in range(num_j - 1):
+    #             add_face(  # On right wing:
+    #                 index_of(i, j),  # Front-left
+    #                 index_of(i, j + 1),  # Back-left
+    #                 index_of(i + 1, j + 1),  # Back-right
+    #                 index_of(i + 1, j),  # Front-right
+    #             )
+
+    #     if self.symmetric:
+    #         index_offset = np.length(points)
+
+    #         points = np.concatenate(
+    #             [points, np.multiply(points, np.array([[1, -1, 1]]))]
+    #         )
+
+    #         def index_of(iloc, jloc):
+    #             return index_offset + iloc + jloc * num_i
+
+    #         for i in range(num_i - 1):
+    #             for j in range(num_j - 1):
+    #                 add_face(  # On left wing:
+    #                     index_of(i + 1, j),  # Front-left
+    #                     index_of(i + 1, j + 1),  # Back-left
+    #                     index_of(i, j + 1),  # Back-right
+    #                     index_of(i, j),  # Front-right
+    #                 )
+
+    #     faces = np.array(faces)
+
+    #     return points, faces
+
+    # def mesh_line(
+    #     self,
+    #     x_nondim: float | Sequence[float] = 0.25,
+    #     z_nondim: float | Sequence[float] = 0,
+    #     add_camber: bool = True,
+    # ) -> list[np.ndarray]:
+    #     """
+    #     Meshes a line that goes through each of the WingXSec objects in this wing.
+
+    #     Args:
+
+    #         x_nondim: The nondimensional (chord-normalized) x-coordinate that the line should go through. Can either
+    #         be a single value used at all cross-sections, or can be an iterable of values to be used at the
+    #         respective cross-sections.
+
+    #         z_nondim: The nondimensional (chord-normalized) y-coordinate that the line should go through. Here,
+    #         y-coordinate means the "vertical" component (think standard 2D airfoil axes). Can either be a single
+    #         value used at all cross-sections, or can be an iterable of values to be used at the respective cross
+    #         sections.
+
+    #         add_camber: Controls whether the camber of each cross-section's airfoil should be added to the line or
+    #         not. Essentially modifies `z_nondim` to be `z_nondim + camber`.
+
+    #     Returns: A list of points, where each point is a 3-element array of the form `[x, y, z]`. Goes from the root
+    #     to the tip. Ignores any wing symmetry (e.g., only gives one side).
+
+    #     """
+    #     points_on_line: list[np.ndarray] = []
+
+    #     try:
+    #         if len(x_nondim) != len(self.xsecs):
+    #             raise ValueError(
+    #                 f"If `x_nondim` is an iterable, it should be the same length as `Wing.xsecs` ({len(self.xsecs)})."
+    #             )
+    #     except TypeError:
+    #         pass
+
+    #     try:
+    #         if len(z_nondim) != len(self.xsecs):
+    #             raise ValueError(
+    #                 f"If `z_nondim` is an iterable, it should be the same length as `Wing.xsecs` ({len(self.xsecs)})."
+    #             )
+    #     except TypeError:
+    #         pass
+
+    #     for i, xsec in enumerate(self.xsecs):
+    #         try:
+    #             xsec_x_nondim = x_nondim[i]
+    #         except (TypeError, IndexError):
+    #             xsec_x_nondim = x_nondim
+
+    #         try:
+    #             xsec_z_nondim = z_nondim[i]
+    #         except (TypeError, IndexError):
+    #             xsec_z_nondim = z_nondim
+
+    #         if add_camber:
+    #             xsec_z_nondim = xsec_z_nondim + xsec.airfoil.local_camber(
+    #                 x_over_c=x_nondim
+    #             )
+
+    #         points_on_line.append(
+    #             self._compute_xyz_of_WingXSec(
+    #                 i,
+    #                 x_nondim=xsec_x_nondim,
+    #                 z_nondim=xsec_z_nondim,
+    #             )
+    #         )
+
+    #     return points_on_line
 
     def draw(self, *args, **kwargs):
         """
@@ -1276,11 +1675,12 @@ class Wing(ArchibaldObject):
     def _compute_xyz_le_of_WingXSec(self, index: int):
         return self.xsecs[index].xyz_le
 
-    def _compute_xyz_te_of_WingXSec(self, index: int):
+    def _compute_xyz_te_of_WingXSec(self, index: int, flow_direction: str = "-x"):
         return self._compute_xyz_of_WingXSec(
             index,
             x_nondim=1,
             z_nondim=0,
+            flow_direction=flow_direction,
         )
 
     def _compute_xyz_of_WingXSec(
@@ -1288,8 +1688,12 @@ class Wing(ArchibaldObject):
         index,
         x_nondim,
         z_nondim,
+        flow_direction: str = "-x",
     ):
-        xg_local, yg_local, zg_local = self._compute_frame_of_WingXSec(index)
+        xg_local, yg_local, zg_local = self._compute_frame_of_WingXSec(
+            index,
+            flow_direction,
+        )
         origin = self.xsecs[index].xyz_le
         xsec = self.xsecs[index]
         return origin + (
@@ -1297,7 +1701,7 @@ class Wing(ArchibaldObject):
         )
 
     def _compute_frame_of_WingXSec(
-        self, index: int
+        self, index: int, flow_direction: str = "-x",
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Computes the local reference frame associated with a particular cross-section (XSec) of this wing.
@@ -1318,7 +1722,11 @@ class Wing(ArchibaldObject):
             return np.array([0, vector[1], vector[2]]) / YZ_magnitude
 
         ### Compute the untwisted reference frame
-        xg_local = np.array([1, 0, 0])
+        if str(flow_direction).lower() in ["-x", "-1", "reverse"]:
+            xg_local = np.array([-1., 0., 0.])
+        else:
+            xg_local = np.array([1, 0, 0])
+        
         if index == 0:
             yg_local = project_to_YZ_plane_and_normalize(
                 self.xsecs[1].xyz_le - self.xsecs[0].xyz_le
@@ -1552,7 +1960,7 @@ class Wing(ArchibaldObject):
             c0 = te0 - le0
             c1 = xsec.xyz_te - xsec.xyz_le
     
-            _, yg0, zg0 = self._compute_frame_of_WingXSec(i)
+            _, yg0, zg0 = self._compute_frame_of_WingXSec(i, flow_direction="-x")
     
             # If op_point's transform is a perfect rigid rotation, c1 exactly equals R @ c0, and the
             # rotated reference axes (R @ yg0, R @ zg0) exactly match the true new frame -- so the
@@ -1652,7 +2060,7 @@ class Wing(ArchibaldObject):
             c0 = te0 - le0
             c1 = xsec.xyz_te - xsec.xyz_le
 
-            _, yg0, zg0 = self._compute_frame_of_WingXSec(i)
+            _, yg0, zg0 = self._compute_frame_of_WingXSec(i, flow_direction="-x")
             yg1 = rot_mat @ yg0
             zg1 = rot_mat @ zg0
 

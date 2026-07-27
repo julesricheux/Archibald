@@ -203,6 +203,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             y_right=1,
             z_right=0,
             gamma=1,
+            flow_direction="-x",
         )
         print(u, v, w)
 
@@ -231,6 +232,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             y_right=right[1],
             z_right=right[2],
             gamma=1,
+            flow_direction="-x",
         )
 
         pos = np.stack((Xf, Yf, Zf)).T
@@ -283,6 +285,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             y_right=tall(rights[:, 1]),
             z_right=tall(rights[:, 2]),
             gamma=1.,
+            flow_direction="-x",
             # gamma=tall(strengths),
         )
 
@@ -497,7 +500,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
         """ 
         
-        freestream_velocities = np.ones(points.shape) * np.array([1.,0.,0.])
+        freestream_velocities = np.ones(points.shape) * np.array([-1.,0.,0.])
+        # freestream_velocities = np.ones(points.shape) * np.array([1.,0.,0.])
         
         return freestream_velocities
         
@@ -532,7 +536,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 else None
             ),
             gamma=1.,
-            vortex_core_radius=self.vortex_core_radius
+            vortex_core_radius=self.vortex_core_radius,
+            flow_direction="-x",
         )
         
         if self.IZsym: # If the run is symmetric
@@ -559,7 +564,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
                     else None
                 ),
                 gamma=wide(-1. * self.is_symmetric),
-                vortex_core_radius=self.vortex_core_radius
+                vortex_core_radius=self.vortex_core_radius,
+                flow_direction="-x",
             )
             
             # Add mirror vortices influences
@@ -1336,7 +1342,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
             z_right=wide(self.right_vortex_vertices[:, 2]),
             trailing_vortex_direction=self.freestream_direction if self.align_trailing_vortices_with_wind else None,
             gamma=wide(self.vortex_strengths),
-            vortex_core_radius=self.vortex_core_radius
+            vortex_core_radius=self.vortex_core_radius,
+            flow_direction="-x",
         )
             
         if self.IZsym: # If the run is symmetric
@@ -1360,7 +1367,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 z_right=wide(right_vortex_vertices_mirrored[:, 2]),
                 trailing_vortex_direction=self.freestream_direction if self.align_trailing_vortices_with_wind else None,
                 gamma=wide(-self.vortex_strengths * self.is_symmetric,),
-                vortex_core_radius=self.vortex_core_radius
+                vortex_core_radius=self.vortex_core_radius,
+                flow_direction="-x",
             )
                     
             u_induced += u_induced_mirrored
@@ -1738,7 +1746,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
         twa = self.op_point.twa
         rot_mat = np.rotation_matrix_3D(twa*np.pi/180., np.array([0.,0.,1.]))
         
-        true_wind_velocities = np.multiply(tall(self.op_point._tws(points[:,2])), wide(np.array([1., 0., 0.])))
+        true_wind_velocities = np.multiply(tall(self.op_point._tws(points[:,2])), wide(np.array([-1., 0., 0.])))
         # true_wind_velocities = np.dot(true_wind_velocities, rot_mat)
         
         # true_wind_velocities = np.array([[self.op_point._tws(points[i,2]) * np.cosd(twa),
@@ -1750,7 +1758,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
         self.true_wind = true_wind_velocities
         
         # FAIR WIND SPEED
-        ship_speed_velocities = np.ones(points.shape) * np.array([1., 0., 0.]) * self.op_point._stw
+        ship_speed_velocities = np.ones(points.shape) * np.array([-1., 0., 0.]) * self.op_point._stw
         
         # SUM
         freestream_velocities = true_wind_velocities + ship_speed_velocities
@@ -1871,7 +1879,7 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
 
         """
         
-        freestream_velocities = np.ones(points.shape) * np.array([1., 0., 0.]) * self.op_point._stw
+        freestream_velocities = np.ones(points.shape) * np.array([-1., 0., 0.]) * self.op_point._stw
         
         return freestream_velocities
     

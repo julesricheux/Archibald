@@ -38,8 +38,8 @@ wings = ArchibaldMesh(*load_stl(wingsStl))
 main_le, main_chords = dxf_to_le_chords(r'data/49er_data/gv.dxf', 10)
 jib_le, jib_chords = dxf_to_le_chords(r'data/49er_data/jibsail.dxf', 7)
 
-main_le[:, 0] *= -1.
-jib_le[:, 0] *= -1.
+# main_le[:, 0] *= -1.
+# jib_le[:, 0] *= -1.
 
 rig = Rig(
     name="49er_rig",
@@ -83,6 +83,8 @@ rig["jibsail"] = rig["jibsail"].rotate_local(
     origin=jib_le[0]
 )
 
+rig.draw()
+
 #%% APPENDAGE
 
 dag_le, dag_chords = dxf_to_le_chords(r'data/49er_data/dagger.dxf', 10)
@@ -98,7 +100,7 @@ app = Appendage(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=Airfoil("naca0012"),
-                    twist=180.,
+                    twist=0.,
                 )
             for xyz, c in zip(dag_le, dag_chords)]
         ),
@@ -109,7 +111,7 @@ app = Appendage(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=Airfoil("naca0012"),
-                    twist=180.,
+                    twist=0.,
                 )
             for xyz, c in zip(rud_le, rud_chords)]
         ),
@@ -131,12 +133,12 @@ sailboat = Sailboat(
     fittings=[wings],
 )
 
-# sailboat.draw(
-#     backend="pyvista",
-#     draw_plane=True,
-#     point=np.array([0, 0, 0]),
-#     set_axis_visibility=True,
-# )
+sailboat.draw(
+    backend="pyvista",
+    draw_plane=True,
+    point=np.array([0, 0, 0]),
+    set_axis_visibility=True,
+)
 
 #%%
 from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod
@@ -145,7 +147,7 @@ from archibald.performance import OperatingPoint
 op_point = OperatingPoint(
     stw=1e-3,
     tws=10., 
-    twa = 30.,
+    twa = 90.,
     dz=0,
     heel=0.,
     trim=0.,
