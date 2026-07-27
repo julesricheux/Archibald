@@ -1657,19 +1657,20 @@ class VortexLatticeMethod(ExplicitAnalysis):
         W[W > wmax] = wmax
         W[W < wmin] = wmin
         
-        lw = W**2/4e2
+        lw = W**2 / 1e2
         
         # Create quiver plot
         plt.figure(figsize=(10, 10*(ymax-ymin)/(xmax-xmin)))
-        if draw_streamlines:
-            plt.streamplot(X, Y, U, V, color=color, linewidth=lw)
         if draw_contour:
             plt.contourf(X, Y, W, cmap=cmap, levels=10)
+            plt.colorbar(label='Speed (m/s)')
+        if draw_streamlines:
+            plt.streamplot(X, Y, U, V, color=color, linewidth=lw)
+
         plt.xlabel('X')
         plt.ylabel('Y')
         plt.title('Flow at z='+str(round(z,3))+' m')
         # plt.grid()
-        plt.colorbar(label='Speed (m/s)')
         plt.axis('equal')
         plt.show()
 
