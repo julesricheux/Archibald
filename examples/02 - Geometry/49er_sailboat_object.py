@@ -145,9 +145,11 @@ from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMe
 from archibald.performance import OperatingPoint
 
 op_point = OperatingPoint(
-    stw=1e-3,
-    tws=10., 
-    twa = 90.,
+    stw=1.,
+    tws0=15., 
+    twa = 30.,
+    z0=1.,
+    a=0.01,
     dz=0,
     heel=0.,
     trim=0.,
@@ -157,5 +159,7 @@ op_point = OperatingPoint(
 aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
 res = aeroVLM.run()
+
+print(res)
 
 aeroVLM.draw()

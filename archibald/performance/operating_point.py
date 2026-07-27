@@ -136,7 +136,7 @@ class OperatingPoint():
         """
         self.environment = environment
         self._stw = stw * u.knot
-        self._tws0 = tws0 * u.knot
+        self._tws0 = tws0 * u.knot # TODO handle when tws0 is None but tws is specified
         self._twa = twa
         
         aws0 = np.sqrt(tws0**2 + stw**2 + 2*tws0*stw*np.cosd(twa))
@@ -453,7 +453,7 @@ class OperatingPoint():
         Returns:
             float: Dynamic pressure of the working fluid. [Pa]
         """
-        if z == None:
+        if z is None:
             z = self.z0
         
         awsZ = self._aws(z)
