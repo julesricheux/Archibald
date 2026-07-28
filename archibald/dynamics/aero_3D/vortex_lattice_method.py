@@ -85,20 +85,39 @@ def change_basis(x: Union[float, np.ndarray],
     return x_to, y_to, z_to
 
 
-def stall_factor(alpha: Union[float, np.ndarray],
-                 alpha_i: Union[float, np.ndarray],
-                 alpha_stall: Union[float, np.ndarray],
-                 ):
+# def stall_factor(alpha: Union[float, np.ndarray],
+#                  alpha_i: Union[float, np.ndarray],
+#                  alpha_stall: Union[float, np.ndarray],
+#                  ):
     
-    alpha_corr = np.abs(alpha)
-    alpha_i_corr = ReLU(alpha_i * np.sign(alpha)) + 1e-3
+#     alpha_corr = np.abs(alpha)
+#     alpha_i_corr = ReLU(alpha_i * np.sign(alpha)) + 1e-3
     
-    raw_fac = 1. + (alpha_stall - alpha_corr)/alpha_i_corr
+#     raw_fac = 1. + (alpha_stall - alpha_corr)/alpha_i_corr
     
-    return np.fmin(1.,
-                   np.fmax(raw_fac,
-                           0.)
-                   )
+#     return np.fmin(1.,
+#                    np.fmax(raw_fac,
+#                            0.)
+#                    )
+
+def stall_factor(
+    alpha: Union[float, np.ndarray],
+    alpha_i: Union[float, np.ndarray],
+    alpha_stall: Union[float, np.ndarray],
+):
+    return np.sigmoid(
+        0.5*alpha_i + (alpha_stall - np.abs(alpha))
+    )
+
+def soft_stall_factor(    
+    alpha: Union[float, np.ndarray],
+    alpha_e: Union[float, np.ndarray],
+    is_soft: Union[float, bool, np.ndarray],
+):
+    return 1. - is_soft * np.sigmoid(
+        alpha_e / 2. - np.abs(alpha)
+        # 4. - np.abs(alpha)
+    )
 
 
 class VortexLatticeMethod(ExplicitAnalysis):
@@ -126,9 +145,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         >>> analysis.draw()
     """
     
-    # @abstractmethod
+    @abstractmethod
     def __init__(self,
-                 planform: Rig,
+                 planform: Planform,
                  op_point: OperatingPoint,
                  xyz_ref: List[float] = None,
                  IZsym: bool = False,
@@ -334,7 +353,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # strips = []
         is_symmetric = []
         
-        strips_vertices = []
+        # strips_vertices = []
         
         is_soft = []
 
@@ -382,22 +401,22 @@ class VortexLatticeMethod(ExplicitAnalysis):
             #     )
             is_leading_edge.append(
                 (np.arange(len(faces)) + 1) % self.chordwise_resolution == 1
-                )
+            )
             # is_leading_edge_idx.append(
             #     np.arange((self.chordwise_resolution-1)+len(faces)*i,
             #               len(faces)*(i+1),
             #               self.chordwise_resolution)
             #     )
             
-            wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+            # wing_spanwise_resolution = self.wing_spanwise_resolution[i]
             
-            for k in range(wing_spanwise_resolution):
-                strip_k_vertices = [
-                    points[k::wing_spanwise_resolution+1, :], # left vertices
-                    points[k+1::wing_spanwise_resolution+1, :], # right vertices
-                ]
+            # for k in range(wing_spanwise_resolution):
+            #     strip_k_vertices = [
+            #         points[k::wing_spanwise_resolution+1, :], # left vertices
+            #         points[k+1::wing_spanwise_resolution+1, :], # right vertices
+            #     ]
                 
-                strips_vertices.append(strip_k_vertices)
+            #     strips_vertices.append(strip_k_vertices)
             
             # split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
             #          for i in range(self.total_spanwise_resolution)]
@@ -405,7 +424,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             
             is_symmetric.append([float(self.to_sym[i])] * points[faces[:, 0], :].shape[0])
             
-            is_soft.append([wing.is_soft for k in range(len(faces))])
+            is_soft.append([wing.soft for k in range(len(faces))])
 
         front_left_vertices = np.concatenate(front_left_vertices)
         back_left_vertices = np.concatenate(back_left_vertices)
@@ -454,15 +473,15 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.vortex_bound_leg = vortex_bound_leg
         self.collocation_points = collocation_points
         
-        self.strips_vertices = strips_vertices
+        # self.strips_vertices = strips_vertices
         
         self.is_soft = is_soft
         
         self.strips_x = np.concatenate(strips_x)
         self.strips_y = np.concatenate(strips_y)
         self.strips_z = np.concatenate(strips_z)
-        self.strips_chords = np.concatenate(tall(strips_chords))
-        self.strips_areas = np.concatenate(tall(strips_areas))
+        self.strips_chords = np.stack(strips_chords)
+        self.strips_areas = np.stack(strips_areas)
         self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
 
         
@@ -562,6 +581,12 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
     def sum_by_strips(self, array):
         split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
+                 for i in range(self.total_spanwise_resolution)]
+            
+        return np.stack(split)
+    
+    def mul_by_strips(self, array):
+        split = [np.prod(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
                  for i in range(self.total_spanwise_resolution)]
             
         return np.stack(split)
@@ -673,10 +698,34 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         # when using soft wings, a negative vortex strength at the l.e. means stall
         
-        mean_z = np.mean(self.vortex_centers[:,2])
+        # mean_z = np.mean(self.vortex_centers[:,2])
         
-        le_idx = np.arange(self.is_leading_edge.shape[0])[self.is_leading_edge]
-        te_idx = np.arange(self.is_trailing_edge.shape[0])[self.is_trailing_edge]
+        self.le_idx = np.arange(self.is_leading_edge.shape[0])[self.is_leading_edge]
+        self.te_idx = np.arange(self.is_trailing_edge.shape[0])[self.is_trailing_edge]
+        
+        # # These values are set relatively high because NeuralFoil extrapolates quite well past stall
+        # alpha_stall_positive = alpha_stall
+        # alpha_stall_negative = -alpha_stall
+
+        # # This will be an input to a tanh() sigmoid blend via asb.numpy.blend(), so a value of 1 means the flow is
+        # # ~90% separated, and a value of -1 means the flow is ~90% attached.
+        # is_separated = (
+        #     np.softmax(alpha - alpha_stall_positive, alpha_stall_negative - alpha)
+        #     / 3
+        # )
+
+        # CL = np.blend(is_separated, CL_if_separated, CL)
+        # CD = np.exp(
+        #     np.blend(
+        #         is_separated,
+        #         np.log(
+        #             CD_if_separated
+        #             + lib_aero.Cf_flat_plate(Re_L=Re, method="turbulent")
+        #         ),
+        #         np.log(CD),
+        #     )
+        # )
+        # CM = np.blend(is_separated, CM_if_separated, CM)
      
         # TODO: find a better low-aoa / soft-wing stall criterion
         # for the moment, funcitonnal because z_mean > 0 for sails and < 0 for appendages
@@ -710,41 +759,55 @@ class VortexLatticeMethod(ExplicitAnalysis):
         #     smooth_ramp(self.alphaeff0 * 100*self.cambers)  # < 0 when stalled, >= 0 when laminar
         # )) # 0 when stalled, 1 when laminar
         
-        self.soft_stall_fac = ramp(
-        # self.soft_stall_fac = smooth_ramp(
-            self.vortex_strengths[le_idx] *\
-            mean_z *\
-            self.is_soft[le_idx], # < 0 when stalled, >= 0 when laminar
-        )# 0 when stalled, 1 when laminar
+        # self.soft_stall_fac = ramp(
+        # # self.soft_stall_fac = smooth_ramp(
+        #     self.vortex_strengths[self.le_idx] *\
+        #     mean_z *\
+        #     self.is_soft[self.le_idx], # < 0 when stalled, >= 0 when laminar
+        # )# 0 when stalled, 1 when laminar
+            
+        le_normal = self.normal_directions[self.le_idx]
         
-        # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
-        # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
-        self.vertices_soft_stall_fac = []
-        self.vertices_stall_fac = []
+        magnitude_A = np.linalg.norm(le_normal, axis=1)
+        magnitude_B = np.linalg.norm(self.strips_x, axis=1)
         
-        # extend the stall factors to the borders of strips (useful for 3D animated display)
-        for i, wing in enumerate(self.planform.wings):
-            wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+        self.entrance_angle = np.arccosd(
+            np.sum(le_normal * self.strips_x, axis=1) / (magnitude_A * magnitude_B)
+        ) - 90.
+        
+        # # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
+        # # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
+        # self.vertices_soft_stall_fac = []
+        # self.vertices_stall_fac = []
+        
+        # # extend the stall factors to the borders of strips (useful for 3D animated display)
+        # for i, wing in enumerate(self.planform.wings):
+        #     wing_spanwise_resolution = self.wing_spanwise_resolution[i]
             
-            start = i*(wing_spanwise_resolution)
-            end = (i+1)*(wing_spanwise_resolution)
+        #     start = i*(wing_spanwise_resolution)
+        #     end = (i+1)*(wing_spanwise_resolution)
             
-            self.vertices_soft_stall_fac.append(self.soft_stall_fac[start])
-            self.vertices_stall_fac.append(self.stall_fac[start])
+        #     self.vertices_soft_stall_fac.append(self.soft_stall_fac[start])
+        #     self.vertices_stall_fac.append(self.stall_fac[start])
             
-            for k in range(start, end-1):
-                self.vertices_soft_stall_fac.append((self.soft_stall_fac[k] + self.soft_stall_fac[k+1]) / 2)
-                self.vertices_stall_fac.append((self.stall_fac[k] + self.stall_fac[k+1]) / 2)
-                # self.vertices_soft_stall_fac.append((self.soft_stall_fac[k, 0] + self.soft_stall_fac[k+1, 0]) / 2)
-                # self.vertices_stall_fac.append((self.stall_fac[k, 0] + self.stall_fac[k+1, 0]) / 2)
+        #     for k in range(start, end-1):
+        #         self.vertices_soft_stall_fac.append((self.soft_stall_fac[k] + self.soft_stall_fac[k+1]) / 2)
+        #         self.vertices_stall_fac.append((self.stall_fac[k] + self.stall_fac[k+1]) / 2)
+        #         # self.vertices_soft_stall_fac.append((self.soft_stall_fac[k, 0] + self.soft_stall_fac[k+1, 0]) / 2)
+        #         # self.vertices_stall_fac.append((self.stall_fac[k, 0] + self.stall_fac[k+1, 0]) / 2)
                 
-            self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1])
-            self.vertices_stall_fac.append(self.stall_fac[end-1])
-            # self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1, 0])
-            # self.vertices_stall_fac.append(self.stall_fac[end-1, 0])
+        #     self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1])
+        #     self.vertices_stall_fac.append(self.stall_fac[end-1])
+        #     # self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1, 0])
+        #     # self.vertices_stall_fac.append(self.stall_fac[end-1, 0])
         
+        self.alphaeff = self.alpha - self.alphai * self.stall_fac
         
-        self.alphaeff = self.alpha - self.alphai * self.soft_stall_fac * self.stall_fac
+        self.soft_stall_fac = soft_stall_factor(
+            alpha=self.alphaeff,
+            alpha_e=self.entrance_angle,
+            is_soft=self.is_soft[self.le_idx],
+        )
         
         self.nf_results = [
                 af.get_aero_from_neuralfoil(
@@ -771,6 +834,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2 *\
             tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
+            
             
         self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2
         
@@ -939,6 +1003,24 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # Calculate forces_inviscid_geometry, the force on the ith panel. Note that this is in GEOMETRY AXES,
         # not WIND AXES or BODY AXES.
         Vi_cross_li = np.cross(V_centers, self.vortex_bound_leg, axis=1)
+        
+        # Vi_dot_ni = np.sum(V_centers * self.normal_directions, axis=1)
+        
+        Vi2_dot_ni = np.sum(
+            (
+                V_centers / tall(np.linalg.norm(self.get_freestream_velocity_at_points(self.vortex_centers), axis=1))
+            ) ** 2. * self.normal_directions,
+            axis=1
+        )
+        
+        # self.insight = (1 - self.is_soft * np.sigmoid(
+        #     1. * (np.arccosd(
+        #         np.sum((V_centers / tall(np.linalg.norm(V_centers, axis=1))) * self.normal_directions, axis=1)
+        #     ) - 90.)
+        # ))
+        
+        self.insight = np.sigmoid(self.sum_by_strips(tall(Vi2_dot_ni * self.areas)))
+        
 
         forces_geometry = self.fluid.density * Vi_cross_li * tall(self.vortex_strengths)
         moments_geometry = np.cross(

@@ -51,44 +51,44 @@ rig = Rig(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.4, mc=0.05),
-                    twist=-i/6 * 20,
+                    twist=-i/10 * 10,
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
-        Sail(
-            name="jibsail",
-            xsecs=[
-                WingXSec(
-                    xyz_le=xyz,                    
-                    chord=c,
-                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
-                    twist=-i*4,
-                )
-            for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
-        ),
+        # Sail(
+        #     name="jibsail",
+        #     xsecs=[
+        #         WingXSec(
+        #             xyz_le=xyz,                    
+        #             chord=c,
+        #             airfoil=ThinAirfoil(xc=0.4, mc=0.1),
+        #             twist=-i/7*60,
+        #         )
+        #     for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
+        # ),
     ]
 )
 
 # SETTINGS
 
-rig["mainsail"] = rig["mainsail"].rotate_local(
-    angle_deg=-5.,
-    axis=jib_le[-1] - main_le[0],
-    origin=main_le[0],
-)
+# rig["mainsail"] = rig["mainsail"].rotate_local(
+#     angle_deg=-35.,
+#     axis=jib_le[-1] - main_le[0],
+#     origin=main_le[0],
+# )
 
-rig["jibsail"] = rig["jibsail"].rotate_local(
-    angle_deg=-10,
-    axis=jib_le[-1] - jib_le[0],
-    origin=jib_le[0],
-)
+# rig["jibsail"] = rig["jibsail"].rotate_local(
+#     angle_deg=-15,
+#     axis=jib_le[-1] - jib_le[0],
+#     origin=jib_le[0],
+# )
 
 # rig.draw()
 
 #%% APPENDAGE
 
 dag_le, dag_chords = dxf_to_le_chords(r'data/49er_data/dagger.dxf', 10)
-rud_le, rud_chords = dxf_to_le_chords(r'data/49er_data/rudder.dxf', 7)
+rud_le, rud_chords = dxf_to_le_chords(r'data/49er_data/rudder.dxf', 10)
 
 app = Appendage(
     name="49er_appendages",
@@ -148,32 +148,60 @@ from archibald.optimization import Opti
 opti = Opti()
 
 op_point = OperatingPoint(
-    stw=1.,
-    tws0=opti.variable(init_guess=15.), 
-    twa = 30.,
-    z0=1.,
-    a=0.01,
+    stw=0.,
+    tws0=15., 
+    # tws0=opti.variable(init_guess=15.), 
+    # twa = opti.variable(init_guess=40.),
+    twa=50.,
+    # z0=1.,
+    # a=0.01,
     dz=0,
     heel=0.,
     trim=0.,
     leeway=0.,
+    
+    # mainsail_trim=opti.variable(init_guess=-30.),
+    # jib_trim=opti.variable(init_guess=-30.),
+    mainsail_trim=-20,
+    # jib_trim=-29,
+    # jib_trim=-51.19787344567687,
+    
+    
 )
 
-# rig["mainsail"] = rig["mainsail"].rotate_local(
-#     angle_deg=opti.variable(init_guess=-5.),
-#     axis=jib_le[-1] - main_le[0],
-#     origin=main_le[0],
+rig["mainsail"] = rig["mainsail"].rotate_local(
+    angle_deg=op_point.mainsail_trim,
+    axis=jib_le[-1] - main_le[0],
+    origin=main_le[0],
+)
+
+# rig["jibsail"] = rig["jibsail"].rotate_local(
+#     angle_deg=op_point.jib_trim,
+#     axis=jib_le[-1] - jib_le[0],
+#     origin=jib_le[0],
 # )
 
 aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
-res = aeroVLM.run()
+res = aeroVLM.run(alpha_stall=20)
 
-# print(res)
-# aeroVLM.draw_flow()
+opti.minimize(res["F_ab"][0])
+
+{'F_ab': np.array([-370.36, -674.33,   27.  ])}
+
+print(aeroVLM.alpha)
+# print(aeroVLM.alphaeff)
+print(aeroVLM.soft_stall_fac)
+
+
+# sol = opti.solve()
+
+# import matplotlib.pyplot as plt
+# # plt.plot(aeroVLM.insight)
+# plt.plot(aeroVLM.soft_stall_fac)
+# # plt.plot(aeroVLM.stall_fac)
+# plt.ylim((-1e-2, 1+1e-2))
+
+# # print(res)
+# # aeroVLM.draw_flow()
 # aeroVLM.draw()
-
-opti.minimize((res["L"] + 700)**2)
-
-
-sol = opti.solve()

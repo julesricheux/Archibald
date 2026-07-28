@@ -38,6 +38,7 @@ class Wing(ArchibaldObject):
         name: str | None = None,
         xsecs: list["WingXSec"] | None = None,
         symmetric: bool = False,
+        soft: bool = False,
         color: (str | tuple[float]) | None = None,
         analysis_specific_options: dict[type, dict[str, Any]] | None = None,
         **kwargs,  # Only to allow for capturing of deprecated arguments, don't use this.
@@ -104,10 +105,9 @@ class Wing(ArchibaldObject):
         self.name = name
         self.xsecs = xsecs
         self.symmetric = symmetric
+        self.soft= soft
         self.color = color
         self.analysis_specific_options = analysis_specific_options
-        
-        self.is_soft = False
 
         ### Handle deprecated parameters
         if "xyz_le" in locals():
@@ -1099,8 +1099,8 @@ class Wing(ArchibaldObject):
 
         faces = []
 
-        num_i = len(spanwise_strips[0])  # spanwise
-        num_j = len(spanwise_strips)     # chordwise
+        num_i = np.length(spanwise_strips[0])  # spanwise
+        num_j = np.length(spanwise_strips)     # chordwise
 
         def index_of(iloc, jloc):
             return iloc + jloc * num_i
@@ -2118,6 +2118,9 @@ class Fin(Wing):
     transformation methods as-is; this subclass exists as a distinct type so that fin-specific analyses and
     methods can be attached to it separately from generic wings and from `Sail`.
     """
+    
+    def __init__(self, *args, soft=False, **kwargs):
+        super().__init__(*args, soft=soft, **kwargs)
 
     def __repr__(self) -> str:
         n_xsecs = len(self.xsecs)
@@ -2135,6 +2138,9 @@ class Sail(Wing):
     camber/twist control specific to soft sails) can be attached to it separately from generic wings and from
     `Fin`.
     """
+    
+    def __init__(self, *args, soft=True, **kwargs):
+        super().__init__(*args, soft=soft, **kwargs)
 
     def __repr__(self) -> str:
         n_xsecs = len(self.xsecs)
