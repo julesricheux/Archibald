@@ -51,7 +51,7 @@ rig = Rig(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.4, mc=0.05),
-                    twist=-i/10 * 10,
+                    # twist=-i/10 * 10,
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
@@ -147,6 +147,8 @@ from archibald.optimization import Opti
 
 opti = Opti()
 
+# t = opti.variable(init_guess=0., upper_bound=90, lower_bound=0)
+
 op_point = OperatingPoint(
     stw=0.,
     tws0=15., 
@@ -162,12 +164,22 @@ op_point = OperatingPoint(
     
     # mainsail_trim=opti.variable(init_guess=-30.),
     # jib_trim=opti.variable(init_guess=-30.),
-    mainsail_trim=-20,
+    # mainsail_trim=-18.022275244554578,
+    # mainsail_trim=-0,
+    mainsail_trim=-33.93072294208395,
+    # mainsail_trim=-20,
     # jib_trim=-29,
     # jib_trim=-51.19787344567687,
     
+    # mainsail_twist = opti.variable(init_guess=np.zeros(10))
+    # mainsail_twist = [-t*i/10 for i in range(10)]
+    # mainsail_twist = [-90.97,  12.04 ,-16.46, -20.82, -17.5,  -15.57, -22.57, -14.77, -28.03, -12.18]
+    mainsail_twist = [0.0, -0.5796176870041314, -1.1592353740082628, -1.7388530610123945, -2.3184707480165256, -2.8980884350206573, -3.477706122024789, -4.0573238090289205, -4.636941496033051, -5.216559183037183]
     
 )
+
+for i, xsec in enumerate(rig["mainsail"].xsecs):
+    xsec.twist = op_point.mainsail_twist[i]
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
     angle_deg=op_point.mainsail_trim,
@@ -187,14 +199,17 @@ res = aeroVLM.run(alpha_stall=20)
 
 opti.minimize(res["F_ab"][0])
 
-{'F_ab': np.array([-370.36, -674.33,   27.  ])}
+# {'F_ab': np.array([-370.36, -674.33,   27.  ])}
 
-print(aeroVLM.alpha)
+
+sol = opti.solve()
+
+print(sol(op_point.mainsail_trim))
+print(sol(op_point.mainsail_twist))
+
+# print(sol(aeroVLM.alpha))
 # print(aeroVLM.alphaeff)
-print(aeroVLM.soft_stall_fac)
-
-
-# sol = opti.solve()
+# print(sol(aeroVLM.soft_stall_fac))
 
 # import matplotlib.pyplot as plt
 # # plt.plot(aeroVLM.insight)
@@ -204,4 +219,4 @@ print(aeroVLM.soft_stall_fac)
 
 # # print(res)
 # # aeroVLM.draw_flow()
-# aeroVLM.draw()
+aeroVLM.draw()
