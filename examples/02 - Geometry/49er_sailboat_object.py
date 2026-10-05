@@ -55,19 +55,21 @@ rig = Rig(
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
-        # Sail(
-        #     name="jibsail",
-        #     xsecs=[
-        #         WingXSec(
-        #             xyz_le=xyz,                    
-        #             chord=c,
-        #             airfoil=ThinAirfoil(xc=0.4, mc=0.1),
-        #             twist=-i/7*60,
-        #         )
-        #     for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
-        # ),
+        Sail(
+            name="jibsail",
+            xsecs=[
+                WingXSec(
+                    xyz_le=xyz,                    
+                    chord=c,
+                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
+                    # twist=-i/7*60,
+                )
+            for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
+        ),
     ]
 )
+
+area0 = np.sum([wing.area() for wing in rig.wings])
 
 # SETTINGS
 
@@ -141,7 +143,7 @@ sailboat = Sailboat(
 # )
 
 #%%
-from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod
+from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod, HydroVortexLatticeMethod
 from archibald.performance import OperatingPoint
 from archibald.optimization import Opti
 
@@ -150,7 +152,7 @@ opti = Opti()
 # t = opti.variable(init_guess=0., upper_bound=90, lower_bound=0)
 
 op_point = OperatingPoint(
-    stw=0.,
+    stw=1e-8,
     tws0=15., 
     # tws0=opti.variable(init_guess=15.), 
     # twa = opti.variable(init_guess=40.),
@@ -162,24 +164,23 @@ op_point = OperatingPoint(
     trim=0.,
     leeway=0.,
     
-    # mainsail_trim=opti.variable(init_guess=-30.),
-    # jib_trim=opti.variable(init_guess=-30.),
-    # mainsail_trim=-18.022275244554578,
-    # mainsail_trim=-0,
-    mainsail_trim=-33.93072294208395,
-    # mainsail_trim=-20,
-    # jib_trim=-29,
-    # jib_trim=-51.19787344567687,
+    # mainsail_trim=opti.variable(init_guess=-1., upper_bound=0, lower_bound=-60.),
+    # jib_trim=opti.variable(init_guess=-1., upper_bound=0, lower_bound=-60.),
+    # mainsail_twist = opti.variable(init_guess=np.zeros(8), upper_bound=0, lower_bound=-90.),
+    # jibsail_twist = opti.variable(init_guess=np.zeros(6), upper_bound=0, lower_bound=-90.),
     
-    # mainsail_twist = opti.variable(init_guess=np.zeros(10))
-    # mainsail_twist = [-t*i/10 for i in range(10)]
-    # mainsail_twist = [-90.97,  12.04 ,-16.46, -20.82, -17.5,  -15.57, -22.57, -14.77, -28.03, -12.18]
-    mainsail_twist = [0.0, -0.5796176870041314, -1.1592353740082628, -1.7388530610123945, -2.3184707480165256, -2.8980884350206573, -3.477706122024789, -4.0573238090289205, -4.636941496033051, -5.216559183037183]
+    mainsail_trim=-19.107250619055744,
+    jib_trim=-2.4517189920483182,
+    mainsail_twist = [ 1.00e-08, -3.21e+00, -7.28e+00, -1.17e+01, -1.63e+01, -2.04e+01, -2.66e+01, -7.76e+01],
+    jibsail_twist = [ -6.9,  -16.07, -28.81, -40.48, -46.39, -77.82],
     
 )
 
-for i, xsec in enumerate(rig["mainsail"].xsecs):
+for i, xsec in enumerate(rig["mainsail"].xsecs[2:]):
     xsec.twist = op_point.mainsail_twist[i]
+
+for i, xsec in enumerate(rig["jibsail"].xsecs[1:]):
+    xsec.twist = op_point.jibsail_twist[i]
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
     angle_deg=op_point.mainsail_trim,
@@ -187,17 +188,27 @@ rig["mainsail"] = rig["mainsail"].rotate_local(
     origin=main_le[0],
 )
 
-# rig["jibsail"] = rig["jibsail"].rotate_local(
-#     angle_deg=op_point.jib_trim,
-#     axis=jib_le[-1] - jib_le[0],
-#     origin=jib_le[0],
-# )
+rig["jibsail"] = rig["jibsail"].rotate_local(
+    angle_deg=op_point.jib_trim,
+    axis=jib_le[-1] - jib_le[0],
+    origin=jib_le[0],
+)
 
 aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
+
+# aeroVLM = HydroVortexLatticeMethod(app, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
 res = aeroVLM.run(alpha_stall=20)
 
 opti.minimize(res["F_ab"][0])
+
+area = 0
+for wing in rig.wings:
+    area += wing.area()
+
+opti.subject_to([
+    (area <= area0),
+])
 
 # {'F_ab': np.array([-370.36, -674.33,   27.  ])}
 
@@ -205,7 +216,11 @@ opti.minimize(res["F_ab"][0])
 sol = opti.solve()
 
 print(sol(op_point.mainsail_trim))
+print(sol(op_point.jib_trim))
 print(sol(op_point.mainsail_twist))
+print(sol(op_point.jibsail_twist))
+
+print(sol(res["F_ab"][0]))
 
 # print(sol(aeroVLM.alpha))
 # print(aeroVLM.alphaeff)

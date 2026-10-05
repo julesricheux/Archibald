@@ -370,9 +370,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
             strips_y += [wide(frame[1]) for frame in all_frames]
             strips_z += [wide(frame[2]) for frame in all_frames]
             
-            strips_chords += wing.sectional_chords(type="planform")
-            strips_areas += wing.area(type="planform", _sectional=True)
-            strips_quarters += wing.aerodynamic_center(0.25, _sectional=True)
+            strips_chords += [wide(c) for c in wing.sectional_chords(type="planform")]
+            strips_areas += [wide(a) for a in wing.area(type="planform", _sectional=True)]
+            strips_quarters += [wide(c) for c in wing.aerodynamic_center(0.25, _sectional=True)]
             
             if self.spanwise_resolution > 1:
                 wing = wing.subdivide_sections(
@@ -477,12 +477,26 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.is_soft = is_soft
         
+        # print("x")
+        # for x in strips_x:
+        #     print(x.shape)
+            
+        # print("q")
+        # for q in strips_quarters:
+        #     print(q)
+        #     print(q.shape)
+        
+        # print("quarters")
+        # for c in strips_quarters:
+        #     print(c.shape)
+        
         self.strips_x = np.concatenate(strips_x)
         self.strips_y = np.concatenate(strips_y)
         self.strips_z = np.concatenate(strips_z)
-        self.strips_chords = np.stack(strips_chords)
-        self.strips_areas = np.stack(strips_areas)
-        self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
+        self.strips_chords = np.concatenate(strips_chords)
+        self.strips_areas = np.concatenate(strips_areas)
+        self.strips_quarters = np.concatenate(strips_quarters)
+        # self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
 
         
     def get_freestream_velocity_at_points(self,
@@ -503,7 +517,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         return freestream_velocities
         
-    
+
     def calculate_freestream_influences(self):
         
         freestream_velocities = self.get_freestream_velocity_at_points(self.collocation_points)
@@ -659,7 +673,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         ### Compute induced angle of attack by strips (= arctan(L/Di))
         # self.alphai = np.rad2deg(np.arctan(strips_forces_strips_freestream[:,0]/strips_forces_strips_freestream[:,2]))
-        self.alphai = np.arctan(strips_forces_strips_freestream[:,0]/strips_forces_strips_freestream[:,2]) * 180/np.pi
+        self.alphai = np.arctan2d(strips_forces_strips_freestream[:,0], strips_forces_strips_freestream[:,2])
         
         ### Freestream angle of attack by strips
         stream_angle = np.arctan2(-self.strips_freestream_x[:,1], self.strips_freestream_x[:,0])
@@ -677,7 +691,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_U = strips_U
         self.strips_V = strips_V
-        self.strips_reynolds = self.strips_chords * strips_U / self.fluid.kinematic_viscosity
+        self.strips_reynolds = self.strips_chords.ravel() * strips_U / self.fluid.kinematic_viscosity
         
         ### Get airfoils by strips
         airfoils = []
@@ -694,7 +708,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             self.alpha,
             self.alphai,
             alpha_stall,
-            ) # 0 when stalled, 1 when laminar
+        ) # 0 when stalled, 1 when laminar
         
         # when using soft wings, a negative vortex strength at the l.e. means stall
         
@@ -766,7 +780,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         #     self.is_soft[self.le_idx], # < 0 when stalled, >= 0 when laminar
         # )# 0 when stalled, 1 when laminar
             
-        le_normal = self.normal_directions[self.le_idx]
+        le_normal = self.normal_directions[self.le_idx, :]
         
         magnitude_A = np.linalg.norm(le_normal, axis=1)
         magnitude_B = np.linalg.norm(self.strips_x, axis=1)
@@ -834,7 +848,6 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2 *\
             tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
-            
             
         self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2
         
