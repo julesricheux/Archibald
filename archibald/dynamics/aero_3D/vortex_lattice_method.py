@@ -856,8 +856,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.strips_Li = tall(self.strips_forces_strips_freestream[:, 2])
         
         self.strips_Di = tall(self.strips_forces_strips_freestream[:, 0]) *\
-            tall(self.soft_stall_fac) *\
-            tall(ReLU(self.strips_L / self.strips_Li))
+            tall(self.soft_stall_fac + 1e-8) *\
+            tall(ReLU(self.strips_L / (self.strips_Li + 1e-8)))
 
         self.strips_F = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.]))) +\
                        np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))

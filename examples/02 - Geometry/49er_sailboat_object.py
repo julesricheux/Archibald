@@ -51,7 +51,7 @@ rig = Rig(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.45, mc=0.12),
-                    # twist=-i/10 * 10,
+                    twist=-i/10 * 10,
                 )
             for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
         ),
@@ -61,15 +61,15 @@ rig = Rig(
                 WingXSec(
                     xyz_le=xyz,                    
                     chord=c,
-                    airfoil=ThinAirfoil(xc=0.45, mc=0.15),
-                    # twist=-i/7*60,
+                    airfoil=ThinAirfoil(xc=0.45, mc=0.18),
+                    twist=-i/7*60,
                 )
             for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
         ),
     ]
 )
 
-area0 = np.sum([wing.area() for wing in rig.wings]) + 1e-3
+area0 = np.sum([wing.area() for wing in rig.wings]) + 1e-2
 # area0 = 21.2 # sqm
 
 # SETTINGS
@@ -102,7 +102,7 @@ app = Appendage(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=Airfoil("naca0012"),
+                    airfoil=Airfoil("e836"),
                     twist=0.,
                 )
             for xyz, c in zip(dag_le, dag_chords)]
@@ -113,7 +113,7 @@ app = Appendage(
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=Airfoil("naca0012"),
+                    airfoil=Airfoil("e836"),
                     twist=0.,
                 )
             for xyz, c in zip(rud_le, rud_chords)]
@@ -155,35 +155,35 @@ opti = Opti()
 twa = 50.
 
 op_point = OperatingPoint(
-    stw=10.,
+    stw=12.,
     tws0=20., 
     # tws0=opti.variable(init_guess=15.), 
     # twa = opti.variable(init_guess=40.),
     twa=twa,
     # z0=10.,
-    # a=0.035,
+    a=0.035,
     dz=0,
     heel=0.,
     trim=0.,
-    leeway=0.,
+    # leeway=opti.variable(init_guess=-1.),
     
-    mainsail_trim=opti.variable(init_guess=-twa/2., upper_bound=0., lower_bound=-twa),
-    jib_trim=opti.variable(init_guess=-twa/2., upper_bound=0., lower_bound=-twa),
-    mainsail_twist = opti.variable(init_guess=np.zeros(8), upper_bound=0, lower_bound=-twa),
-    jibsail_twist = opti.variable(init_guess=np.zeros(6), upper_bound=0, lower_bound=-twa),
+    # mainsail_trim=opti.variable(init_guess=-twa/3., upper_bound=0., lower_bound=-twa),
+    # jib_trim=opti.variable(init_guess=-twa/3., upper_bound=0., lower_bound=-twa),
+    # mainsail_twist = opti.variable(init_guess=np.zeros(8), upper_bound=0, lower_bound=-twa),
+    # jibsail_twist = opti.variable(init_guess=np.zeros(6), upper_bound=0, lower_bound=-twa),
     
-    # mainsail_trim=-10.107250619055744,
-    # jib_trim=-10.4517189920483182,
-    # mainsail_twist = [ 1.00e-08, -3.21e+00, -7.28e+00, -1.17e+01, -1.63e+01, -2.04e+01, -2.66e+01, -7.76e+01],
-    # jibsail_twist = [ -6.9,  -16.07, -28.81, -40.48, -46.39, -77.82],
+    mainsail_trim=-10.107250619055744,
+    jib_trim=-10.4517189920483182,
+    mainsail_twist = [ 1.00e-08, -3.21e+00, -7.28e+00, -1.17e+01, -1.63e+01, -2.04e+01, -2.66e+01, -7.76e+01],
+    jibsail_twist = [ -6.9,  -16.07, -28.81, -40.48, -46.39, -77.82],
     
 )
 
-for i, xsec in enumerate(rig["mainsail"].xsecs[2:]):
-    xsec.twist = op_point.mainsail_twist[i]
+# for i, xsec in enumerate(rig["mainsail"].xsecs[2:]):
+#     xsec.twist = op_point.mainsail_twist[i]
 
-for i, xsec in enumerate(rig["jibsail"].xsecs[1:]):
-    xsec.twist = op_point.jibsail_twist[i]
+# for i, xsec in enumerate(rig["jibsail"].xsecs[1:]):
+#     xsec.twist = op_point.jibsail_twist[i]
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
     angle_deg=op_point.mainsail_trim,
@@ -197,13 +197,21 @@ rig["jibsail"] = rig["jibsail"].rotate_local(
     origin=jib_le[0],
 )
 
+for w in app.wings:
+    app[w.name] = w.rotate_local(
+        angle_deg=op_point.leeway,
+        axis=[0,0,1],
+        origin=[0,0,0],
+    )
+
 aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
-# aeroVLM = HydroVortexLatticeMethod(app, op_point, chordwise_resolution=10, spanwise_resolution=1)
+hydroVLM = HydroVortexLatticeMethod(app, op_point, chordwise_resolution=10, spanwise_resolution=1)
 
-res = aeroVLM.run(alpha_stall=15)
+resA = aeroVLM.run(alpha_stall=15)
+resH = hydroVLM.run(alpha_stall=15)
 
-opti.maximize(res["F_ab"][0])
+opti.maximize((resA["F_ab"][0] + resH["F_ab"][0]))
 # opti.maximize(res["CL"])
 # opti.maximize(res["F_ab"][0] / res["F_ab"][1])
 # opti.maximize(res["F_w"][1] / res["F_w"][0])
@@ -213,7 +221,8 @@ for wing in rig.wings:
     area += wing.area()
 
 opti.subject_to([
-    (area <= area0),
+    # (area <= area0),
+    # (resA["F_ab"][1] + resH["F_ab"][1]) == 0.,
 ])
 
 # {'F_ab': np.array([-370.36, -674.33,   27.  ])}
@@ -221,15 +230,17 @@ opti.subject_to([
 
 sol = opti.solve()
 
+print(sol((resA["F_ab"][0] + resH["F_ab"][0])))
+
 print(sol(op_point.mainsail_trim))
 print(sol(op_point.jib_trim))
-print(sol(op_point.mainsail_twist))
-print(sol(op_point.jibsail_twist))
+# print(sol(op_point.mainsail_twist))
+# print(sol(op_point.jibsail_twist))
 
-print(sol(res["F_ab"][0]))
+print(sol(resA["F_ab"][0]))
 
-print("CL", sol(res["CL"]))
-print("CD", sol(res["CD"]))
+print("CL", sol(resA["CL"]))
+print("CD", sol(resA["CD"]))
 
 # print(sol(aeroVLM.alpha))
 # print(aeroVLM.alphaeff)
@@ -244,5 +255,7 @@ print("CD", sol(res["CD"]))
 # # print(res)
 # # aeroVLM.draw_flow()
 aeroVLM.draw()
+
+sailboat.draw_flow()
 
 
