@@ -6,55 +6,7 @@ from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
 from archibald.toolbox.mesh_utils import load_stl
 
-#%% FUNCTIONS
-
-def waterplane_normal(
-        heel_deg: float,
-        trim_deg: float,
-    ) -> np.ndarray:
-    """
-    Compute the unit normal vector of the waterplane given heel and trim angles.
-
-    Parameters
-    ----------
-    heel_deg : float
-        Heel angle in degrees (rotation around ship longitudinal axis, roll).
-        Positive heel = starboard down.
-    trim_deg : float
-        Trim angle in degrees (rotation around ship transverse axis, pitch).
-        Positive trim = bow down.
-
-    Returns
-    -------
-    np.ndarray
-        Normal vector of the waterplane (unit vector, shape (3,)).
-    """
-
-    # Convert to radians
-    heel = np.deg2rad(heel_deg)
-    trim = np.deg2rad(trim_deg)
-
-    # Start with upright ship: waterplane normal is along +z
-    n = np.array([0.0, 0.0, 1.0])
-
-    # Rotation matrices
-    Rx = np.array([
-        [1, 0, 0],
-        [0, np.cos(heel), -np.sin(heel)],
-        [0, np.sin(heel), np.cos(heel)]
-    ])
-
-    Ry = np.array([
-        [np.cos(trim), 0, np.sin(trim)],
-        [0, 1, 0],
-        [-np.sin(trim), 0, np.cos(trim)]
-    ])
-
-    # Apply rotations: first trim (pitch), then heel (roll)
-    n_rot = Ry @ (Rx @ n)
-
-    # Normalize
-    return n_rot / np.linalg.norm(n_rot)
+from archibald.toolbox.math_utils import waterplane_normal
 
 #%% DATA
 

@@ -254,8 +254,8 @@ print("CD", sol(resA["CD"]))
 
 # # print(res)
 # # aeroVLM.draw_flow()
-aeroVLM.draw()
+# aeroVLM.draw()
 
-sailboat.draw_flow()
+sailboat.draw()
 
 
