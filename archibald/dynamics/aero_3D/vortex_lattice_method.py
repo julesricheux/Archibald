@@ -708,7 +708,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
             self.alpha,
             self.alphai,
             alpha_stall,
-        ) # 0 when stalled, 1 when laminar
+        ) # 0 when stalled, 1 when attached
         
         # when using soft wings, a negative vortex strength at the l.e. means stall
         
@@ -785,9 +785,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         magnitude_A = np.linalg.norm(le_normal, axis=1)
         magnitude_B = np.linalg.norm(self.strips_x, axis=1)
         
-        self.entrance_angle = np.arccosd(
+        self.entrance_angle = (np.arccosd(
             np.sum(le_normal * self.strips_x, axis=1) / (magnitude_A * magnitude_B)
-        ) - 90.
+        ) - 90.) / 2.
         
         # # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
         # # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
@@ -817,11 +817,13 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.alphaeff = self.alpha - self.alphai * self.stall_fac
         
+        # TODO find a better alternative
         self.soft_stall_fac = soft_stall_factor(
-            alpha=self.alphaeff,
+            # alpha=self.alphaeff,
+            alpha=self.alpha,
             alpha_e=self.entrance_angle,
             is_soft=self.is_soft[self.le_idx],
-        )
+        ) # 0 when stalled, 1 when attached
         
         self.nf_results = [
                 af.get_aero_from_neuralfoil(
@@ -877,29 +879,32 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.M_vec = np.multiply(tall(self.strips_M), wide(np.array([0., 0., 1.])))
                     
         visc_forces_geometry = np.array([
-            change_basis(x=self.D_vec[i,0],
-                          y=self.D_vec[i,1],
-                          z=self.D_vec[i,2],
-                          to_axes = self.strips_freestream_axes[i],
-                          )
+            change_basis(
+                x=self.D_vec[i,0],
+                y=self.D_vec[i,1],
+                z=self.D_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
             for i in range(self.total_spanwise_resolution)
         ])
         
         induced_forces_geometry = np.array([
-            change_basis(x=self.Di_vec[i,0],
-                          y=self.Di_vec[i,1],
-                          z=self.Di_vec[i,2],
-                          to_axes = self.strips_freestream_axes[i],
-                          )
+            change_basis(
+                x=self.Di_vec[i,0],
+                y=self.Di_vec[i,1],
+                z=self.Di_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
             for i in range(self.total_spanwise_resolution)
         ])
         
         lift_forces_geometry = np.array([
-            change_basis(x=self.L_vec[i,0],
-                          y=self.L_vec[i,1],
-                          z=self.L_vec[i,2],
-                          to_axes = self.strips_freestream_axes[i],
-                          )
+            change_basis(
+                x=self.L_vec[i,0],
+                y=self.L_vec[i,1],
+                z=self.L_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
             for i in range(self.total_spanwise_resolution)
         ])
         
@@ -949,296 +954,162 @@ class VortexLatticeMethod(ExplicitAnalysis):
         model_size: str = "medium",
     ) -> Dict[str, Any]:
         """
-        Computes the aerodynamic forces.
+        Computes the aerodynamic forces and moments.
+
+        Totals are the near-field (lift) contribution + viscous + induced.
 
         Returns a dictionary with keys:
 
-            - 'F_g' : an [x, y, z] list of forces in geometry axes [N]
-            - 'F_b' : an [x, y, z] list of forces in body axes [N]
-            - 'F_w' : an [x, y, z] list of forces in wind axes [N]
-            - 'M_g' : an [x, y, z] list of moments about geometry axes [Nm]
-            - 'M_b' : an [x, y, z] list of moments about body axes [Nm]
-            - 'M_w' : an [x, y, z] list of moments about wind axes [Nm]
-            - 'L' : the lift force [N]. Definitionally, this is in wind axes.
-            - 'Y' : the side force [N]. This is in wind axes.
-            - 'D' : the drag force [N]. Definitionally, this is in wind axes.
-            - 'l_b', the rolling moment, in body axes [Nm]. Positive is roll-right.
-            - 'm_b', the pitching moment, in body axes [Nm]. Positive is pitch-up.
-            - 'n_b', the yawing moment, in body axes [Nm]. Positive is nose-right.
-            - 'CL', the lift coefficient [-]. Definitionally, this is in wind axes.
-            - 'CY', the sideforce coefficient [-]. This is in wind axes.
-            - 'CD', the drag coefficient [-]. Definitionally, this is in wind axes.
-            - 'Cl', the rolling coefficient [-], in body axes
-            - 'Cm', the pitching coefficient [-], in body axes
-            - 'Cn', the yawing coefficient [-], in body axes
-            
-        # TODO: find a more specific way to compute alpha stall
+            - 'F_g'  : [x, y, z] force in geometry axes [N]
+            - 'F_w'  : [x, y, z] force in flow axes [N]
+            - 'F_ab' : [x, y, z] force in underway axes [N]
+            - 'M_g'  : [x, y, z] moment in geometry axes [Nm]
+            - 'M_w'  : [x, y, z] moment in flow axes [Nm]
+            - 'M_ab' : [x, y, z] moment in underway axes [Nm]
+            - 'L'    : lift force [N] (flow axes)
+            - 'D'    : total drag force, Di + Dv [N] (flow axes)
+            - 'Di'   : induced drag [N] (flow axes)
+            - 'Dv'   : viscous drag [N] (flow axes)
+            - 'Z'    : side force [N] (flow axes)
+            - 'CL', 'CD', 'CDi', 'CDv', 'CZ' : the corresponding coefficients [-]
+            - 'Cx', 'Cy' : force coefficients along underway-axes x and y [-]
 
-        Nondimensional values are nondimensionalized using reference values in the VortexLatticeMethod.planform object.
+        Nondimensional values use the reference values of the
+        VortexLatticeMethod.planform object and the freestream dynamic pressure.
+
+        Args:
+            alpha_stall: Stall angle of attack passed to the viscous model [deg].
+                TODO: find a more specific way to compute this.
+            model_size: Size preset passed to the viscous model.
         """
+        log = print if self.verbose else (lambda *args, **kwargs: None)
 
-        if self.verbose:
-            print("Meshing...")
-
+        # --- Mesh and solve ---
+        log("Meshing...")
         self.mesh_geometry()
 
-        ##### Setup Operating Point
-        if self.verbose:
-            print("Calculating the freestream influence...")
-            
+        log("Calculating the freestream influence...")
         freestream_influences = self.calculate_freestream_influences()
 
-        ##### Setup Geometry
-        ### Calculate AIC matrix
-        if self.verbose:
-            print("Calculating the collocation influence matrix...")
-
+        log("Calculating the collocation influence matrix...")
         AIC = self.calculate_vortices_influences()
 
-        ##### Calculate Vortex Strengths
-        if self.verbose:
-            print("Calculating vortex strengths...")
-
+        log("Calculating vortex strengths...")
         self.vortex_strengths = np.linalg.solve(AIC, -freestream_influences)
-        
-        ##### Calculate forces
-        ### Calculate Near-Field Forces and Moments
-        # Governing Equation: The force on a straight, small vortex filament is F = rho * cross(V, l) * gamma,
-        # where rho is density, V is the velocity vector, cross() is the cross product operator,
-        # l is the vector of the filament itself, and gamma is the circulation.
 
-        if self.verbose:
-            print("Calculating forces on each panel...")
-            
-        # Calculate the induced velocity at the center of each bound leg
+        # --- Near-field forces and moments ---
+        # Force on a straight vortex filament: F = rho * cross(V, l) * gamma
+        # (rho: density, V: velocity, l: filament vector, gamma: circulation).
+        # Everything here is in GEOMETRY axes.
+        log("Calculating forces on each panel...")
+
         V_centers = self.get_velocity_at_points(self.vortex_centers)
+        V_inf_centers = np.linalg.norm(
+            self.get_freestream_velocity_at_points(self.vortex_centers), axis=1
+        )
 
-        # Calculate forces_inviscid_geometry, the force on the ith panel. Note that this is in GEOMETRY AXES,
-        # not WIND AXES or BODY AXES.
-        Vi_cross_li = np.cross(V_centers, self.vortex_bound_leg, axis=1)
-        
-        # Vi_dot_ni = np.sum(V_centers * self.normal_directions, axis=1)
-        
+        # FIXME: this squares V component by component, then dots with n.
+        # Probably intended: (V . n / |V_inf|) ** 2, or the signed V . n / |V_inf|.
         Vi2_dot_ni = np.sum(
-            (
-                V_centers / tall(np.linalg.norm(self.get_freestream_velocity_at_points(self.vortex_centers), axis=1))
-            ) ** 2. * self.normal_directions,
+            (V_centers / tall(V_inf_centers)) ** 2. * self.normal_directions,
             axis=1
         )
-        
-        # self.insight = (1 - self.is_soft * np.sigmoid(
-        #     1. * (np.arccosd(
-        #         np.sum((V_centers / tall(np.linalg.norm(V_centers, axis=1))) * self.normal_directions, axis=1)
-        #     ) - 90.)
-        # ))
-        
         self.insight = np.sigmoid(self.sum_by_strips(tall(Vi2_dot_ni * self.areas)))
-        
 
+        Vi_cross_li = np.cross(V_centers, self.vortex_bound_leg, axis=1)
         forces_geometry = self.fluid.density * Vi_cross_li * tall(self.vortex_strengths)
         moments_geometry = np.cross(
-            np.add(self.vortex_centers, -wide(np.array(self.xyz_ref))),
+            np.add(self.vortex_centers, - wide(np.array(self.xyz_ref))),
             forces_geometry
         )
-        
+
         self.panels_forces = forces_geometry
         self.panels_moments = moments_geometry
-        
-        self.panels_normal_forces = tall(np.sum(self.panels_forces * self.normal_directions, axis=1)) * self.normal_directions
-        
-        normal_forces_norm = np.linalg.norm(self.panels_normal_forces, axis=1)
-        normal_forces_dir = np.sum(self.panels_normal_forces * self.normal_directions, axis=1) /normal_forces_norm
-        
-        self.dynamic_pressure = normal_forces_dir * normal_forces_norm / self.areas
+
+        # Signed normal component of each panel force (avoids the 0/0 of normalising)
+        normal_force = np.sum(forces_geometry * self.normal_directions, axis=1)
+        self.panels_normal_forces = tall(normal_force) * self.normal_directions
+
+        # NB: despite the name, this is the pressure difference across the panel,
+        # not a dynamic pressure. Kept for compatibility; consider renaming.
+        self.dynamic_pressure = normal_force / self.areas
         self.pressure_coef = self.dynamic_pressure / self.fluid_dynamic_pressure()
-        
-        if self.verbose:
-            print("Calculating viscous forces on each strip...")
-            
+
+        # --- Viscous / strip-based forces ---
+        # Must set: visc_*, induced_force_*, lift_force_*, lift_moment_*, visc_moment_*
+        log("Calculating viscous forces on each strip...")
         self.viscous_computation(alpha_stall, model_size)
-            
-        # Calculate total forces and moments
+
+        # --- Total VLM forces and moments in geometry axes ---
         force_geometry = np.sum(forces_geometry, axis=0)
         moment_geometry = np.sum(moments_geometry, axis=0)
-        
-        # centroid_geometry = np.sum(forces_geometry*vortex_centers, axis=0) / force_geometry
-        # centroid_geometry = np.dot(np.sum(forces_geometry, axis=1), vortex_centers) / np.sum(forces_geometry)
-        # centroid_geometry = np.dot(np.linalg.norm(forces_geometry, axis=1), self.vortex_centers) / np.sum(np.linalg.norm(forces_geometry, axis=1))
+        induced_moment_geometry = np.zeros(3)  # no induced moment contribution
 
-        self.force_wind = self.op_point.convert_axes(
-            force_geometry[0], force_geometry[1], force_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        self.visc_force_wind = self.op_point.convert_axes(
-            self.visc_force_geometry[0], self.visc_force_geometry[1], self.visc_force_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        self.induced_force_wind = self.op_point.convert_axes(
-            self.induced_force_geometry[0], self.induced_force_geometry[1], self.induced_force_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        self.lift_force_wind = self.op_point.convert_axes(
-            self.lift_force_geometry[0], self.lift_force_geometry[1], self.lift_force_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        self.moment_wind = self.op_point.convert_axes(
-            moment_geometry[0], moment_geometry[1], moment_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        self.visc_moment_wind = self.op_point.convert_axes(
-            self.visc_moment_geometry[0], self.visc_moment_geometry[1], self.visc_moment_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
-        
-        self.induced_moment_wind = 0.
-        
-        self.lift_moment_wind = self.op_point.convert_axes(
-            self.lift_moment_geometry[0], self.lift_moment_geometry[1], self.lift_moment_geometry[2],
-            from_axes="geometry",
-            to_axes="wind"
-        )
+        def convert(vec, axes):
+            """Convert a geometry-axes vector into `axes` and return an array."""
+            return np.array(self.op_point.convert_axes(
+                vec[0], vec[1], vec[2],
+                from_axes="geometry",
+                to_axes=axes,
+            ))
 
-        self.force_underway = self.op_point.convert_axes(
-            force_geometry[0], force_geometry[1], force_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        self.visc_force_underway = self.op_point.convert_axes(
-            self.visc_force_geometry[0], self.visc_force_geometry[1], self.visc_force_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        self.induced_force_underway = self.op_point.convert_axes(
-            self.induced_force_geometry[0], self.induced_force_geometry[1], self.induced_force_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        self.lift_force_underway = self.op_point.convert_axes(
-            self.lift_force_geometry[0], self.lift_force_geometry[1], self.lift_force_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        self.moment_underway = self.op_point.convert_axes(
-            moment_geometry[0], moment_geometry[1], moment_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        self.visc_moment_underway = self.op_point.convert_axes(
-            self.visc_moment_geometry[0], self.visc_moment_geometry[1], self.visc_moment_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        
-        self.induced_moment_underway = 0.
-        
-        self.lift_moment_underway = self.op_point.convert_axes(
-            self.lift_moment_geometry[0], self.lift_moment_geometry[1], self.lift_moment_geometry[2],
-            from_axes="geometry",
-            to_axes="underway"
-        )
-        
-        ### Save things to the instance for later access
-        self.forces_geometry = self.panels_forces
-        # self.visc_force_wind = visc_force_wind
+        # --- flow axes ---
+        self.force_wind          = convert(force_geometry, "flow")
+        self.visc_force_wind     = convert(self.visc_force_geometry, "flow")
+        self.induced_force_wind  = convert(self.induced_force_geometry, "flow")
+        self.lift_force_wind     = convert(self.lift_force_geometry, "flow")
+        self.moment_wind         = convert(moment_geometry, "flow")
+        self.visc_moment_wind    = convert(self.visc_moment_geometry, "flow")
+        self.induced_moment_wind = np.zeros(3)
+        self.lift_moment_wind    = convert(self.lift_moment_geometry, "flow")
+
+        # --- Underway axes ---
+        self.force_underway          = convert(force_geometry, "underway")
+        self.visc_force_underway     = convert(self.visc_force_geometry, "underway")
+        self.induced_force_underway  = convert(self.induced_force_geometry, "underway")
+        self.lift_force_underway     = convert(self.lift_force_geometry, "underway")
+        self.moment_underway         = convert(moment_geometry, "underway")
+        self.visc_moment_underway    = convert(self.visc_moment_geometry, "underway")
+        self.induced_moment_underway = np.zeros(3)
+        self.lift_moment_underway    = convert(self.lift_moment_geometry, "underway")
+
+        # --- Save to the instance for later access ---
+        self.forces_geometry = forces_geometry
         self.moments_geometry = moments_geometry
-        # self.centroid = centroid_geometry
         self.force_geometry = force_geometry
-        self.force_geometry = force_geometry
-        # self.force_wind = force_wind
         self.moment_geometry = moment_geometry
-        # self.moment_wind = moment_wind
-        # self.visc_moment_wind = visc_moment_wind
+        self.induced_moment_geometry = induced_moment_geometry
 
-        # Calculate dimensional forces
-        # L = self.force_wind[1]
-        L = (self.force_wind[1] + self.visc_force_wind[1])
-        Di = self.force_wind[0]
+        # --- Dimensional forces (flow axes: x = drag, y = lift, z = side) ---
+        # --- Total force/moment vectors (single source of truth) ---
+        F_w  = self.lift_force_wind     + self.visc_force_wind     + self.induced_force_wind
+        F_g  = self.lift_force_geometry + self.visc_force_geometry + self.induced_force_geometry
+        F_ab = self.lift_force_underway + self.visc_force_underway + self.induced_force_underway
+
+        M_w  = self.lift_moment_wind     + self.visc_moment_wind     + self.induced_moment_wind
+        M_g  = self.lift_moment_geometry + self.visc_moment_geometry + induced_moment_geometry
+        M_ab = self.lift_moment_underway + self.visc_moment_underway + self.induced_moment_underway
+
+        # --- Scalars derived from the vectors (flow axes: x = drag, y = lift, z = side) ---
+        D, L, Z = F_w[0], F_w[1], F_w[2]
         Dv = self.visc_force_wind[0]
-        D = Di + Dv
-        Z = self.force_wind[2] + self.visc_force_wind[2]
-        # l_b = moment_geometry[0]
-        # m_b = moment_geometry[1]
-        # n_b = moment_geometry[2]
-        Fx = (self.force_underway[0] + self.visc_force_underway[0])
-        Fy = (self.force_underway[1] + self.visc_force_underway[1])
-        
-        # Calculate nondimensional forces
-        q = self.fluid_dynamic_pressure()
-        s_ref = self.planform.s_ref
-        b_ref = self.planform.b_ref
-        c_ref = self.planform.c_ref
-        CL = L / q / s_ref
-        CDi = Di / q / s_ref
-        CDv = Dv / q / s_ref
-        CD = D / q / s_ref
-        CZ = Z / q / s_ref
-        Cx = Fx / q / s_ref
-        Cy = Fy / q / s_ref
-        # Cl = l_b / q / s_ref / b_ref
-        # Cm = m_b / q / s_ref / c_ref
-        # Cn = n_b / q / s_ref / b_ref
+        Di = D - Dv                      # everything that isn't viscous
+        # Or, if lift_force_wind[0] is NOT drag you want counted as induced:
+        # Di = self.induced_force_wind[0]
+        Fx, Fy = F_ab[0], F_ab[1]
+
+        q_s = self.fluid_dynamic_pressure() * self.planform.s_ref
+        CL, CD, CDi, CDv, CZ, Cx, Cy = (v / q_s for v in (L, D, Di, Dv, Z, Fx, Fy))
+
+        # Pure-VLM (linear, no stall model) values, kept for comparison
+        F_vlm_w = self.force_wind
 
         return {
-            # "centroid": centroid_geometry,
-            
-            "F_ab": self.lift_force_underway + self.visc_force_underway + self.induced_force_underway,
-            "Fvlm_ab": self.force_underway,
-            "Fnf_ab": self.lift_force_underway,
-            "Fv_ab": self.visc_force_underway,
-            "Find_ab": self.induced_force_underway,
-            
-            # "F_g": self.force_geometry + self.visc_force_geometry,
-            # "Fi_g": self.force_geometry,
-            # "Fv_g": self.visc_force_geometry,
-            
-            "F_w": self.lift_force_wind + self.visc_force_wind + self.induced_force_wind,
-            "Fvlm_w": self.force_wind,
-            "Fnf_w": self.lift_force_wind,
-            "Fv_w": self.visc_force_wind,
-            
-            "M_ab": self.lift_moment_underway + self.visc_moment_underway + self.induced_moment_underway,
-            "Mvlm_ab": self.moment_underway,
-            "Mnf_ab": self.lift_moment_underway,
-            "Mv_ab": self.visc_moment_underway,
-            "Mind_ab": self.induced_moment_underway,
-            
-            # "M_g": self.moment_geometry + self.visc_force_geometry,
-            # "Mi_g": self.moment_geometry,
-            # "Mv_g": self.visc_moment_geometry,
-            
-            "M_w": self.lift_moment_wind + self.visc_moment_wind + self.induced_moment_wind,
-            "Mvlm_w": self.moment_wind,
-            "Mnf_w": self.lift_moment_wind,
-            "Mv_w": self.visc_moment_wind,
-            "Mind_w": self.induced_force_wind,
-            
-            "L"  : L,
-            "D"  : D,
-            "Di" : Di,
-            "Dv" : Dv,
-            "Z"  : Z,
-            
-            # "l_b": l_b,
-            # "m_b": m_b,
-            # "n_b": n_b,
-            
-            "CL" : CL,
-            "CD" : CD,
-            "CDi": CDi,
-            "CDv": CDv,
-            "CZ" : CZ,
-            "Cx" : Cx,
-            "Cy" : Cy,
-            
-            # "Cl" : Cl,
-            # "Cm" : Cm,
-            # "Cn" : Cn,
+            "F_ab": F_ab, "F_g": F_g, "F_w": F_w,
+            "M_ab": M_ab, "M_g": M_g, "M_w": M_w,
+            "F_vlm_w": F_vlm_w, "F_vlm_g": self.force_geometry,
+            "L": L, "D": D, "Di": Di, "Dv": Dv, "Z": Z,
+            "CL": CL, "CD": CD, "CDi": CDi, "CDv": CDv, "CZ": CZ, "Cx": Cx, "Cy": Cy,
         }
 
     def run_with_stability_derivatives(self,
@@ -1266,19 +1137,19 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
                     - 'F_g' : an [x, y, z] list of forces in geometry axes [N]
                     - 'F_b' : an [x, y, z] list of forces in body axes [N]
-                    - 'F_w' : an [x, y, z] list of forces in wind axes [N]
+                    - 'F_w' : an [x, y, z] list of forces in flow axes [N]
                     - 'M_g' : an [x, y, z] list of moments about geometry axes [Nm]
                     - 'M_b' : an [x, y, z] list of moments about body axes [Nm]
-                    - 'M_w' : an [x, y, z] list of moments about wind axes [Nm]
-                    - 'L' : the lift force [N]. Definitionally, this is in wind axes.
-                    - 'Y' : the side force [N]. This is in wind axes.
-                    - 'D' : the drag force [N]. Definitionally, this is in wind axes.
+                    - 'M_w' : an [x, y, z] list of moments about flow axes [Nm]
+                    - 'L' : the lift force [N]. Definitionally, this is in flow axes.
+                    - 'Y' : the side force [N]. This is in flow axes.
+                    - 'D' : the drag force [N]. Definitionally, this is in flow axes.
                     - 'l_b', the rolling moment, in body axes [Nm]. Positive is roll-right.
                     - 'm_b', the pitching moment, in body axes [Nm]. Positive is pitch-up.
                     - 'n_b', the yawing moment, in body axes [Nm]. Positive is nose-right.
-                    - 'CL', the lift coefficient [-]. Definitionally, this is in wind axes.
-                    - 'CY', the sideforce coefficient [-]. This is in wind axes.
-                    - 'CD', the drag coefficient [-]. Definitionally, this is in wind axes.
+                    - 'CL', the lift coefficient [-]. Definitionally, this is in flow axes.
+                    - 'CY', the sideforce coefficient [-]. This is in flow axes.
+                    - 'CD', the drag coefficient [-]. Definitionally, this is in flow axes.
                     - 'Cl', the rolling coefficient [-], in body axes
                     - 'Cm', the pitching coefficient [-], in body axes
                     - 'Cn', the yawing coefficient [-], in body axes
@@ -1817,7 +1688,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
 
         """
         
-        # TRUE WIND SPEED
+        # TRUE flow SPEED
         twa = self.op_point.twa
         rot_mat = np.rotation_matrix_3D(twa*np.pi/180., np.array([0.,0.,1.]))
         
@@ -1832,7 +1703,7 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
         
         self.true_wind = true_wind_velocities
         
-        # FAIR WIND SPEED
+        # FAIR flow SPEED
         ship_speed_velocities = np.ones(points.shape) * np.array([-1., 0., 0.]) * self.op_point._stw
         
         # SUM

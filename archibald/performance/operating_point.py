@@ -503,15 +503,15 @@ class OperatingPoint():
 
         Both `from_axes` and `to_axes` should be a string, one of:
             * "geometry"
-            * "body"
-            * "wind"
+            * "underway"
+            * "flow"
             * "stability"
 
         This whole function is vectorized, both over the vector and the OperatingPoint (e.g., a vector of
         `OperatingPoint.alpha` values)
 
-        Wind axes rotations are taken from Eq. 6.7 in Sect. 6.2.2 of Drela's Flight Vehicle Aerodynamics textbook,
-        with axes corrections to go from [D, Y, L] to true wind axes (and same for geometry to body axes).
+        Flow axes rotations are taken from Eq. 6.7 in Sect. 6.2.2 of Drela's Flight Vehicle Aerodynamics textbook,
+        with axes corrections to go from [D, Y, L] to true flow axes (and same for geometry to body axes).
 
         Args:
             x_from: x-component of the vector, in `from_axes` frame.
@@ -527,48 +527,48 @@ class OperatingPoint():
             return x_from, y_from, z_from
 
         if from_axes == "geometry":
-            x_b = -x_from
-            y_b = -y_from
+            x_b = x_from
+            y_b = y_from
             z_b = z_from
         elif from_axes == "underway":
             x_b = x_from
             y_b = y_from
             z_b = z_from
-        elif from_axes == "wind":
+        elif from_axes == "flow":
             sa = np.sind(self.awa0)
             ca = np.cosd(self.awa0)
-            x_b = ca * x_from - sa * y_from
+            x_b = - ca * x_from + sa * y_from
             y_b = sa * x_from + ca * y_from
             z_b = z_from
-        elif to_axes == "stability":
-            sa = np.sind(self.awa0)
-            ca = np.cosd(self.awa0)
-            x_b = ca * x_from - sa * y_from
-            y_b = sa * x_from + ca * y_from
-            z_b = z_from
+        # elif to_axes == "stability":
+        #     sa = np.sind(self.awa0)
+        #     ca = np.cosd(self.awa0)
+        #     x_b = - ca * x_from + sa * y_from
+        #     y_b = sa * x_from + ca * y_from
+        #     z_b = z_from
         else:
             raise ValueError("Bad value of `from_axes`!")
 
         if to_axes == "geometry":
-            x_to = -x_b
-            y_to = -y_b
+            x_to = x_b
+            y_to = y_b
             z_to = z_b
         elif to_axes == "underway":
             x_to = x_b
             y_to = y_b
             z_to = z_b
-        elif to_axes == "wind":
+        elif to_axes == "flow":
             sa = np.sind(self.awa0)
             ca = np.cosd(self.awa0)
-            x_to = ca * x_b - sa * y_b
+            x_to = - ca * x_b + sa * y_b
             y_to = sa * x_b + ca * y_b
             z_to = z_from
-        elif to_axes == "stability":
-            sa = np.sind(self.awa0)
-            ca = np.cosd(self.awa0)
-            x_to = ca * x_b + sa * y_b
-            y_to = -sa * x_b + ca * y_b
-            z_to = z_b
+        # elif to_axes == "stability":
+        #     sa = np.sind(self.awa0)
+        #     ca = np.cosd(self.awa0)
+        #     x_to = ca * x_b + sa * y_b
+        #     y_to = -sa * x_b + ca * y_b
+        #     z_to = z_b
         else:
             raise ValueError("Bad value of `to_axes`!")
 
