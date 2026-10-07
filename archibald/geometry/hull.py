@@ -78,10 +78,14 @@ class Hull(ArchibaldObject):
             self,
             op_point: OperatingPoint,
         ):
+        
+        xh = np.mean(self.mesh.vertices[:, 0])
+        yh = np.mean(self.mesh.vertices[:, 1])
     
         # Bring the global water plane into the boat's local frame
         point = op_point.apply_transformations(
-            geometry=np.array([[0., 0., 0.]]), 
+            # geometry=np.array([[0., 0., 0.]]), 
+            geometry=np.array([[xh, yh, 0.]]), 
             inverse=True,
         )
         normal = op_point.apply_transformations(
