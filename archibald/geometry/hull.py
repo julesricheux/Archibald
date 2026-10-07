@@ -84,8 +84,8 @@ class Hull(ArchibaldObject):
     
         # Bring the global water plane into the boat's local frame
         point = op_point.apply_transformations(
-            # geometry=np.array([[0., 0., 0.]]), 
-            geometry=np.array([[xh, yh, 0.]]), 
+            # geometry=np.array([[0., 0., 0.]]),
+            geometry=np.array([[xh, yh, 0.]]),
             inverse=True,
         )
         normal = op_point.apply_transformations(
