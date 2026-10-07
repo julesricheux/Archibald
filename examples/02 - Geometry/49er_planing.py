@@ -43,13 +43,6 @@ DEFAULT_RESISTANCE_METHODS = {
 
 #%% DATA
 
-hullStl = r'data/49er_data/hull.stl'
-
-hull = Hull(
-    mesh=hullStl,
-)
-
-
 rho = 1025.
 displacement = 122. + 2*90. # kg
 
@@ -68,21 +61,28 @@ cog = np.array([
 T0, ref = 0., 0.200513
 # T0, ref = 0.01, 0.234148
 
+
 #%%
 
-
+overhang = 3.775 # deg for 49er
 
 opti = Opti()
 
+hullStl = r'data/49er_data/hull.stl'
+
+hull = Hull(
+    mesh=hullStl,
+)
+
 
 T = 3e-2
-trim = 5.
+trim = overhang + 2.
 
-T = opti.variable(init_guess = T)
-trim = opti.variable(init_guess = trim)
+T = opti.variable(init_guess=T)
+trim = opti.variable(init_guess=trim, lower_bound=overhang + 2.)
 
 op_point = OperatingPoint(
-    stw=10.,
+    stw=12.,
     dz=-T,
     trim=-trim,
 )
@@ -104,7 +104,7 @@ hull.compute_resistance(
     op_point,
     method=DEFAULT_RESISTANCE_METHODS["savitsky"],
     # **{'Csternchoice': 1, 'Bulbchoice': 0}
-    **{'trim': trim, 'deadrise': 10, "use_Aws": True}
+    **{'trim': trim - overhang, 'deadrise': 3, "use_Aws": True}
 )
     
 froude =  op_point._stw / np.sqrt(hull.hydrostatics_data["Lwl"] * 9.8066)
@@ -144,7 +144,7 @@ print(f"Dyn lift% =\t{sol(hull.resistance_components['Fz'] / (ref * rho * 9.8066
 print(f"Disp. =\t\t{sol(volume * rho * 9.8066 + hull.resistance_components["Fz"])} N")
 print()
 for r in ["Rf", "Rp", "Rtr", "Rsp", "Fz"]:
-    print(f"{r} =\t{sol(hrc[r]):.3f} N")
+    print(f"{r} = \t{sol(hrc[r]):.3f} N")
 
 # print(f"Volume : {sol(volume)*1000:.1f} L")
 # # print(f"Draft error : {sol(T-T0)/T0*100.:.1f} %")

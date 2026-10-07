@@ -50,15 +50,14 @@ T0, ref = 0., 0.200513
 
 #%%
 
-
+overhang = 3.775 # deg for 49er
 
 opti = Opti()
 
-
-T = 0.
+T = 0.0
 trim = 0.
 
-stw = np.linspace(2, 10.5, 50)
+stw = np.linspace(6., 14., 50)
 
 Rf = []
 Rw = []
@@ -106,6 +105,11 @@ R = np.asarray(R)
 
 fig, ax = plt.subplots(figsize=(8, 5))
 
+b = 1.1228946447372437
+L = 4.8577
+
+stw = stw * 0.5144 / np.sqrt(b * 9.8066)
+
 ax.fill_between(
     stw,
     0,
@@ -142,6 +146,9 @@ ax.set_ylabel("Resistance [N]")
 ax.set_xlim(stw[0], stw[-1])
 # ax.grid(True, alpha=0.2)
 ax.legend()
+
+plt.xlim(stw[0], stw[-1])
+plt.ylim(0, 300)
 
 fig.tight_layout()
 plt.show()

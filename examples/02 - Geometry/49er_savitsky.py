@@ -69,10 +69,12 @@ T0, ref = 0., 0.200513
 
 #%%
 
-T = 0.06
-trim = 2.
+overhang = 3.775 # deg for 49er
 
-stw = np.linspace(9., 20., 50)
+T = 0.133
+trim = 2. + overhang
+
+stw = np.linspace(6., 14., 50)
 
 Rf = []
 Rp = []
@@ -102,8 +104,8 @@ for s in stw:
         op_point,
         method=DEFAULT_RESISTANCE_METHODS["savitsky"],
         **{
-            "trim": trim,
-            "deadrise": 10.,
+            "trim": trim - overhang,
+            "deadrise": 3.,
             "use_Aws": True,
         },
     )
@@ -133,6 +135,11 @@ R = np.asarray(R)
 #%% PLOT
 
 fig, ax = plt.subplots(figsize=(8, 5))
+
+b = 1.1228946447372437
+L = 4.8577
+
+stw = stw * 0.5144 / np.sqrt(b * 9.8066)
 
 ax.fill_between(
     stw,
@@ -175,8 +182,11 @@ ax.plot(
 
 ax.set_xlabel("STW [kn]")
 ax.set_ylabel("Resistance [N]")
-ax.grid(True, alpha=0.2)
+# ax.grid(True, alpha=0.2)
 ax.legend()
+
+plt.xlim(stw[0], stw[-1])
+plt.ylim(0, 300)
 
 fig.tight_layout()
 plt.show()
