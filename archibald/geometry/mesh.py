@@ -1155,9 +1155,6 @@ class ArchibaldMesh(ArchibaldObject):
         #     alpha=soft_alpha,
         # )
         
-        print(v_max)
-        print(v_min)
-        
         Lwl   = u_max - u_min
         Bwl   = v_max - v_min
         u_fpp = u_max

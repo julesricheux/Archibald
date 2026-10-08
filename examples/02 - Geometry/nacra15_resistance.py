@@ -9,6 +9,7 @@ import os
 
 import archibald.numpy as np
 
+from archibald.dynamics.hydro import holtrop, michell
 from archibald.geometry import Hull, Sailboat
 from archibald.performance import OperatingPoint
 
@@ -35,10 +36,14 @@ nacra = Sailboat(
 # nacra.draw()
 
 op_point = OperatingPoint(
-    stw=10.,
+    stw=20,
+    heel=2.,
 )
 
+# nacra.transform(op_point)
+
 for hull in hulls:
+    hull.mesh.transform(op_point)
     hull.compute_hydrostatics_properties(op_point)
     
 hull.mesh.draw(
@@ -49,5 +54,47 @@ hull.mesh.draw(
 )
 
 
-# TODO compute the resistance for the two hulls via the Sailboat class
-# TODO compute the interactions the two hulls via the Sailboat class
+# Individual resistance of each hull, then interaction between the two hulls,
+# both through the Sailboat class. The hull positions are read from the STL
+# files, which must therefore be expressed in the common boat frame.
+for interaction in ("michell", "michell_raw"):
+    
+    nacra.compute_resistance(
+        op_point,
+        method="holtrop",
+        interaction=interaction,
+        **{'Csternchoice': 1, 'Bulbchoice': 0}
+    )
+    
+    print(interaction)
+    # for hull in nacra.hulls:
+    #     print(hull.name, hull.resistance_components)
+    print("interactions")
+    print(nacra.hull_interaction['dR_hull'], nacra.hull_interaction['dR'])
+    # print(nacra.forces["Fh"])
+    print()
+
+# Slender hulls: Michell wave resistance for each hull (equivalent hull built
+# from the hydrostatics) with the Holtrop friction, as a custom process.
+custom_process = {
+    "Rf": holtrop.compute_Rf_holtrop,
+    "Rw": michell.compute_Rw_michell,
+}
+
+nacra.compute_resistance(
+    op_point,
+    method=custom_process,
+    interaction="michell",
+    **{'Csternchoice': 1, 'Bulbchoice': 0}
+)
+print("Michell")
+print(nacra.forces["Fh"])
+
+# No interaction, for comparison
+nacra.compute_resistance(
+    op_point,
+    method="holtrop",
+    **{'Csternchoice': 1, 'Bulbchoice': 0}
+)
+print("Holtrop")
+print(nacra.forces["Fh"])

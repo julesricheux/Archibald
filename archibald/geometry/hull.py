@@ -10,6 +10,7 @@ import archibald.toolbox.units as u
 
 import archibald.dynamics.hydro.dsyhs as dsyhs
 import archibald.dynamics.hydro.holtrop as holtrop
+import archibald.dynamics.hydro.michell as michell
 
 from typing import Union, List
 from archibald.common import ArchibaldObject
@@ -30,6 +31,13 @@ DEFAULT_RESISTANCE_METHODS = {
         "Rb": holtrop.compute_Rb_holtrop,
         "Rtr": holtrop.compute_Rtr_holtrop,
         "Ra": holtrop.compute_Ra_holtrop,
+    },
+    # Slender hulls: Michell thin-ship wave resistance on an equivalent hull
+    # built from the hydrostatics, with the Holtrop friction (needs the same
+    # extra kwargs as "holtrop", e.g. Csternchoice).
+    "michell": {
+        "Rf": holtrop.compute_Rf_holtrop,
+        "Rw": michell.compute_Rw_michell,
     },
 }
 
@@ -100,6 +108,20 @@ class Hull(ArchibaldObject):
         # volume, cob = _temp.hydrostatics()
         
         self.hydrostatics_data = self.mesh.hydrostatics(point, normal)
+        
+    def get_position(
+            self,
+            op_point: OperatingPoint,
+        ):
+        """
+        Position (x, y) [m] of the hull centre of buoyancy in the water axes,
+        i.e. with the heel, trim and leeway of the operating point applied.
+        Used to compute the interaction between the hulls of a multihull.
+        Hydrostatics must have been computed beforehand.
+        """
+        cob = op_point.apply_transformations(self.hydrostatics_data['cob'])
+        cob = np.reshape(cob, (-1,))
+        return cob[0], cob[1]
         
     def compute_buoyancy(
             self,
@@ -268,4 +290,11 @@ if __name__=="__main__":
     )
     print(hull.resistance_components)
     
+    hull.compute_resistance(
+        op_point,
+        method="michell",
+        **{'Csternchoice': 1, 'Bulbchoice': 0}
+    )
+    print(hull.resistance_components)
     
+    print(hull.get_position(op_point))

@@ -22,6 +22,7 @@ from archibald.geometry.mesh import ArchibaldMesh
 from archibald.performance.operating_point import OperatingPoint
 
 from archibald.dynamics.aero_3D import HydroVortexLatticeMethod, AeroVortexLatticeMethod
+from archibald.dynamics.hydro import multihull
 
 import archibald.numpy as np
 import archibald.toolbox.units as u
@@ -64,6 +65,7 @@ class Sailboat(ArchibaldObject):
         
         self.forces = {}
         self.moments = {}
+        self.hull_interaction = None
         
     def compute_aerodynamics(
             self,
@@ -122,15 +124,88 @@ class Sailboat(ArchibaldObject):
             self.moments["Mb"] += Mb_i
             
             
+    def compute_hull_interaction(
+            self,
+            op_point: OperatingPoint,
+            method: Union[str, Dict] = "michell",
+            positions: Optional[List] = None,
+            **kwargs,
+        ):
+        """
+        Interaction resistance between the hulls of the boat.
+        
+        The hydrostatics of every hull must have been computed beforehand
+        (``compute_buoyancy`` or ``hull.compute_hydrostatics_properties``) and,
+        for the calibrated / tabulated methods, so must the individual
+        resistances (``hull.compute_resistance``).
+        
+        The interference of each hull is applied as a drag force along -x at the
+        hull centre of water, as done in ``Hull.compute_resistance``.
+        
+        Parameters
+        ----------
+        op_point : OperatingPoint
+        method : str or dict, key of ``multihull.INTERACTION_METHODS`` or custom dict.
+        positions : list of (x, y) or None, hull positions, default from ``hull.get_position``.
+        **kwargs : method parameters (``calibrate``, ``fn_grid``, ``tau_table``...).
+        
+        Returns
+        -------
+        dict, ``dRw`` (n x n), ``dRf``, ``dR_hull`` and ``dR`` [N].
+        """
+        self.hull_interaction = multihull.compute_hull_interaction(
+            self.hulls,
+            op_point,
+            method=method,
+            positions=positions,
+            **kwargs,
+        )
+        
+        self.forces["Fi"] = wide(np.zeros(3))
+        self.moments["Mi"] = wide(np.zeros(3))
+        
+        for i, hull in enumerate(self.hulls):
+            center = op_point.apply_transformations(hull.hydrostatics_data['cow'])
+            
+            Fi_i = wide(np.array([
+                -1.,
+                0.,
+                0.,
+            ])) * self.hull_interaction["dR_hull"][i]
+            Mi_i = np.cross(center, Fi_i)
+            
+            self.forces[f"Fi_{i}"] = Fi_i
+            self.moments[f"Mi_{i}"] = Mi_i
+            
+            self.forces["Fi"] += Fi_i
+            self.moments["Mi"] += Mi_i
+            
+        return self.hull_interaction
+            
+            
     def compute_resistance(
             self,
             op_point: OperatingPoint,
             method: str,
             recompute_statics: bool = True,
+            interaction: Optional[Union[str, Dict]] = None,
+            interaction_kwargs: Optional[Dict] = None,
             **kwargs,
         ):
+        """
+        Resistance of the hulls, computed individually, plus their interaction.
+        
+        Parameters
+        ----------
+        method : str or dict, individual resistance method (see ``Hull.compute_resistance``).
+        interaction : str, dict or None, interaction method between hulls (see
+            ``compute_hull_interaction``). None: hulls are independent.
+        interaction_kwargs : dict, parameters of the interaction method.
+        **kwargs : parameters of the individual resistance method.
+        """
         self.forces["Fh"] = wide(np.zeros(3))
         self.moments["Mh"] = wide(np.zeros(3))
+        self.hull_interaction = None
         
         for i, hull in enumerate(self.hulls):
             Fb_i, Mb_i = hull.compute_resistance(
@@ -145,12 +220,23 @@ class Sailboat(ArchibaldObject):
             self.forces["Fh"] += Fb_i
             self.moments["Mh"] += Mb_i
             
+        if interaction is not None and len(self.hulls) > 1:
+            self.compute_hull_interaction(
+                op_point=op_point,
+                method=interaction,
+                **(interaction_kwargs or {}),
+            )
+            self.forces["Fh"] += self.forces["Fi"]
+            self.moments["Mh"] += self.moments["Mi"]
+            
         
     def compute_torsor(
             self,
             op_point: OperatingPoint,
             method: str,
             recompute_statics: bool = True,
+            interaction: Optional[Union[str, Dict]] = None,
+            interaction_kwargs: Optional[Dict] = None,
             **kwargs,
         ):
         self.compute_aerodynamics(op_point)
@@ -161,6 +247,8 @@ class Sailboat(ArchibaldObject):
             op_point=op_point,
             method=method,
             recompute_statics=recompute_statics,
+            interaction=interaction,
+            interaction_kwargs=interaction_kwargs,
             **kwargs,
         )
         
@@ -536,4 +624,3 @@ class Sailboat(ArchibaldObject):
             "sol_object": sol, # Keep underlying sol object if user wants to query inner forces
             "success": True
         }
-

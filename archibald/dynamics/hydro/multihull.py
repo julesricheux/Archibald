@@ -38,45 +38,35 @@ INTERACTION_METHODS = {
 
 #%% SAILBOAT-LEVEL ENTRY POINT
 
-def get_hull_position(hull):
-    """Position (x, y) [m] of the centre of buoyancy of a hull in the boat frame.
-
-    Single place to adapt to the actual ``Hull`` API: first ``hull.position``,
-    then ``hull.hydrostatics_data['cb']`` (only the first two components).
-    """
-    pos = getattr(hull, "position", None)
-    if pos is None:
-        pos = hull.hydrostatics_data["cb"]
-    return pos[0], pos[1]
-
-
 def compute_hull_interaction(
-        hulls,  # TODO Sailboat method: replace by ``self`` and start with ``hulls = self.hulls``
+        hulls,
         op_point,
         method="michell",
         positions=None,
-        rho=1025.,
-        g=9.81,
-        nu=1.189e-6,
+        rho=None,
+        g=None,
+        nu=None,
         **kwargs,
     ):
     """Interaction resistance between the hulls of a multihull.
 
+    Called by ``Sailboat.compute_hull_interaction`` with ``self.hulls``.
+
     Requires, for every hull, ``hull.hydrostatics_data`` (hydrostatics already
-    computed) and, for the calibrated / tabulated methods,
+    computed) and, for the calibrated Michell and the tabulated methods,
     ``hull.resistance_components`` (individual resistance already computed).
 
     Parameters
     ----------
     hulls : list of Hull, Hulls with computed hydrostatics.
-    op_point : OperatingPoint, Operating point (only ``stw`` is used).
+    op_point : OperatingPoint, Operating point (``stw`` and ``environment`` are used).
     method : str or dict, A key of ``INTERACTION_METHODS`` or a custom dict
         ``{"Rw": callable, "Rf": callable}``.
     positions : list of (x, y) or None, Hull positions [m]; if None, read with
-        :func:`get_hull_position`.
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
-    nu : float, Kinematic viscosity of water [m²/s].
+        ``hull.get_position(op_point)``.
+    rho : float or None, Water density [kg/m³]; default from ``op_point.environment``.
+    g : float or None, Gravitational acceleration [m/s²]; default from ``op_point.environment``.
+    nu : float or None, Kinematic viscosity [m²/s]; default from ``op_point.environment``.
     **kwargs : Method parameters (``calibrate``, ``fn_grid``, ``sl_grid``, ``tau_table``...).
 
     Returns
@@ -90,22 +80,27 @@ def compute_hull_interaction(
     n = len(hulls)
     process = INTERACTION_METHODS[method] if isinstance(method, str) else method
 
+    env = op_point.environment
+    rho = env.water.density if rho is None else rho
+    nu = env.water.kinematic_viscosity if nu is None else nu
+    g = env.gravity if g is None else g
+
     # Flat per-hull lists of every hydrostatic value shared by all hulls
     common = set.intersection(*[set(h.hydrostatics_data) for h in hulls])
-    data = {k: [h.hydrostatics_data[k] for h in hulls] for k in common}
+    args = {k: [h.hydrostatics_data[k] for h in hulls] for k in common}
 
     if positions is None:
-        positions = [get_hull_position(h) for h in hulls]
-    data["x"] = [p[0] for p in positions]
-    data["y"] = [p[1] for p in positions]
+        positions = [h.get_position(op_point) for h in hulls]
+    args["x"] = [p[0] for p in positions]
+    args["y"] = [p[1] for p in positions]
 
     # Individual resistances, if already computed
     comps = [getattr(h, "resistance_components", None) for h in hulls]
     for key in ("Rw", "Rf"):
         if all(c is not None and key in c for c in comps):
-            data[key] = [c[key] for c in comps]
+            args[key] = [c[key] for c in comps]
 
-    args = dict(stw=op_point.stw, rho=rho, g=g, nu=nu, **data)
+    args.update(stw=op_point.stw, rho=rho, g=g, nu=nu)
     args.update(kwargs)
 
     dRw = [[0. for _ in range(n)] for _ in range(n)]
