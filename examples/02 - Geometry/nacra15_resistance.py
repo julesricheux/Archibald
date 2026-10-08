@@ -37,7 +37,7 @@ nacra = Sailboat(
 
 op_point = OperatingPoint(
     stw=20,
-    # heel=5.,
+    heel=5.,
 )
 
 # nacra.transform(op_point)
@@ -67,8 +67,9 @@ for interaction in ("michell", "michell_raw"):
     )
     
     print(interaction)
-    # for hull in nacra.hulls:
-    #     print(hull.name, hull.resistance_components)
+    print("components")
+    for hull in nacra.hulls:
+        print(hull.name, hull.resistance_components)
     print("interactions")
     print(nacra.hull_interaction['dR_hull'], nacra.hull_interaction['dR'])
     # print(nacra.forces["Fh"])
