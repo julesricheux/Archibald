@@ -849,7 +849,11 @@ class ArchibaldMesh(ArchibaldObject):
         if self._data['tetrahedron_centers'] is None:
             self.compute_tetrahedron_centers()
         
-        tetra_centers = self._data['tetrahedron_centers']
+        # compute_tetrahedron_centers() gives the centroid of the tetrahedra
+        # whose apex is the origin: (v0 + v1 + v2) / 4. The volumes above are
+        # signed with respect to ref_point, so the apex is ref_point and the
+        # centroid is (ref_point + v0 + v1 + v2) / 4, hence the ref_point / 4 term.
+        tetra_centers = self._data['tetrahedron_centers'] + wide(ref_point) / 4.0
         tetra_volumes = tall(self._data['tetrahedron_volumes']) * tall(weight)
         
         # Weighted sum of centroids by volumes to get the total center of mass
@@ -1234,8 +1238,10 @@ class ArchibaldMesh(ArchibaldObject):
         Cwp = Awp    / (Lwl  * Bwl      + 1e-12)   # waterplane area coefficient
         
         ### Additional distances and lengths
-        cob_u    = (wide(cob) @ tall(ux))
-        cof_u    = (wide(cof) @ tall(ux))
+        # u_fpp is measured from the waterplane reference point, so cob and cof
+        # must be taken relative to it as well
+        cob_u    = (np.add(wide(cob), -point) @ tall(ux))
+        cof_u    = (np.add(wide(cof), -point) @ tall(ux))
 
         LCB_fpp  = u_fpp - cob_u # lcb from fpp / m
         LCF_fpp  = u_fpp - cof_u # lcf from fpp / m

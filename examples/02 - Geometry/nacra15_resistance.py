@@ -37,13 +37,13 @@ nacra = Sailboat(
 
 op_point = OperatingPoint(
     stw=20,
-    heel=2.,
+    # heel=5.,
 )
 
 # nacra.transform(op_point)
 
 for hull in hulls:
-    hull.mesh.transform(op_point)
+    # hull.mesh.transform(op_point)
     hull.compute_hydrostatics_properties(op_point)
     
 hull.mesh.draw(
@@ -63,7 +63,7 @@ for interaction in ("michell", "michell_raw"):
         op_point,
         method="holtrop",
         interaction=interaction,
-        **{'Csternchoice': 1, 'Bulbchoice': 0}
+        **{'Csternchoice': 1, 'Bulbchoice': 0},
     )
     
     print(interaction)
