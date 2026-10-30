@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "archibald"
+version = "0.1.0"
+description = "Core computational and geometry processing library for Archibald."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+	{ name = "Jules Richeux", email = "j.richeux@neoline.eu" }
+]
+classifiers = [
+	"Programming Language :: Python :: 3.13",
+	"License :: OSI Approved :: MIT License",
+	"Operating System :: OS Independent",
+]
+dependencies = [
+	"numpy",
+	"scipy",
+	"pandas",
+	"matplotlib",
+	"sympy",
+	"cython",
+	"casadi",
+	"trimesh",
+	"ezdxf",
+	"mapbox-earcut",
+	"polars",
+	"sortedcontainers",
+	"dill",
+	"neuralfoil",
+]
+
+[tool.setuptools.packages.find]
+include = ["archibald*"]

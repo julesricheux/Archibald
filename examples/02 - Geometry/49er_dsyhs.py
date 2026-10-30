@@ -185,7 +185,7 @@ ax.set_xlim(stw[0], stw[-1])
 ax.legend()
 
 plt.xlim(stw[0], stw[-1])
-plt.ylim(0, 90)
+plt.ylim(0, 70)
 
 fig.tight_layout()
 plt.show()
