@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       git_ref:
-        description: 'v1.0.0'
+        description: 'Git tag or commit to build and publish'
         required: true
         type: string
 
@@ -39,7 +39,7 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-publish-to-pypi:
+  publish-to-pypi:
     name: Publish Python distribution 📦 to PyPI
     needs: build
     runs-on: ubuntu-24.04
@@ -51,7 +51,7 @@ publish-to-pypi:
 
     steps:
       - name: Download distribution artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
