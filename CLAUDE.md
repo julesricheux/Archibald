@@ -48,7 +48,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 
 ## Sailboat torsors
 
-Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Fprop` propellers, `Ftot` total. `Fh` includes `Fi` when `compute_resistance` computed the interaction; `compute_torsor` sums elements, so it does not count it twice.
+Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Flat` hull lateral force, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Fprop` propellers, `Ftot` total. `Fh` includes `Fi` when `compute_resistance` computed the interaction; `compute_torsor` sums elements, so it does not count it twice.
 
 - **Shapes:** results are `(1, 3)` "wide" arrays, built with `wide()`. Moments are `np.cross(center, F)`. Index totals as `Ftot[0, i]`.
 - **CasADi pitfall:** `(1x3) + (3x1)` raises in CasADi but broadcasts in NumPy, so keep everything wide. Prefer `x = x + y` to `+=` in accumulators.
@@ -72,7 +72,7 @@ opti.subject_to(boat.propellers[0].performance["BHP"] <= 500e3)     # other cons
 sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fz", "Mx", "My"])  # what is balanced, then solve
 ```
 
-- `compute_torsor(op_point, components=None, exclude=None)` takes groups (`w`, `b`, `h`, `i`, `aa`, `sail`, `app`, `prop`) or elements (`w_1`, `aa_crew`). Default is all that was computed. It lists what it summed in `boat.torsor_elements`. Typos, components asked for but not computed, and included groups computed with another `OperatingPoint` object all raise.
+- `compute_torsor(op_point, components=None, exclude=None)` takes groups (`w`, `b`, `h`, `i`, `lat`, `aa`, `sail`, `app`, `prop`) or elements (`w_1`, `aa_crew`). Default is all that was computed. It lists what it summed in `boat.torsor_elements`. Typos, components asked for but not computed, and included groups computed with another `OperatingPoint` object all raise.
 - `find_equilibrium` and `equilibrium_residuals` are static and take `Ftot`, `Mtot` explicitly, so external terms go in as `Ftot + Ffoil`. Call `find_equilibrium` once per `Opti`, since each call adds its constraints.
 - Bounds are ordinary constraints that iterates can violate. Pass `detect_simple_bounds=True` when leaving them is catastrophic, such as a negative speed in a resistance polynomial.
 
@@ -86,6 +86,11 @@ Weight:
 - `displacement` and `cog` still work and act as a single mass when `masses` is empty. Passing `masses` with `displacement` raises `ValueError`.
 - A boat with neither has zero weight, with no warning.
 - `sum(boat.masses)` gives total mass, CoG and inertia.
+
+Lateral force:
+- `compute_lateral_force(op_point, method)` on `Hull` and `Sailboat`, like the resistance, with `DEFAULT_LATERAL_METHODS` in `hull.py` and functions in `dynamics/hydro/` (`jones`, `inoue`, `kijima`). Components are `L` (normal to the flow), `Ri` (along it) and `N` (yaw moment about amidships). The force is horizontal, and +leeway gives +y and -x, like a fin.
+- Added resistance is separate from `compute_resistance`, so it is summed once. Each method's assumptions and sources are in its module. Keep them sourced: coefficients found only from memory stay out.
+- Inoue and Kijima are fitted on merchant ships. On the Molenez, the Kijima `N'beta` is negative, so the force acts aft of amidships, against the Munk moment expected of a hull: this comes from extrapolating the regression, so do not trust the yaw moment there.
 
 Hydrostatics:
 - `Hull.compute_buoyancy` never moves the mesh. It brings the water plane into the hull frame instead.

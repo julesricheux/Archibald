@@ -72,6 +72,7 @@ boat.compute_resistance(
     op_point,
     method={
         "Rf": dsyhs.compute_Rf_dsyhs,
+        "Rw": dsyhs.compute_Rw_dsyhs,
         "Rtr": dsyhs.compute_Rtr_dsyhs,
     },
     Csternchoice=1,

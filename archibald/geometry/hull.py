@@ -11,6 +11,9 @@ import archibald.toolbox.units as u
 import archibald.dynamics.hydro.dsyhs as dsyhs
 import archibald.dynamics.hydro.holtrop as holtrop
 import archibald.dynamics.hydro.michell as michell
+import archibald.dynamics.hydro.jones as jones
+import archibald.dynamics.hydro.inoue as inoue
+import archibald.dynamics.hydro.kijima as kijima
 
 import archibald.dynamics.aero.orc as orc
 import archibald.dynamics.aero.day as day
@@ -42,6 +45,29 @@ DEFAULT_RESISTANCE_METHODS = {
     "michell": {
         "Rf": holtrop.compute_Rf_holtrop,
         "Rw": michell.compute_Rw_michell,
+    },
+}
+
+
+# Lateral force methods. "L" is the lift normal to the flow [N], "Ri" the added
+# resistance along the flow [N], and "N" the yaw moment about amidships [N.m].
+# Sources are in each module. Without "N", the force acts amidships.
+DEFAULT_LATERAL_METHODS = {
+    # Low aspect ratio wing theory: Jones (1946).
+    "jones": {
+        "L": jones.compute_L_jones,
+        "Ri": jones.compute_Ri_jones,
+    },
+    # Merchant ships: Inoue, Hirano and Kijima (1981), linear.
+    "inoue": {
+        "L": inoue.compute_L_inoue,
+        "Ri": inoue.compute_Ri_inoue,
+    },
+    # Merchant ships: Kijima and Nakiri (2003), nonlinear, with the yaw moment.
+    "kijima": {
+        "L": kijima.compute_L_kijima,
+        "Ri": kijima.compute_Ri_kijima,
+        "N": kijima.compute_N_kijima,
     },
 }
 
@@ -99,8 +125,9 @@ class Hull(ArchibaldObject):
         self.hydrostatics_data = {}
         self.aerostatics_data = {}
         self.resistance_components = {}
+        self.lateral_components = {}
         self.windage_components = {}
-        
+
     def __repr__(self):
         return f"Hull object '{self.name}'"
     
@@ -285,10 +312,121 @@ class Hull(ArchibaldObject):
         ])) * R
         
         Mh = np.cross(center, Fh)
-        
+
         return Fh, Mh
-        
-        
+
+
+    def compute_lateral_force_components(
+            self,
+            op_point: OperatingPoint,
+            method: Union[str, dict] = "kijima",
+            recompute_statics: bool = True,
+            **kwargs,
+        ):
+        """
+        Components of the lateral force of the hull at the leeway of the operating point.
+
+        Parameters
+        ----------
+        op_point : operating point. Positive leeway is to starboard.
+        method : str, a key of ``DEFAULT_LATERAL_METHODS``, or dict of functions
+            named among "L", "Ri" and "N", so that methods can be mixed.
+        recompute_statics : bool, recompute the hydrostatics of the hull.
+        **kwargs : parameters of the method.
+
+        Returns
+        -------
+        dict with the lift "L" [N], the added resistance "Ri" [N], and the yaw
+        moment "N" [N.m] when the method gives one.
+        """
+        if recompute_statics:
+            self.compute_hydrostatics_properties(op_point)
+
+        if type(method)==str and method in DEFAULT_LATERAL_METHODS.keys():
+            process = DEFAULT_LATERAL_METHODS[method]
+        elif type(method)==dict:
+            process = method
+        elif type(method)==str:
+            raise NotImplementedError(
+                f"Unknown method '{method}'. Should be in {list(DEFAULT_LATERAL_METHODS.keys())} or a custom dictionary of methods.")
+        else:
+            raise TypeError("method argument should be str or dict")
+
+        unknown = set(process) - {"L", "Ri", "N"}
+        if unknown:
+            raise ValueError(f"Unknown components {sorted(unknown)}. They should be among 'L', 'Ri' and 'N'.")
+
+        env_params = {
+            'g': op_point.environment.gravity,                          # m/s^2
+            'nu': op_point.environment.water.kinematic_viscosity,       # m^2/s
+            'rho': op_point.environment.water.density,                  # kg/m^3
+        }
+
+        state_params = {
+            'V': op_point.stw * u.kt,               # m/s
+            'beta': np.radians(op_point.leeway),    # rad
+        }
+
+        return {
+            name: func(**self.hydrostatics_data, **env_params, **state_params, **kwargs)
+            for name, func in process.items()
+        }
+
+
+    def compute_lateral_force(
+            self,
+            op_point: OperatingPoint,
+            method: Union[str, dict] = "kijima",
+            recompute_statics: bool = True,
+            **kwargs,
+        ):
+        """
+        Lateral force and added resistance of the hull, in the boat motion frame.
+
+        The force stays horizontal: the methods are for an upright hull, so heel
+        is only seen through the hydrostatics. It is applied amidships, at the
+        height of the wetted surface centroid.
+
+        Parameters
+        ----------
+        Same as ``compute_lateral_force_components``, stored in ``lateral_components``.
+
+        Returns
+        -------
+        Flat, Mlat : force [N] and moment [N.m] about the frame origin, of shape (1, 3).
+        """
+        self.lateral_components = self.compute_lateral_force_components(
+            op_point=op_point,
+            method=method,
+            recompute_statics=recompute_statics,
+            **kwargs
+        )
+        components = self.lateral_components
+
+        cow = self.hydrostatics_data['cow']
+        fpp = self.hydrostatics_data['fpp']
+        app = self.hydrostatics_data['app']
+        center = op_point.apply_transformations(wide(np.array([
+            (fpp[0, 0] + app[0, 0]) / 2.,
+            cow[0, 1],
+            cow[0, 2],
+        ])))
+
+        Flat = wide(np.array([
+            -components.get("Ri", 0.),
+            components.get("L", 0.),
+            0.,
+        ]))
+
+        Mlat = np.cross(center, Flat) + wide(np.array([
+            0.,
+            0.,
+            components.get("N", 0.),
+        ]))
+
+        return Flat, Mlat
+
+
     def compute_windage_components(
             self,
             op_point: OperatingPoint,
