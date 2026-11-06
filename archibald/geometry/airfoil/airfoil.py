@@ -900,7 +900,7 @@ class Airfoil(Polygon):
                 )
 
         elif backend == "plotly":
-            from archibald.visualization.plotly import go
+            from archibald.toolbox.visualization.plotly_utils import go
 
             fig = go.Figure()
             fig.add_trace(

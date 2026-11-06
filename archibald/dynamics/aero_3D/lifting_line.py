@@ -1132,7 +1132,7 @@ class LiftingLine(ExplicitAnalysis):
                 self.calculate_streamlines()
 
         if backend == "plotly":
-            from archibald.visualization.plotly_Figure3D import Figure3D
+            from archibald.toolbox.visualization.plotly_Figure3D import Figure3D
 
             fig = Figure3D()
 
