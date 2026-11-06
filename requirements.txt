@@ -1,0 +1,14 @@
+numpy
+scipy
+pandas
+matplotlib
+sympy
+cython
+casadi
+trimesh
+ezdxf
+mapbox-earcut
+polars
+sortedcontainers
+dill
+neuralfoil
