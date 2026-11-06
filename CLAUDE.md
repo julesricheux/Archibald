@@ -1,0 +1,126 @@
+# Archibald
+
+Sailboat performance (VPP) and design library, forked from AeroSandbox. It models sails, hulls and appendages with differentiable, engineering-level physics, so the same code runs numerically or inside an optimizer.
+
+- PyPI name `archibald-vpp`, import name `archibald`, conventional alias `import archibald as arb`.
+- Version 2.1.x alpha. Python >= 3.11, developed on 3.13.
+- Replaces the old `GEMINI.md` (removed from the repo, last version at `git show 59ab3fc:GEMINI.md`).
+
+## Layout
+
+| Path | Content |
+|---|---|
+| `archibald/common.py` | Base classes `ArchibaldObject`, `ExplicitAnalysis`, `ImplicitAnalysis`, serialization |
+| `archibald/numpy/` | NumPy/CasADi dispatch layer |
+| `archibald/optimization/opti.py` | `Opti` and `OptiSol`, wrapping CasADi |
+| `archibald/geometry/` | `sailboat.py` (`Sailboat`), `hull.py`, `mesh.py` (`ArchibaldMesh`), `planform.py` (`Rig`, `Appendage`, `Planform`), `propeller.py`, `airfoil/`, `fuselage.py` |
+| `archibald/dynamics/aero_3D/` | Vortex lattice: `AeroVortexLatticeMethod`, `HydroVortexLatticeMethod`, lifting lines |
+| `archibald/dynamics/aero_2D/`, `aero/` | 2D aerodynamics |
+| `archibald/dynamics/hydro/` | Resistance methods (`holtrop`, `dsyhs`, `savitsky`, `mercier_savitsky`, `radojcic`, `michell`, ...) and hull interaction (`multihull`) |
+| `archibald/performance/operating_point.py` | `OperatingPoint`: speeds, wind, attitude, and frame transforms |
+| `archibald/weights/` | `MassProperties`. Not exported at top level: `from archibald.weights import MassProperties` |
+| `archibald/environment/` | Air, water, gravity |
+| `archibald/modeling/` | Fitting, interpolation, surrogate models |
+| `archibald/toolbox/` | `units`, `mesh_utils`, `statistics/`, `visualization/` (`plotly_Figure3D`, `plotly_utils`, `carpet_plot_utils`) |
+| `examples/` | `01 - Modeling`, `02 - Geometry` |
+
+`archibald2` and the in-repo `legacy/` are gone. Do not reintroduce them. The sibling folders `../legacy` and `../Experimental` are outside the repo; only read them when asked.
+
+## Conventions
+
+- **Unified math:** use `import archibald.numpy as np` in anything that may run symbolically. Plain NumPy is only for visualization or numeric post-processing, imported as `onp` (see `sailboat.py`).
+- **No `aerosandbox` or `asb`:** keep them only in credits and acknowledgements. NeuralFoil imports aerosandbox itself, which is fine.
+- **Differentiable first:** no branching on values that may be symbolic, and prefer smooth formulations.
+- **Object model:** geometry and analysis objects inherit from `ArchibaldObject`. Physics models inherit from `ExplicitAnalysis` or `ImplicitAnalysis`.
+- **Naming:** PEP8 with descriptive names. Use keyword arguments unless self-explanatory, and one parameter per line in long signatures and calls.
+- **Mutable defaults:** never in new code; use `None`. Some older signatures in `Sailboat` still have them.
+- **Docstrings and type hints:** document purpose, inputs with units in brackets, and returns. The stated standard is Google-style docstrings with `>>>` examples and `X | None` hints, but `geometry/` and `dynamics/hydro/` use NumPy-style docstrings and `Optional`. Match the file you are editing.
+
+## Frames and signs
+
+- Axes: x forward, y port, z up.
+- Positive heel is to starboard (+Mx drives it). Positive trim is bow down (+My drives it).
+- `OperatingPoint.apply_transformations(geometry, inverse=False, is_vector=False)` goes from boat axes to the boat motion frame: `geom @ mat.T`, then adds `xyz` unless `is_vector`.
+- Force and moment results are expressed in the boat motion frame, with moments about its origin.
+- Immersion: hull meshes such as Molenez have the keel near z=0, so immersion `T` means `dz=-T`. Water is at z=0 in the motion frame.
+- `OperatingPoint` stores `_stw`, `_tws0` and `_aws(z)` in m/s. The public `stw`, `tws0`, `aws(z)` are in knots. Apparent wind varies with height through the wind gradient.
+- The default environment is fresh water (about 999.13 kg/m³).
+
+## Sailboat torsors
+
+Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Ftot` total.
+
+- **Shapes:** results are `(1, 3)` "wide" arrays, built with `wide()`. Moments are `np.cross(center, F)`.
+- **CasADi pitfall:** `(1x3) + (3x1)` raises in CasADi but broadcasts in NumPy, so keep everything wide. Prefer `x = x + y` to `+=` in accumulators.
+- **Stale keys:** methods whose element count can change clear old keys first (see `compute_weight`, `compute_windage`).
+
+Weight:
+- `Sailboat(masses=[MassProperties(...), ...])`, computed by `MassProperties.compute_weight(op_point)`. CoGs are boat-fixed coordinates, and mass and CoG can be `Opti` variables.
+- `displacement` and `cog` still work and act as a single mass when `masses` is empty. Passing `masses` with `displacement` raises `ValueError`.
+- A boat with neither has zero weight, with no warning.
+- `sum(boat.masses)` gives total mass, CoG and inertia.
+
+Hydrostatics:
+- `Hull.compute_buoyancy` never moves the mesh. It brings the water plane into the hull frame instead.
+- To draw a solved position, move a copy, as in `examples/02 - Geometry/molenez_equilibrium.py`:
+
+```python
+boat_sol = sol(boat)
+boat_sol.hulls[0].mesh.transform(sol(op_point))
+boat_sol.draw()
+```
+
+`OptiSol.value` substitutes recursively on a copy. Integer and boolean arrays such as mesh `faces` must keep their type, because pyvista and `ArchibaldMesh.reset_data` index with them.
+
+## draw_vlm
+
+- `animate` defaults to on with pyvista, and the window stays open until closed or `q`. Plotly is static.
+- Particles follow the local VLM velocity (`Sailboat._streamlines_travel_time`), limited to 0.1-3 x free stream because the wake filaments are singular. They tend to `op_point._stw` in water and `op_point._aws(z)` in air.
+- `particle_speed` is a playback rate in seconds of flow per second of animation (1 is real time, default 0.1), with one clock for air and water.
+- `render_points_as_spheres=False` is deliberate: spheres were reported as not rendering on the author's GPU.
+- `pv.Plotter(off_screen=...)` is passed explicitly, so it overrides `pv.OFF_SCREEN`.
+
+## Running things
+
+`python` is not on PATH on the author's machine. The environment is `%USERPROFILE%\anaconda3\envs\py313`, described by `environment.yaml`.
+
+```powershell
+$env:PYTHONPATH = "$PWD"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+$env:MPLBACKEND = "Agg"
+& "$env:USERPROFILE\anaconda3\envs\py313\python.exe" -m pytest archibald -q -p no:cacheprovider --continue-on-collection-errors
+```
+
+- `pytest` is not installed in `py313`. Installing it there or appending the base conda `site-packages` to `sys.path` both work.
+- **Test baseline: 273 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+  - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
+  - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
+  - 1 is the black box nonsmooth solver test.
+- `Sailboat` and `draw_vlm` have no unit tests. Check them with a script.
+- Examples use relative data paths, so run them from their own folder.
+- `pyvista` and `plotly` are optional and not in `pyproject.toml`. `imageio` is needed for `draw_vlm(gif_path=...)` and is not installed in `py313`.
+- For headless rendering, force `off_screen=True` and use `plotter.screenshot`.
+- The repo is on a synced SharePoint folder, so `git grep` and broad searches can time out. Scope searches to `archibald/` with a file filter and exclude `archibald/data`.
+
+## Known issues
+
+Confirmed and not fixed unless noted otherwise. Check they still exist before relying on this list.
+
+- `compute_torsor`: `Ftot` and `Mtot` omit `Fsail` and `Fapp`.
+- `compute_torsor`: `windage=None` raises despite its documentation (`compute_windage` requires `tws` and `twa`).
+- `find_equilibrium`: calls `compute_torsor` without `method`, and rebuilds the `OperatingPoint` from attitude only, losing speed, wind and environment. Until fixed, build equilibria directly with `Opti` as in `molenez_equilibrium.py`.
+- `compute_aerodynamics`, `compute_hydrodynamics`: `+=` fails symbolically because `res["F_ab"]` is 3x1 against a 1x3 array.
+- `compute_propeller`: uses nonexistent `self.propeller` and `self.hull`.
+- `Sailboat.__init__`: `name` and `xyz_ref` are not stored, and list arguments use mutable defaults.
+- `ArchibaldMesh.draw(draw_plane=True)`: `projected_centroid` subtracts one scalar from all three coordinates, so the plane is off-centre in x and y. Its height is correct for a vertical normal.
+- Hydrostatics depend on mesh resolution, and not monotonically. On a box at `dz` = 0.2 and 0.3, the volume error is -8% and -11% at 12 faces, +0.8% and -1.2% at 8k, -1.4% and +2.0% at 34k, -0.25% and +0.37% at 135k. Heel differences of about 0.2° are unreliable on the 908-face Molenez mesh, where the upright centre of buoyancy sits about 3 mm off centre.
+- `Opti` equilibria only look for balance, so they can land on an unstable or capsized solution when the bounds are wide. Check that a perturbation gives a restoring moment.
+- `archibald/__init__.py`: `version("archibald")` looks up the wrong distribution name (PyPI is `archibald-vpp`), so `__version__` likely ends up `"unknown"`. Not run to confirm.
+
+## History worth knowing
+
+- `archibald2` was renamed to `archibald`, and `aerosandbox`/`asb` were replaced by `archibald`/`arb` throughout.
+- Stale `archibald.aerodynamics` and `geometry.airplane` imports were fixed.
+- `visualization` moved under `archibald/toolbox/`, with a docstring-only `__init__.py`, so importing the package does not pull in plotly or change matplotlib settings.
+- `Sailboat.masses` was added, and `draw_vlm` particles were reworked as described above.
