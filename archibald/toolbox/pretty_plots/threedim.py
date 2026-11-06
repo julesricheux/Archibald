@@ -1,7 +1,7 @@
 import matplotlib
 import mpl_toolkits
 import matplotlib.pyplot as plt
-import aerosandbox.numpy as np
+import archibald.numpy as np
 from typing import Dict, Tuple
 
 preset_view_angles = {
@@ -123,9 +123,9 @@ def set_preset_3d_view_angle(preset_view: str) -> None:
 
 
 if __name__ == "__main__":
-    import aerosandbox.numpy as np
+    import archibald.numpy as np
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     t = np.linspace(0, 1, 100)
 

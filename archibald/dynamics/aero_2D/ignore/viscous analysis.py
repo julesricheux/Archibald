@@ -1,5 +1,5 @@
 # from inviscid_analysis import N, gamma
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 
 N = 1000
@@ -9,7 +9,7 @@ nu = 1e-5
 theta_0 = 1e-3
 H_0 = 2.6
 
-opti = asb.Opti()
+opti = arb.Opti()
 
 theta = opti.variable(
     init_guess=theta_0,

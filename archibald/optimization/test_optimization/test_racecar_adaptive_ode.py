@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 from archibald.numpy.integrate import solve_ivp
 import pytest
@@ -7,7 +7,7 @@ import pytest
 def test_racecar_adaptive_ode(plot=False):
     N = 100  # number of control intervals
 
-    opti = asb.Opti()  # Optimization problem
+    opti = arb.Opti()  # Optimization problem
 
     t_final = opti.variable(init_guess=1, lower_bound=1e-2)
     u_amp = opti.variable(init_guess=np.ones(10), lower_bound=0, upper_bound=1)
@@ -75,7 +75,7 @@ def test_racecar_adaptive_ode(plot=False):
     )
 
     def callback(i):
-        soli = asb.OptiSol(opti, opti.debug)
+        soli = arb.OptiSol(opti, opti.debug)
 
         print(f"t_final: {soli(t_final)}")
 

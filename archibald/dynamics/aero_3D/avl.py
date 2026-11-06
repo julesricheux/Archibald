@@ -22,9 +22,9 @@ class AVL(ExplicitAnalysis):
 
     Usage example:
 
-        >>> avl = asb.AVL(
+        >>> avl = arb.AVL(
         >>>     airplane=my_airplane,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg
@@ -269,7 +269,7 @@ class AVL(ExplicitAnalysis):
                 warnings.warn(
                     "AVL run timed out!\n"
                     "If this was not expected, try increasing the `timeout` parameter\n"
-                    "when you create this AeroSandbox AVL instance.",
+                    "when you create this Archibald AVL instance.",
                     stacklevel=2,
                 )
 
@@ -356,7 +356,7 @@ class AVL(ExplicitAnalysis):
             "oper",
         ]
 
-        # Direct p, q, r to be in body axes, to match ASB convention
+        # Direct p, q, r to be in body axes, to match Archibald convention
         run_file_contents += [
             "o",
             "r",
@@ -425,7 +425,7 @@ class AVL(ExplicitAnalysis):
             f"""\
         {airplane.name}
         #Mach
-        0        ! AeroSandbox note: This is overwritten later to match the current OperatingPoint Mach during the AVL run.
+        0        ! Archibald note: This is overwritten later to match the current OperatingPoint Mach during the AVL run.
         #IYsym   IZsym   Zsym
          0       {1 if self.ground_effect else 0}   {self.ground_effect_height}
         #Sref    Cref    Bref
@@ -806,7 +806,7 @@ class AVL(ExplicitAnalysis):
 if __name__ == "__main__":
 
     ### Import Vanilla Airplane
-    import archibald as asb
+    import archibald as arb
 
     from archibald.dynamics.aero_3D.test_aero_3D.geometries.vanilla import (
         airplane as vanilla,
@@ -826,7 +826,7 @@ if __name__ == "__main__":
     avl = AVL(
         airplane=vanilla,
         op_point=OperatingPoint(
-            atmosphere=asb.Atmosphere(altitude=0),
+            atmosphere=arb.Atmosphere(altitude=0),
             velocity=1,
             alpha=0.433476,
             beta=0,

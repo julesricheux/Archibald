@@ -1,13 +1,13 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 
 import matplotlib.pyplot as plt
 import archibald.toolbox.pretty_plots as p
 
-fuselage = asb.Fuselage(
+fuselage = arb.Fuselage(
     xsecs=[
-        asb.FuselageXSec(
-            xyz_c=[xi, 0, 0], radius=asb.Airfoil("naca0020").local_thickness(xi) / 2
+        arb.FuselageXSec(
+            xyz_c=[xi, 0, 0], radius=arb.Airfoil("naca0020").local_thickness(xi) / 2
         )
         for xi in np.cosspace(0, 1, 20)
     ],
@@ -15,19 +15,19 @@ fuselage = asb.Fuselage(
 
 fig, ax = plt.subplots(figsize=(7, 6))
 V = np.linspace(10, 1000, 1001)
-op_point = asb.OperatingPoint(
+op_point = arb.OperatingPoint(
     velocity=V,
 )
 
-aero = asb.AeroBuildup(
-    airplane=asb.Airplane(fuselages=[fuselage]),
+aero = arb.AeroBuildup(
+    airplane=arb.Airplane(fuselages=[fuselage]),
     op_point=op_point,
 ).run()
 
 plt.plot(op_point.mach(), aero["CD"], label="Full Model")
 
-aero = asb.AeroBuildup(
-    airplane=asb.Airplane(fuselages=[fuselage]),
+aero = arb.AeroBuildup(
+    airplane=arb.Airplane(fuselages=[fuselage]),
     op_point=op_point,
     include_wave_drag=False,
 ).run()

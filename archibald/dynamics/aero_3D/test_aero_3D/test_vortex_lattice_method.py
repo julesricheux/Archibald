@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 
 
 def test_conventional():
@@ -6,9 +6,9 @@ def test_conventional():
         airplane,
     )
 
-    analysis = asb.VortexLatticeMethod(
+    analysis = arb.VortexLatticeMethod(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -18,9 +18,9 @@ def test_vanilla():
         airplane,
     )
 
-    analysis = asb.VortexLatticeMethod(
+    analysis = arb.VortexLatticeMethod(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -30,9 +30,9 @@ def test_flat_plate():
         airplane,
     )
 
-    analysis = asb.VortexLatticeMethod(
+    analysis = arb.VortexLatticeMethod(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -42,9 +42,9 @@ def test_flat_plate_mirrored():
         airplane,
     )
 
-    analysis = asb.VortexLatticeMethod(
+    analysis = arb.VortexLatticeMethod(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
         spanwise_resolution=1,
         chordwise_resolution=3,
     )
@@ -61,9 +61,9 @@ if __name__ == "__main__":
         airplane,
     )
 
-    analysis = asb.VortexLatticeMethod(
+    analysis = arb.VortexLatticeMethod(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     aero = analysis.run()
     analysis.draw()

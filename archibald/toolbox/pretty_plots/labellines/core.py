@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib.container import ErrorbarContainer
 from matplotlib.dates import DateConverter, num2date
 
-from aerosandbox.tools.pretty_plots.labellines.utils import (
+from archibald.toolbox.pretty_plots.labellines.utils import (
     ensure_float,
     maximum_bipartite_matching,
     always_iterable,

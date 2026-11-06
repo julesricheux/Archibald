@@ -239,7 +239,7 @@ def trapz(x, modify_endpoints=False):  # TODO unify with NumPy trapz, this is di
 
     warnings.warn(
         "trapz() will eventually be deprecated, since NumPy plans to remove it in the upcoming NumPy 2.0 release (2024). \n"
-        'For discrete intervals, use asb.numpy.integrate_discrete_intervals(f, method="trapz") instead.',
+        'For discrete intervals, use arb.numpy.integrate_discrete_intervals(f, method="trapz") instead.',
         PendingDeprecationWarning,
     )
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
     # print(gradient(y, x, edge_order=1))
     # print(gradient(y, x, edge_order=1, n=2))
     #
-    # opti = asb.Opti()
+    # opti = arb.Opti()
     # x = opti.variable(init_guess=[355, 5])
     # d = diff(x, period=360)
     # opti.subject_to([

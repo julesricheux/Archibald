@@ -1,13 +1,13 @@
-import archibald as asb
+import archibald as arb
 from archibald.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
     airplane,
 )
 
 
 def test_aero_buildup():
-    analysis = asb.AeroBuildup(
+    analysis = arb.AeroBuildup(
         airplane=airplane,
-        op_point=asb.OperatingPoint(),
+        op_point=arb.OperatingPoint(),
     )
     return analysis.run()
 

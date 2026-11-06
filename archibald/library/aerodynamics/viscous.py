@@ -184,7 +184,7 @@ def Cl_2412(alpha, Re_c):
     # Within -2 < alpha < 12 and 10^5 < Re_c < 10^7, has R^2 = 0.9892
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     return 0.2568 + 0.1206 * alpha - 0.002018 * alpha**2
@@ -195,7 +195,7 @@ def Cd_profile_2412(alpha, Re_c):
     # Within -2 < alpha < 12 and 10^5 < Re_c < 10^7, has R^2 = 0.9713
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     Re_c = np.maximum(Re_c, 1)
@@ -228,7 +228,7 @@ def Cl_e216(alpha, Re_c):
     # See: C:\Projects\GitHub\firefly_aerodynamics\Gists and Ideas\XFoil Drag Fitting\e216
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     Re_c = np.fmax(Re_c, 1)
@@ -267,7 +267,7 @@ def Cd_profile_e216(alpha, Re_c):
     # see: C:\Projects\GitHub\firefly_aerodynamics\Gists and Ideas\XFoil Drag Fitting\e216
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     Re_c = np.fmax(Re_c, 1)
@@ -311,7 +311,7 @@ def Cd_wave_e216(Cl, mach, sweep=0.0):
     """
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     mach = np.fmax(mach, 0)
@@ -344,7 +344,7 @@ def Cl_rae2822(alpha, Re_c):
     # See: C:\Projects\GitHub\firefly_aerodynamics\Gists and Ideas\XFoil Drag Fitting\rae2822
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     Re_c = np.fmax(Re_c, 1)
@@ -381,7 +381,7 @@ def Cd_profile_rae2822(alpha, Re_c):
     # see: C:\Projects\GitHub\firefly_aerodynamics\Gists and Ideas\XFoil Drag Fitting\e216
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     Re_c = np.fmax(Re_c, 1)
@@ -425,7 +425,7 @@ def Cd_wave_rae2822(Cl, mach, sweep=0.0):
     """
 
     warnings.warn(
-        "This function is deprecated. Use `asb.Airfoil.get_aero_from_neuralfoil()` instead.",
+        "This function is deprecated. Use `arb.Airfoil.get_aero_from_neuralfoil()` instead.",
         DeprecationWarning,
     )
     mach = np.fmax(mach, 0)

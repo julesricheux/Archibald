@@ -2,7 +2,7 @@ from typing import Union, Iterable, Tuple, Optional, Callable
 import matplotlib.pyplot as plt
 
 import numpy as np
-from aerosandbox.tools.statistics import time_series_uncertainty_quantification as tsuq
+from archibald.toolbox.statistics import time_series_uncertainty_quantification as tsuq
 
 
 def plot_with_bootstrapped_uncertainty(
@@ -131,7 +131,7 @@ def plot_with_bootstrapped_uncertainty(
 if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     np.random.seed(0)
 

@@ -31,7 +31,7 @@ class MSES(ExplicitAnalysis):
     proper X11 support, like Windows Subsystem for Linux), you should use XVFB. https://en.wikipedia.org/wiki/Xvfb
 
     XVFB is a virtual "display" server that can receive X11 output and safely dump it. (If you don't use XVFB and you
-    don't have proper X11 support on your computer, this AeroSandbox MSES module will simply error out during the
+    don't have proper X11 support on your computer, this Archibald MSES module will simply error out during the
     MSET call - probably not what you want.)
 
     To install XVFB on a Linux machine, use:
@@ -40,7 +40,7 @@ class MSES(ExplicitAnalysis):
     sudo apt-get install xvfb
     ```
 
-    Then, when instantiating this MSES instance in AeroSandbox, pass the `use_xvfb` flag to be True. Default behavior
+    Then, when instantiating this MSES instance in Archibald, pass the `use_xvfb` flag to be True. Default behavior
     here is that this class will look for the XVFB executable, `xvfb-run`, on your machine. If it finds it,
     it will run with XVFB enabled. If it does not, it will run without XVFB.
 
@@ -251,9 +251,9 @@ class MSES(ExplicitAnalysis):
                 print(e.stderr)
                 if "BadName (named color or font does not exist)" in e.stderr:
                     raise RuntimeError(
-                        "MSET via AeroSandbox errored becausee it couldn't launch an X11 window.\n"
+                        "MSET via Archibald errored becausee it couldn't launch an X11 window.\n"
                         "Try either installing a typical X11 client, or install Xvfb, which is\n"
-                        "a virtual X11 server. More details in the AeroSandbox MSES docstring."
+                        "a virtual X11 server. More details in the Archibald MSES docstring."
                     )
 
             runs_output = {}

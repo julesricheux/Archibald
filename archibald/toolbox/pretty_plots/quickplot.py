@@ -1,6 +1,6 @@
-from aerosandbox.tools import inspect_tools
+from archibald.toolbox import inspect_tools
 from typing import Union, Tuple, List
-import aerosandbox.numpy as np
+import archibald.numpy as np
 import warnings
 
 
@@ -17,7 +17,7 @@ def qp(
 
     Example:
 
-        >>> import aerosandbox.numpy as np
+        >>> import archibald.numpy as np
         >>>
         >>> x = np.linspace(0, 10)
         >>> y = x ** 2
@@ -142,7 +142,7 @@ def qp(
 
 
 if __name__ == "__main__":
-    import aerosandbox.numpy as np
+    import archibald.numpy as np
 
     x = np.linspace(0, 10, 100)
     y = x**2

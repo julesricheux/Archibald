@@ -1109,7 +1109,7 @@ class Planform(ArchibaldObject):
             "\n"
             "Please update your code to use `Planform.export_XFLR5_xml()` instead.\n"
             "\n"
-            "This function will be removed in a future version of AeroSandbox.",
+            "This function will be removed in a future version of Archibald.",
             PendingDeprecationWarning
         )
         return self.export_XFLR5_xml(*args, **kwargs)

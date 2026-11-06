@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -9,7 +9,7 @@ def test_opti_poorly_scaled_constraints(constraint_jacobian_condition_number=1e1
     b = 100
 
     # Set up an optimization environment
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     # Define optimization variables
     x = opti.variable(init_guess=10)
@@ -33,7 +33,7 @@ def test_opti_poorly_scaled_constraints(constraint_jacobian_condition_number=1e1
 
 
 def test_opti_poorly_scaled_objective(objective_hessian_condition_number=1e10):
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=10)
     y = opti.variable(init_guess=10)

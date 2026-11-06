@@ -1,11 +1,11 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 
 def test_warm_start():
     ### Set up an optimization problem
 
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=10)
 

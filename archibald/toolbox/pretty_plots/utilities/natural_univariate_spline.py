@@ -107,7 +107,7 @@ class NaturalUnivariateSpline(interpolate.PPoly):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     x = np.linspace(0, 10, 20)
     y = np.sin(x)

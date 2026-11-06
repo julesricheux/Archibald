@@ -1,22 +1,22 @@
-import archibald as asb
+import archibald as arb
 
-airfoil = asb.Airfoil("naca0008")
+airfoil = arb.Airfoil("naca0008")
 
-airplane = asb.Airplane(
+airplane = arb.Airplane(
     name="Flat Plate",
     xyz_ref=[0, 0, 0],
     wings=[
-        asb.Wing(
+        arb.Wing(
             name="Wing",
             symmetric=False,
             xsecs=[
-                asb.WingXSec(
+                arb.WingXSec(
                     xyz_le=[0, 0, 0],
                     chord=1,
                     twist=0,
                     airfoil=airfoil,
                 ),
-                asb.WingXSec(
+                arb.WingXSec(
                     xyz_le=[0, 10, 0],
                     chord=1,
                     twist=0,

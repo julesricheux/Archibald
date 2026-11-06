@@ -31,9 +31,9 @@ class LiftingLine(ExplicitAnalysis):
     Nonlinear, and includes viscous effects based on 2D data.
 
     Usage example:
-        >>> analysis = asb.LiftingLine(
+        >>> analysis = arb.LiftingLine(
         >>>     airplane=my_airplane,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg
@@ -72,7 +72,7 @@ class LiftingLine(ExplicitAnalysis):
             run_symmetric_if_possible: If this flag is True and the problem fomulation is XZ-symmetric, the solver will
             attempt to exploit the symmetry. This results in roughly half the number of governing equations.
 
-            opti: An asb.Opti environment.
+            opti: An arb.Opti environment.
 
                 If provided, adds the governing equations to that instance. Does not solve the equations (you need to
                 call `sol = opti.solve()` to do that).
@@ -1161,7 +1161,7 @@ class LiftingLine(ExplicitAnalysis):
             import pyvista as pv
 
             plotter = pv.Plotter()
-            plotter.title = "ASB LiftingLine"
+            plotter.title = "Archibald LiftingLine"
             plotter.add_axes()
             plotter.show_grid(color="gray")
 
@@ -1267,7 +1267,7 @@ class LiftingLine(ExplicitAnalysis):
 
 
 if __name__ == "__main__":
-    import archibald as asb
+    import archibald as arb
     import archibald.numpy as np
     from archibald.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
         airplane,
@@ -1275,16 +1275,16 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import archibald.toolbox.pretty_plots as p
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         wings=[
-            asb.Wing(
+            arb.Wing(
                 symmetric=False,
                 xsecs=[
-                    asb.WingXSec(
-                        xyz_le=[0, 0, 0], chord=1, airfoil=asb.Airfoil("naca0012")
+                    arb.WingXSec(
+                        xyz_le=[0, 0, 0], chord=1, airfoil=arb.Airfoil("naca0012")
                     ),
-                    asb.WingXSec(
-                        xyz_le=[0, 5, 0], chord=1, airfoil=asb.Airfoil("naca0012")
+                    arb.WingXSec(
+                        xyz_le=[0, 5, 0], chord=1, airfoil=arb.Airfoil("naca0012")
                     ),
                 ],
             )

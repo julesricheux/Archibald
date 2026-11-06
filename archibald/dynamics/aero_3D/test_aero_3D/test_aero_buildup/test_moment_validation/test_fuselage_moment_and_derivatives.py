@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 from typing import Type
 import pytest
@@ -6,12 +6,12 @@ import pytest
 rtol = 0.10
 
 
-def make_fuselage(alpha_geometric=0.0, beta_geometric=0.0) -> asb.Fuselage:
+def make_fuselage(alpha_geometric=0.0, beta_geometric=0.0) -> arb.Fuselage:
     x = [0, 0.2, 0.8, 1]
 
-    return asb.Fuselage(
+    return arb.Fuselage(
         xsecs=[
-            asb.FuselageXSec(
+            arb.FuselageXSec(
                 xyz_c=[
                     xi * np.cosd(alpha_geometric) * np.cosd(beta_geometric),
                     xi * np.sind(beta_geometric),
@@ -29,12 +29,12 @@ def make_fuselage(alpha_geometric=0.0, beta_geometric=0.0) -> asb.Fuselage:
 
 
 def test_derivatives_at_zero_geometric_angles(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
 
     fuselage = make_fuselage(alpha_geometric=0.0, beta_geometric=0.0)
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=np.pi,
         c_ref=1,
@@ -43,7 +43,7 @@ def test_derivatives_at_zero_geometric_angles(
 
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100,
             alpha=0,
             beta=0,
@@ -72,12 +72,12 @@ def test_derivatives_at_zero_geometric_angles(
 
 
 def test_derivatives_at_constant_offset(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
 
     fuselage = make_fuselage(alpha_geometric=5.0, beta_geometric=10.0)
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=np.pi,
         c_ref=1.0,
@@ -86,7 +86,7 @@ def test_derivatives_at_constant_offset(
 
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100.0,
             alpha=-5.0,
             beta=-10.0,
@@ -115,12 +115,12 @@ def test_derivatives_at_constant_offset(
 
 
 def test_derivatives_at_incidence(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
 
     fuselage = make_fuselage(alpha_geometric=0.0, beta_geometric=0.0)
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=np.pi,
         c_ref=1.0,
@@ -129,7 +129,7 @@ def test_derivatives_at_incidence(
 
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100.0,
             alpha=5.0,
             beta=5.0,
@@ -164,11 +164,11 @@ def test_derivatives_at_incidence(
 
 
 def test_cambered_fuselage(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
-    fuselage = asb.Fuselage(
+    fuselage = arb.Fuselage(
         xsecs=[
-            asb.FuselageXSec(
+            arb.FuselageXSec(
                 xyz_c=[xi, 0, xi * (1 - xi) * 4 * 0.15], radius=xi**0.5 * (1 - xi) * 0.2
             )
             for xi in np.sinspace(0, 1, 20)
@@ -176,7 +176,7 @@ def test_cambered_fuselage(
     )
     # fuselage.draw_three_view()
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=1,
         c_ref=1,
@@ -185,7 +185,7 @@ def test_cambered_fuselage(
 
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100,
             alpha=5,
             beta=5,
@@ -216,7 +216,7 @@ def test_cambered_fuselage(
 
 
 def test_fuselage_with_base_drag(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
     def r(x):  # radius as a function of distance along the fuselage, x
         return 0.1 * x**0.5 * (2 - x)
@@ -232,15 +232,15 @@ def test_fuselage_with_base_drag(
     def A(x):  # cross-sectional area as a function of distance along fuselage, x
         return np.pi * r(x) ** 2
 
-    fuselage = asb.Fuselage(
+    fuselage = arb.Fuselage(
         xsecs=[
-            asb.FuselageXSec(xyz_c=[xi, 0, z(xi)], radius=r(xi))
+            arb.FuselageXSec(xyz_c=[xi, 0, z(xi)], radius=r(xi))
             for xi in np.sinspace(0, 1, 100)
         ]
     )
     fuselage.draw_three_view()
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=1,
         c_ref=1,
@@ -249,7 +249,7 @@ def test_fuselage_with_base_drag(
 
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100,
             alpha=0,
             beta=0,
@@ -313,17 +313,17 @@ def test_fuselage_with_base_drag(
 
 if __name__ == "__main__":
     pass
-    # asb.Airplane(fuselages=[make_fuselage()]).draw_three_view()
-    # # test_derivatives_at_zero_geometric_angles(asb.AVL)
-    # test_derivatives_at_zero_geometric_angles(asb.AeroBuildup)
-    # # test_derivatives_at_constant_offset(asb.AVL)
-    # test_derivatives_at_constant_offset(asb.AeroBuildup)
-    # # test_derivatives_at_incidence(asb.AVL)
-    # test_derivatives_at_incidence(asb.AeroBuildup)
-    # # test_cambered_fuselage(asb.AVL)
-    # test_cambered_fuselage(asb.AeroBuildup)
-    # test_fuselage_with_base_drag(asb.AVL)
-    test_fuselage_with_base_drag(asb.AeroBuildup)
+    # arb.Airplane(fuselages=[make_fuselage()]).draw_three_view()
+    # # test_derivatives_at_zero_geometric_angles(arb.AVL)
+    # test_derivatives_at_zero_geometric_angles(arb.AeroBuildup)
+    # # test_derivatives_at_constant_offset(arb.AVL)
+    # test_derivatives_at_constant_offset(arb.AeroBuildup)
+    # # test_derivatives_at_incidence(arb.AVL)
+    # test_derivatives_at_incidence(arb.AeroBuildup)
+    # # test_cambered_fuselage(arb.AVL)
+    # test_cambered_fuselage(arb.AeroBuildup)
+    # test_fuselage_with_base_drag(arb.AVL)
+    test_fuselage_with_base_drag(arb.AeroBuildup)
 
 
 

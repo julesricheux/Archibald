@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 from numpy import pi
 import pytest
 
@@ -13,7 +13,7 @@ def test_normal_problem():
     An engineering optimization problem to minimize drag on a rectangular wing using analytical relations.
     Lift is effectively fixed (fixed CL, flight speed, and density, with wing area constraint)
     """
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     chord = opti.variable(init_guess=1)
     span = opti.variable(init_guess=2)
@@ -36,7 +36,7 @@ def test_normal_problem():
 
 
 def test_log_transformed_problem():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     chord = opti.variable(init_guess=1, log_transform=True)
     span = opti.variable(init_guess=2, log_transform=True)
@@ -59,14 +59,14 @@ def test_log_transformed_problem():
 
 
 def test_log_transformed_negativity_error():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     with pytest.raises(ValueError):
         opti.variable(log_transform=True, init_guess=-1)
 
 
 def test_fixed_variable():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     chord = opti.variable(init_guess=1, freeze=True)
     span = opti.variable(init_guess=2)
@@ -89,7 +89,7 @@ def test_fixed_variable():
 
 
 def test_fully_fixed_problem():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     chord = opti.variable(init_guess=1, freeze=True)
     span = opti.variable(init_guess=1, freeze=True)
@@ -112,7 +112,7 @@ def test_fully_fixed_problem():
 
 
 def test_overconstrained_fully_fixed_problem():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     chord = opti.variable(init_guess=1, freeze=True)
     span = opti.variable(init_guess=2, freeze=True)

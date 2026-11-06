@@ -1,19 +1,19 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 
 def test_airplane_optimization():
     def get_aero(alpha, taper_ratio):
-        airplane = asb.Airplane(
+        airplane = arb.Airplane(
             wings=[
-                asb.Wing(
+                arb.Wing(
                     symmetric=True,
                     xsecs=[
-                        asb.WingXSec(
+                        arb.WingXSec(
                             xyz_le=[-0.25, 0, 0],
                             chord=1,
                         ),
-                        asb.WingXSec(
+                        arb.WingXSec(
                             xyz_le=[-0.25 * taper_ratio, 1, 0],
                             chord=taper_ratio,
                         ),
@@ -21,12 +21,12 @@ def test_airplane_optimization():
                 )
             ]
         )
-        op_point = asb.OperatingPoint(
+        op_point = arb.OperatingPoint(
             velocity=1,
             alpha=alpha,
         )
 
-        vlm = asb.VortexLatticeMethod(
+        vlm = arb.VortexLatticeMethod(
             airplane,
             op_point,
             chordwise_resolution=6,
@@ -42,7 +42,7 @@ def test_airplane_optimization():
     # plt.plot(tr, [a['CL'] / a['CD'] for a in aeros])
     # p.show_plot()
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     alpha = opti.variable(0, lower_bound=-90, upper_bound=90)
     taper_ratio = opti.variable(0.7, lower_bound=0.0001, upper_bound=1)
     aero = get_aero(alpha, taper_ratio)

@@ -63,7 +63,7 @@ class XFoil(ExplicitAnalysis):
 
         Args:
 
-            airfoil: The airfoil to analyze. Should be an AeroSandbox Airfoil object.
+            airfoil: The airfoil to analyze. Should be an Archibald Airfoil object.
 
             Re: The chord-referenced Reynolds number. Set this to 0 to run in inviscid mode.
 
@@ -331,7 +331,7 @@ class XFoil(ExplicitAnalysis):
                 warnings.warn(
                     "XFoil run timed out!\n"
                     "If this was not expected, try increasing the `timeout` parameter\n"
-                    "when you create this AeroSandbox XFoil instance.",
+                    "when you create this Archibald XFoil instance.",
                     stacklevel=2,
                 )
             except subprocess.CalledProcessError as e:
@@ -339,7 +339,7 @@ class XFoil(ExplicitAnalysis):
                     raise self.XFoilError(
                         "XFoil segmentation-faulted. This is likely because your input airfoil has too many points.\n"
                         "Try repaneling your airfoil with `Airfoil.repanel()` before passing it into XFoil.\n"
-                        "For further debugging, turn on the `verbose` flag when creating this AeroSandbox XFoil instance."
+                        "For further debugging, turn on the `verbose` flag when creating this Archibald XFoil instance."
                     )
                 elif e.returncode == 8 or e.returncode == 136:
                     raise self.XFoilError(
@@ -351,9 +351,9 @@ class XFoil(ExplicitAnalysis):
                 elif e.returncode == 1:
                     raise self.XFoilError(
                         f"Command '{self.xfoil_command}' returned non-zero exit status 1.\n"
-                        f"This is likely because AeroSandbox does not see XFoil on PATH with the given command.\n"
-                        f"Check the logs (`asb.XFoil(..., verbose=True)`) to verify that this is the case, and if so,\n"
-                        f"provide the correct path to the XFoil executable in the asb.XFoil constructor via `xfoil_command=`."
+                        f"This is likely because Archibald does not see XFoil on PATH with the given command.\n"
+                        f"Check the logs (`arb.XFoil(..., verbose=True)`) to verify that this is the case, and if so,\n"
+                        f"provide the correct path to the XFoil executable in the arb.XFoil constructor via `xfoil_command=`."
                     )
                 else:
                     raise e
@@ -764,7 +764,7 @@ if __name__ == "__main__":
         hinge_point_x=0.75,
         include_bl_data=True,
         xfoil_command="C:\\Users\\jrich\\Documents\\archibald-main\\archibald\\xfoil.exe",
-        # working_directory=str(Path.home() / "Documents" / "AeroSandbox-master" / "test"),
+        # working_directory=str(Path.home() / "Documents" / "Archibald-master" / "test"),
     )
 
     result_at_single_alpha = xf.alpha(5)

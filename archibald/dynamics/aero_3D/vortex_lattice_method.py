@@ -130,9 +130,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         Date of Retrieval:    18/10/2024
 
     Usage example:
-        >>> analysis = asb.VortexLatticeMethod(
+        >>> analysis = arb.VortexLatticeMethod(
         >>>     planform=my_planform,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg
@@ -721,7 +721,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # alpha_stall_positive = alpha_stall
         # alpha_stall_negative = -alpha_stall
 
-        # # This will be an input to a tanh() sigmoid blend via asb.numpy.blend(), so a value of 1 means the flow is
+        # # This will be an input to a tanh() sigmoid blend via arb.numpy.blend(), so a value of 1 means the flow is
         # # ~90% separated, and a value of -1 means the flow is ~90% attached.
         # is_separated = (
         #     np.softmax(alpha - alpha_stall_positive, alpha_stall_negative - alpha)
@@ -1470,7 +1470,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         elif backend == "pyvista":
             import pyvista as pv
             plotter = pv.Plotter()
-            plotter.title = "ASB VortexLatticeMethod"
+            plotter.title = "Archibald VortexLatticeMethod"
             if plot_axes:
                 plotter.add_axes()
                 plotter.show_grid(color='gray')
@@ -1625,9 +1625,9 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
     An explicit (linear) vortex-lattice-method aerodynamics analysis.
 
     Usage example:
-        >>> analysis = asb.VortexLatticeMethod(
+        >>> analysis = arb.VortexLatticeMethod(
         >>>     planform=my_planform,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg
@@ -1764,9 +1764,9 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
     An explicit (linear) vortex-lattice-method aerodynamics analysis.
 
     Usage example:
-        >>> analysis = asb.VortexLatticeMethod(
+        >>> analysis = arb.VortexLatticeMethod(
         >>>     planform=my_planform,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg

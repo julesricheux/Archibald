@@ -152,7 +152,7 @@ def get_kulfan_coordinates(
     This function is the inverse of `get_kulfan_parameters()`.
 
     Kulfan parameters are a highly-efficient and flexible way to parameterize the shape of an airfoil. The particular
-    flavor of Kulfan parameterization used in AeroSandbox is the "CST with LEM" method, which is described in various
+    flavor of Kulfan parameterization used in Archibald is the "CST with LEM" method, which is described in various
     papers linked below. In total, the Kulfan parameterization consists of:
 
     * A vector of weights corresponding to the lower surface of the airfoil
@@ -195,8 +195,8 @@ def get_kulfan_coordinates(
 
     To make a Kulfan (CST) airfoil, use the following syntax:
 
-    >>> import aerosandbox as asb
-    >>> asb.Airfoil("My Airfoil Name", coordinates=asb.get_kulfan_coordinates(*args))
+    >>> import archibald as arb
+    >>> arb.Airfoil("My Airfoil Name", coordinates=arb.get_kulfan_coordinates(*args))
 
     Args:
 
@@ -296,7 +296,7 @@ def get_kulfan_parameters(
     This function is the inverse of `get_kulfan_coordinates()`.
 
     Kulfan parameters are a highly-efficient and flexible way to parameterize the shape of an airfoil. The particular
-    flavor of Kulfan parameterization used in AeroSandbox is the "CST with LEM" method, which is described in various
+    flavor of Kulfan parameterization used in Archibald is the "CST with LEM" method, which is described in various
     papers linked below. In total, the Kulfan parameterization consists of:
 
     * A vector of weights corresponding to the lower surface of the airfoil
@@ -339,14 +339,14 @@ def get_kulfan_parameters(
 
     The following demonstrates the reversibility of this function:
 
-    >>> import aerosandbox as asb
-    >>> from aerosandbox.geometry.airfoil.airfoil_families import get_kulfan_parameters
+    >>> import archibald as arb
+    >>> from archibald.geometry.airfoil.airfoil_families import get_kulfan_parameters
     >>>
-    >>> af = asb.Airfoil("dae11")  # A conventional airfoil
+    >>> af = arb.Airfoil("dae11")  # A conventional airfoil
     >>> params = get_kulfan_parameters(
     >>>     coordinates=af.coordinates,
     >>> )
-    >>> af_reconstructed = asb.Airfoil(
+    >>> af_reconstructed = arb.Airfoil(
     >>>     name="Reconstructed Airfoil",
     >>>     coordinates=get_kulfan_coordinates(
     >>>         **params

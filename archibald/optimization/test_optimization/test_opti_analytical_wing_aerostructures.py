@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -42,7 +42,7 @@ def test_gpkit_style_solve():
     exactly a geometric program (and should be convex, yay).
     """
 
-    opti = asb.Opti()  # initialize an optimization environment
+    opti = arb.Opti()  # initialize an optimization environment
 
     ### Variables
     D = opti.variable(init_guess=1e3, log_transform=True)  # total drag force [N]
@@ -101,7 +101,7 @@ def test_geometric_program_solve():
     variables where possible. Basically you only need to add design variables for implicit things like total aircraft
     weight; no need to add unnecessary variables for explicit things like wing weight.
     """
-    opti = asb.Opti()  # initialize an optimization environment
+    opti = arb.Opti()  # initialize an optimization environment
 
     ### Variables
     A = opti.variable(init_guess=10, log_transform=True)  # aspect ratio
@@ -153,7 +153,7 @@ def test_non_log_transformed_solve():
 
     Anyway, this should solve and get the same solution as the other problem formulations in this test file.
     """
-    opti = asb.Opti()  # initialize an optimization environment
+    opti = arb.Opti()  # initialize an optimization environment
 
     ### Variables
     A = opti.variable(init_guess=10)  # aspect ratio

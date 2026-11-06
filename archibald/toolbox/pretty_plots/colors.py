@@ -1,7 +1,7 @@
 import matplotlib.colors as mc
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import aerosandbox.numpy as np
+import archibald.numpy as np
 import colorsys
 
 palettes = {

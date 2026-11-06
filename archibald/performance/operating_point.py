@@ -118,7 +118,7 @@ class OperatingPoint():
         An object that represents the instantaneous aerodynamic flight conditions of an aircraft.
 
         Args:
-            atmosphere: The atmosphere object (of type asb.Atmosphere). Defaults to sea level conditions.
+            atmosphere: The atmosphere object (of type arb.Atmosphere). Defaults to sea level conditions.
 
             tws: The flight velocity, expressed as a true airspeed. [m/s]
 

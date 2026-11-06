@@ -1,13 +1,13 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 
 import matplotlib.pyplot as plt
 import archibald.toolbox.pretty_plots as p
 
-fuselage = asb.Fuselage(
+fuselage = arb.Fuselage(
     xsecs=[
-        asb.FuselageXSec(
-            xyz_c=[xi, 0, 0], radius=asb.Airfoil("naca0020").local_thickness(xi) / 2
+        arb.FuselageXSec(
+            xyz_c=[xi, 0, 0], radius=arb.Airfoil("naca0020").local_thickness(xi) / 2
         )
         for xi in np.cosspace(0, 1, 20)
     ],
@@ -18,9 +18,9 @@ fuselage = asb.Fuselage(
 
 
 def get_aero(xyz_ref):
-    return asb.AeroBuildup(
-        airplane=asb.Airplane(fuselages=[fuselage], xyz_ref=xyz_ref),
-        op_point=asb.OperatingPoint(velocity=10, alpha=5, beta=5),
+    return arb.AeroBuildup(
+        airplane=arb.Airplane(fuselages=[fuselage], xyz_ref=xyz_ref),
+        op_point=arb.OperatingPoint(velocity=10, alpha=5, beta=5),
     ).run()
 
 

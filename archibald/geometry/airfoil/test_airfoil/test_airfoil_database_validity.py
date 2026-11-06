@@ -1,13 +1,13 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald as arb
+import archibald.numpy as np
 from typing import List
 
 
-def get_airfoil_database() -> List[asb.Airfoil]:
-    airfoil_database_root = asb._asb_root / "geometry" / "airfoil" / "airfoil_database"
+def get_airfoil_database() -> List[arb.Airfoil]:
+    airfoil_database_root = arb._archibald_root / "geometry" / "airfoil" / "airfoil_database"
 
     afs = [
-        asb.Airfoil(
+        arb.Airfoil(
             name=airfoil_file.stem,
         )
         for airfoil_file in airfoil_database_root.glob("*.dat")
@@ -16,7 +16,7 @@ def get_airfoil_database() -> List[asb.Airfoil]:
     return afs
 
 
-def check_validity(af: asb.Airfoil) -> None:
+def check_validity(af: arb.Airfoil) -> None:
     """
     Checks whether a given Airfoil is valid.
 
@@ -141,9 +141,9 @@ def test_airfoil_database_validity():
         )
 
 
-def debug_draw(af: asb.Airfoil):
+def debug_draw(af: arb.Airfoil):
     if isinstance(af, str):
-        af = asb.Airfoil(af)
+        af = arb.Airfoil(af)
 
     af.draw(draw_mcl=False, backend="plotly", show=False).update_layout(
         yaxis=dict(scaleanchor=None)

@@ -28,7 +28,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     def __init__(
         self,
-        airplane: Airplane,
+        airplane: Planform,
         op_point: OperatingPoint,
         xyz_ref: List[float] = None,
         run_symmetric_if_possible: bool = False,
@@ -501,7 +501,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
 if __name__ == "__main__":
     ### Import Vanilla Airplane
-    import archibald as asb
+    import archibald as arb
 
     from pathlib import Path
 
@@ -516,8 +516,8 @@ if __name__ == "__main__":
     ### Do the AVL run
     lpf = LinearPotentialFlow(
         airplane=vanilla,
-        op_point=asb.OperatingPoint(
-            atmosphere=asb.Atmosphere(altitude=0),
+        op_point=arb.OperatingPoint(
+            atmosphere=arb.Atmosphere(altitude=0),
             velocity=10,
             alpha=0,
             beta=0,

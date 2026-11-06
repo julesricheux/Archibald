@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 from typing import Dict, Union, Callable, List
-from aerosandbox.tools.string_formatting import eng_string
+from archibald.toolbox.string_formatting import eng_string
 
 
 def contour(
@@ -354,7 +354,7 @@ def contour(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     x = np.linspace(0, 1, 100)
     y = np.linspace(0, 1, 100)

@@ -3,8 +3,8 @@ import warnings
 from archibald.library.aerodynamics.viscous import Cf_flat_plate
 
 warnings.warn(
-    "This file is deprecated and will be removed in the subsequent version of ASB.\n"
-    "You can use `asb.Airfoil.get_aero_from_neuralfoil()` instead\n"
+    "This file is deprecated and will be removed in the subsequent version of Archibald.\n"
+    "You can use `arb.Airfoil.get_aero_from_neuralfoil()` instead\n"
     "to get airfoil aerodynamics for any airfoil.",
     DeprecationWarning,
 )

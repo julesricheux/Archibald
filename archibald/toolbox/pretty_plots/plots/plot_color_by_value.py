@@ -104,7 +104,7 @@ def plot_color_by_value(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     fig, ax = plt.subplots()
     x = np.linspace(-1, 1, 500)

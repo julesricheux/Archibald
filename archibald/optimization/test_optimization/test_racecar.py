@@ -1,10 +1,10 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
 
 def test_racecar(N=100, plot=False):
-    opti = asb.Opti()  # Optimization problem
+    opti = arb.Opti()  # Optimization problem
 
     t_final = opti.variable(init_guess=1, lower_bound=0)
     t = np.linspace(0, t_final, N)
@@ -55,7 +55,7 @@ def test_racecar(N=100, plot=False):
 if __name__ == "__main__":
     N = 100  # number of control intervals
 
-    opti = asb.Opti()  # Optimization problem
+    opti = arb.Opti()  # Optimization problem
 
     t_final = opti.variable(init_guess=1, lower_bound=0)
     t = np.linspace(0, t_final, N)

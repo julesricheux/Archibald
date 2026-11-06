@@ -1,8 +1,8 @@
 
 # def test_lifting_line():
-#     analysis = asb.LiftingLine(
+#     analysis = arb.LiftingLine(
 #         airplane=airplane,
-#         op_point=asb.OperatingPoint(),
+#         op_point=arb.OperatingPoint(),
 #     )
 #     return analysis.run()
 

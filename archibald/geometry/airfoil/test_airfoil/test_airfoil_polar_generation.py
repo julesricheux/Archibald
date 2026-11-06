@@ -1,8 +1,8 @@
-import aerosandbox as asb
-import aerosandbox.numpy as np
+import archibald as arb
+import archibald.numpy as np
 
 if __name__ == "__main__":
-    af = asb.Airfoil("dae11")
+    af = arb.Airfoil("dae11")
     af.generate_polars()
 
     alpha = np.linspace(-40, 40, 300)
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     CM = af.CM_function(Alpha.flatten(), Re.flatten()).reshape(Alpha.shape)
 
     ##### Plot alpha-Re contours
-    from aerosandbox.tools.pretty_plots import plt, show_plot, contour
+    from archibald.toolbox.pretty_plots import plt, show_plot, contour
 
     fig, ax = plt.subplots()
     contour(Alpha, Re, CL, levels=30, colorbar_label=r"$C_L$")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     ma = alpha
     mCL = af.CL_function(alpha, Re)
     mCD = af.CD_function(alpha, Re)
-    xf_run = asb.XFoil(af, Re=Re, max_iter=20).alpha(alpha_lowres)
+    xf_run = arb.XFoil(af, Re=Re, max_iter=20).alpha(alpha_lowres)
     xa = xf_run["alpha"]
     xCL = xf_run["CL"]
     xCD = xf_run["CD"]
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     show_plot(legend=False)
 
     ##### Test optimization
-    opti = asb.Opti()
+    opti = arb.Opti()
     alpha = opti.variable(init_guess=0, lower_bound=-20, upper_bound=20)
     LD = af.CL_function(alpha, 1e6) / af.CD_function(alpha, 1e6)
     opti.minimize(-LD)

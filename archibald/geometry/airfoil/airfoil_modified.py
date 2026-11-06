@@ -268,7 +268,7 @@ class Airfoil(Polygon):
 
                 * If the file does exist, XFoil will not be run, and the cache file will be read instead.
 
-            xfoil_kwargs: Keyword arguments to pass into the AeroSandbox XFoil module. See the archibald.XFoil
+            xfoil_kwargs: Keyword arguments to pass into the Archibald XFoil module. See the archibald.XFoil
                 constructor for options.
 
             unstructured_interpolated_model_kwargs: Keyword arguments to pass into the UnstructuredInterpolatedModels
@@ -297,7 +297,7 @@ class Airfoil(Polygon):
         if unstructured_interpolated_model_kwargs is None:
             unstructured_interpolated_model_kwargs = {}
 
-        xfoil_kwargs = {  # See asb.XFoil for the documentation on these.
+        xfoil_kwargs = {  # See arb.XFoil for the documentation on these.
             "verbose": False,
             "max_iter": 20,
             "xfoil_repanel": True,
@@ -331,7 +331,7 @@ class Airfoil(Polygon):
             if cache_filename is not None:
                 os.makedirs(os.path.dirname(cache_filename), exist_ok=True)
 
-            from archibald.aerodynamics.aero_2D import XFoil
+            from archibald.dynamics.aero_2D import XFoil
 
             def get_run_data(
                 Re,
@@ -432,7 +432,7 @@ class Airfoil(Polygon):
             """
             Positive if separated, negative if attached.
 
-            This will be an input to a tanh() sigmoid blend via asb.numpy.blend(), so a value of 1 means the flow is
+            This will be an input to a tanh() sigmoid blend via arb.numpy.blend(), so a value of 1 means the flow is
             ~90% separated, and a value of -1 means the flow is ~90% attached.
             """
             return 0.5 * np.softmax(
@@ -440,7 +440,7 @@ class Airfoil(Polygon):
             )
 
         ### Make the interpolators for separated aerodynamics
-        from archibald.aerodynamics.aero_2D.airfoil_polar_functions import (
+        from archibald.dynamics.aero_2D.airfoil_polar_functions import (
             airfoil_coefficients_post_stall,
         )
 

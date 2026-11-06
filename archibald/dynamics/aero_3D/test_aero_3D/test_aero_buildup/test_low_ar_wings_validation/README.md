@@ -1,4 +1,4 @@
-Validation study of AeroSandbox `AeroBuildup` as applied to low-aspect-ratio (AR) wings, especially those with significant vortex lift.
+Validation study of Archibald `AeroBuildup` as applied to low-aspect-ratio (AR) wings, especially those with significant vortex lift.
 
 Data from:
 

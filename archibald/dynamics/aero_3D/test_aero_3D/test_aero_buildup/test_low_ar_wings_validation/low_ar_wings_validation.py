@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 
 AR = 2
@@ -6,31 +6,31 @@ taper = 0.1
 
 sweep_position_x_over_c = 1
 
-wing = asb.Wing(
+wing = arb.Wing(
     symmetric=True,
     xsecs=[
-        asb.WingXSec(
+        arb.WingXSec(
             xyz_le=[-sweep_position_x_over_c * taper**-0.5, 0, 0],
             chord=taper**-0.5,
-            airfoil=asb.Airfoil("naca0010"),
+            airfoil=arb.Airfoil("naca0010"),
         ),
-        asb.WingXSec(
+        arb.WingXSec(
             xyz_le=[-sweep_position_x_over_c * taper**0.5, AR, 0],
             chord=taper**0.5,
-            airfoil=asb.Airfoil("naca0010"),
+            airfoil=arb.Airfoil("naca0010"),
         ),
     ],
 ).subdivide_sections(5)
 
-airplane = asb.Airplane(wings=[wing])
+airplane = arb.Airplane(wings=[wing])
 
 alphas = np.linspace(0, 90, 500)
 
-op_point = asb.OperatingPoint(
-    atmosphere=asb.Atmosphere(altitude=0), velocity=10, alpha=alphas
+op_point = arb.OperatingPoint(
+    atmosphere=arb.Atmosphere(altitude=0), velocity=10, alpha=alphas
 )
 
-aero = asb.AeroBuildup(airplane=airplane, op_point=op_point).run()
+aero = arb.AeroBuildup(airplane=airplane, op_point=op_point).run()
 
 if __name__ == "__main__":
 

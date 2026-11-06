@@ -1,12 +1,12 @@
 from archibald.dynamics.aero_3D.test_aero_3D.geometries.conventional import (
     airplane,
 )
-import archibald as asb
+import archibald as arb
 
 
-op_point = asb.OperatingPoint(velocity=25, alpha=3)
+op_point = arb.OperatingPoint(velocity=25, alpha=3)
 
-vlm = asb.VortexLatticeMethod(
+vlm = arb.VortexLatticeMethod(
     airplane,
     op_point,
     align_trailing_vortices_with_wind=True,
@@ -15,10 +15,10 @@ vlm = asb.VortexLatticeMethod(
 )
 vlm_aero = vlm.run()
 
-ab = asb.AeroBuildup(airplane, op_point)
+ab = arb.AeroBuildup(airplane, op_point)
 ab_aero = ab.run()
 
-avl = asb.AVL(
+avl = arb.AVL(
     airplane,
     op_point,
 )

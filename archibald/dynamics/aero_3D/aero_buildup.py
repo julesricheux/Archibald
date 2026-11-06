@@ -19,10 +19,10 @@ class AeroBuildup(ExplicitAnalysis):
 
     Example usage:
 
-    >>> import archibald as asb
-    >>> ab = asb.AeroBuildup(  # This sets up the analysis, but doesn't execute calculation
-    >>>     airplane=my_airplane,  # type: asb.Airplane
-    >>>     op_point=my_operating_point,  # type: asb.OperatingPoint
+    >>> import archibald as arb
+    >>> ab = arb.AeroBuildup(  # This sets up the analysis, but doesn't execute calculation
+    >>>     airplane=my_airplane,  # type: arb.Airplane
+    >>>     op_point=my_operating_point,  # type: arb.OperatingPoint
     >>>     xyz_ref=[0.1, 0.2, 0.3],  # Moment reference and center of rotation.
     >>> )
     >>> aero = ab.run()  # This executes the actual aero analysis.
@@ -1271,7 +1271,7 @@ if __name__ == "__main__":
     plt.ylabel(r"$C_L/C_D$")
     p.set_ticks(5, 1, 10, 2)
 
-    p.show_plot("`asb.AeroBuildup` Aircraft Aerodynamics")
+    p.show_plot("`arb.AeroBuildup` Aircraft Aerodynamics")
 
     Beta, Alpha = np.meshgrid(np.linspace(-90, 90, 200), np.linspace(-90, 90, 200))
     aero = AeroBuildup(
@@ -1285,7 +1285,7 @@ if __name__ == "__main__":
         p.set_ticks(15, 5, 15, 5)
         p.equal()
         p.show_plot(
-            "`asb.AeroBuildup` Aircraft Aerodynamics",
+            "`arb.AeroBuildup` Aircraft Aerodynamics",
             r"Sideslip angle $\beta$ [deg]",
             r"Angle of Attack $\alpha$ [deg]",
         )

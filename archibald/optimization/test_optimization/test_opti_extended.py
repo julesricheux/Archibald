@@ -1,11 +1,11 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
 
 def test_opti_simple_unconstrained():
     """Test simple unconstrained optimization."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=10)
     opti.minimize((x - 3) ** 2)
@@ -17,7 +17,7 @@ def test_opti_simple_unconstrained():
 
 def test_opti_with_lower_bound():
     """Test optimization with lower bound constraint."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0, lower_bound=5)
     opti.minimize(x)
@@ -29,7 +29,7 @@ def test_opti_with_lower_bound():
 
 def test_opti_with_upper_bound():
     """Test optimization with upper bound constraint."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=10, upper_bound=3)
     opti.minimize(-x)
@@ -41,7 +41,7 @@ def test_opti_with_upper_bound():
 
 def test_opti_with_bounds():
     """Test optimization with both upper and lower bounds."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0, lower_bound=-5, upper_bound=5)
     opti.minimize((x - 10) ** 2)
@@ -54,7 +54,7 @@ def test_opti_with_bounds():
 
 def test_opti_equality_constraint():
     """Test optimization with equality constraint."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)
@@ -71,7 +71,7 @@ def test_opti_equality_constraint():
 
 def test_opti_inequality_constraint():
     """Test optimization with inequality constraint."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
 
@@ -85,7 +85,7 @@ def test_opti_inequality_constraint():
 
 def test_opti_multiple_variables():
     """Test optimization with multiple variables."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)
@@ -102,7 +102,7 @@ def test_opti_multiple_variables():
 
 def test_opti_vector_variable():
     """Test optimization with vector variable."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=np.zeros(3))
     target = np.array([1, 2, 3])
@@ -116,7 +116,7 @@ def test_opti_vector_variable():
 
 def test_opti_parameter():
     """Test optimization with parameter."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     p = opti.parameter(value=5)
     x = opti.variable(init_guess=0)
@@ -130,7 +130,7 @@ def test_opti_parameter():
 
 def test_opti_parameter_update():
     """Test updating parameter value and re-solving."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     p = opti.parameter(value=5)
     x = opti.variable(init_guess=0)
@@ -149,7 +149,7 @@ def test_opti_parameter_update():
 
 def test_opti_quadratic_program():
     """Test quadratic programming problem."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0, n_vars=2)
 
@@ -168,7 +168,7 @@ def test_opti_quadratic_program():
 
 def test_opti_rosenbrock():
     """Test classic Rosenbrock function optimization."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)
@@ -184,7 +184,7 @@ def test_opti_rosenbrock():
 
 def test_opti_subject_to_list():
     """Test adding multiple constraints as a list."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)
@@ -201,7 +201,7 @@ def test_opti_subject_to_list():
 
 def test_opti_linear_program():
     """Test linear programming problem."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0, lower_bound=0)
     y = opti.variable(init_guess=0, lower_bound=0)
@@ -224,7 +224,7 @@ def test_opti_linear_program():
 
 def test_opti_constraint_violation_detection():
     """Test that infeasible problems are detected."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
 
@@ -238,7 +238,7 @@ def test_opti_constraint_violation_detection():
 
 def test_opti_freeze_variable():
     """Test freezing a variable to a constant value."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=3)
     y = opti.variable(init_guess=0)
@@ -255,7 +255,7 @@ def test_opti_freeze_variable():
 
 def test_opti_nonlinear_constraint():
     """Test optimization with nonlinear constraint."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=1)
     y = opti.variable(init_guess=1)
@@ -271,7 +271,7 @@ def test_opti_nonlinear_constraint():
 
 def test_opti_minimize_absolute_value():
     """Test minimizing sum of absolute values (L1 norm)."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=np.zeros(3))
     target = np.array([1, -2, 3])
@@ -286,7 +286,7 @@ def test_opti_minimize_absolute_value():
 
 def test_opti_matrix_variable():
     """Test optimization with matrix variable."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     ### Create 4 scalar variables and reshape to matrix
     x = opti.variable(init_guess=0, n_vars=4)
@@ -302,7 +302,7 @@ def test_opti_matrix_variable():
 
 def test_opti_callback_function():
     """Test optimization with callback function to track iterations."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     opti.minimize(x**2)
@@ -321,7 +321,7 @@ def test_opti_callback_function():
 
 def test_opti_initial_guess_influence():
     """Test that initial guess affects convergence."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=10)  ### Start far from minimum
 
@@ -335,7 +335,7 @@ def test_opti_initial_guess_influence():
 
 def test_opti_bounded_optimization_tight_bounds():
     """Test optimization with very tight bounds."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=5, lower_bound=4.99, upper_bound=5.01)
 
@@ -349,7 +349,7 @@ def test_opti_bounded_optimization_tight_bounds():
 
 def test_opti_scale_dependent_optimization():
     """Test optimization with different scaling."""
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
 

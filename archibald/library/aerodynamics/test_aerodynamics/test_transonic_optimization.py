@@ -1,11 +1,11 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 from archibald.library.aerodynamics import transonic
 
 
 def test_simple_scalar_optimization():
-    opti = asb.Opti()
+    opti = arb.Opti()
     mach = opti.variable(
         init_guess=0.8,
     )

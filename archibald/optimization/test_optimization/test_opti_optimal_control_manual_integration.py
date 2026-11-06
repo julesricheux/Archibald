@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -47,7 +47,7 @@ def test_rocket_control_problem(plot=False):
     c = np.ones(T)
 
     ### Optimization
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     x = opti.variable(init_guess=np.linspace(0, d, T))  # position
     v = opti.variable(init_guess=d / T, n_vars=T)  # velocity

@@ -1,13 +1,13 @@
-import aerosandbox as asb
+import archibald as arb
 import pytest
 from typing import List
 
 
-def get_airfoil_database() -> List[asb.Airfoil]:
-    airfoil_database_root = asb._asb_root / "geometry" / "airfoil" / "airfoil_database"
+def get_airfoil_database() -> List[arb.Airfoil]:
+    airfoil_database_root = arb._archibald_root / "geometry" / "airfoil" / "airfoil_database"
 
     afs = [
-        asb.Airfoil(
+        arb.Airfoil(
             name=airfoil_file.stem,
         )
         for airfoil_file in airfoil_database_root.glob("*.dat")
@@ -35,9 +35,9 @@ def test_repaneling_validity():
         ), f"Airfoil {af.name} failed repaneling validity check with similarity {similarity}!"
 
 
-def debug_draw(af: asb.Airfoil):
+def debug_draw(af: arb.Airfoil):
     if isinstance(af, str):
-        af = asb.Airfoil(af)
+        af = arb.Airfoil(af)
 
     for af in [af, af.repanel()]:
         af.draw(draw_mcl=False, backend="plotly", show=False).update_layout(

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import aerosandbox.numpy as np
+import archibald.numpy as np
 from typing import Tuple
 from scipy import interpolate
 
@@ -22,7 +22,7 @@ def plot_smooth(
     https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
 
     Example usage:
-        >>> import aerosandbox.numpy as np
+        >>> import archibald.numpy as np
         >>>
         >>> t = np.linspace(0, 1, 12)  # Parametric variable
         >>> x = np.cos(2 * np.pi * t)
@@ -187,7 +187,7 @@ def plot_smooth(
 
 
 if __name__ == "__main__":
-    import aerosandbox.numpy as np
+    import archibald.numpy as np
 
     # t = np.linspace(0, 1, 12)  # Parametric variable
     # x = np.cos(2 * np.pi * t)

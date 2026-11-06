@@ -1,12 +1,12 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 
 def test_single_point_optimization():
 
-    opti = asb.Opti()
+    opti = arb.Opti()
 
-    af = asb.Airfoil("naca0012")
+    af = arb.Airfoil("naca0012")
 
     alpha = opti.variable(init_guess=5, n_vars=1, lower_bound=-30, upper_bound=30)
 
@@ -26,9 +26,9 @@ def test_single_point_optimization():
 
 def test_multi_point_optimization():
 
-    opti = asb.Opti()
+    opti = arb.Opti()
 
-    af = asb.Airfoil("naca0012")
+    af = arb.Airfoil("naca0012")
 
     alpha = opti.variable(init_guess=5, n_vars=10, lower_bound=-30, upper_bound=30)
 

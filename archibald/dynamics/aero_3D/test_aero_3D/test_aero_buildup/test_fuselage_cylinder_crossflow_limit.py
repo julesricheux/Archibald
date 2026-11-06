@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -12,9 +12,9 @@ def make_fuselage(
     beta_geometric=0.0,
     N=101,
 ):
-    return asb.Fuselage(
+    return arb.Fuselage(
         xsecs=[
-            asb.FuselageXSec(
+            arb.FuselageXSec(
                 xyz_c=[
                     xi * np.cosd(alpha_geometric) * np.cosd(beta_geometric),
                     xi * np.sind(beta_geometric),
@@ -33,20 +33,20 @@ def test_90_deg_crossflow():
 
     fuselage = make_fuselage(diameter=diameter, length=length, alpha_geometric=0)
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         fuselages=[fuselage],
         s_ref=diameter * length,
         c_ref=length,
         b_ref=diameter,
     )
 
-    op_point = asb.OperatingPoint(
+    op_point = arb.OperatingPoint(
         velocity=50,
         alpha=90,
         beta=0,
     )
 
-    aero = asb.AeroBuildup(
+    aero = arb.AeroBuildup(
         airplane=airplane, op_point=op_point, xyz_ref=np.array([length / 2, 0, 0])
     ).run()
 

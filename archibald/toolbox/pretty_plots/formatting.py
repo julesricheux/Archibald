@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 from matplotlib import ticker as mt
 from typing import Union, List
-from aerosandbox.tools.pretty_plots.labellines import labelLines
-import aerosandbox.numpy as np
-from aerosandbox.tools.pretty_plots.threedim import ax_is_3d
+from archibald.toolbox.pretty_plots.labellines import labelLines
+import archibald.numpy as np
+from archibald.toolbox.pretty_plots.threedim import ax_is_3d
 from functools import partial
 from pathlib import Path
-from aerosandbox.tools import string_formatting as sf
+from archibald.toolbox import string_formatting as sf
 
 
 def show_plot(

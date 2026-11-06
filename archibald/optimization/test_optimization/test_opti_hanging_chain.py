@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ def test_opti_hanging_chain_with_callback(plot=False):
     g = 9.81
     L = 1
 
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=np.linspace(-2, 2, N))
     y = opti.variable(

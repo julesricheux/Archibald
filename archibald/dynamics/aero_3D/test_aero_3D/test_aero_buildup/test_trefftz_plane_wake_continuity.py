@@ -1,9 +1,9 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pandas as pd
 import pytest
 
-af = asb.Airfoil(
+af = arb.Airfoil(
     "naca0012",
     CL_function=lambda alpha, Re, mach: 2 * np.pi * np.radians(alpha),
     CD_function=lambda alpha, Re, mach: np.zeros_like(alpha),
@@ -11,28 +11,28 @@ af = asb.Airfoil(
 )
 
 solvers = [
-    # asb.AVL,
-    asb.VortexLatticeMethod,
-    asb.AeroBuildup,
+    # arb.AVL,
+    arb.VortexLatticeMethod,
+    arb.AeroBuildup,
 ]
 
 
 def test_horizontal():
-    airplane_horizontal = asb.Airplane(
+    airplane_horizontal = arb.Airplane(
         wings=[
-            asb.Wing(
+            arb.Wing(
                 symmetric=True,
                 color="blue",
                 xsecs=[
-                    asb.WingXSec(xyz_le=[0, 0, 0], chord=1, airfoil=af),
-                    asb.WingXSec(xyz_le=[0, 1, 0], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 0, 0], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 1, 0], chord=1, airfoil=af),
                 ],
             )
         ]
     )
     # airplane_horizontal.draw_three_view()
 
-    op_point_horiz = asb.OperatingPoint(velocity=100, alpha=5)
+    op_point_horiz = arb.OperatingPoint(velocity=100, alpha=5)
 
     horiz = (
         pd.DataFrame(
@@ -54,14 +54,14 @@ def test_horizontal():
 
 
 def test_v_tail():
-    airplane_v_tail = asb.Airplane(
+    airplane_v_tail = arb.Airplane(
         wings=[
-            asb.Wing(
+            arb.Wing(
                 symmetric=True,
                 color="purple",
                 xsecs=[
-                    asb.WingXSec(xyz_le=[0, 0, 0], chord=1, airfoil=af),
-                    asb.WingXSec(xyz_le=[0, 1, 1], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 0, 0], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 1, 1], chord=1, airfoil=af),
                 ],
             )
         ]
@@ -69,7 +69,7 @@ def test_v_tail():
 
     # airplane_v_tail.draw_three_view()
 
-    op_point_v_tail = asb.OperatingPoint(velocity=100, alpha=5, beta=5)
+    op_point_v_tail = arb.OperatingPoint(velocity=100, alpha=5, beta=5)
 
     v_tail = (
         pd.DataFrame(
@@ -89,14 +89,14 @@ def test_v_tail():
 
 
 def test_vertical():
-    airplane_vertical = asb.Airplane(
+    airplane_vertical = arb.Airplane(
         wings=[
-            asb.Wing(
+            arb.Wing(
                 symmetric=True,
                 color="red",
                 xsecs=[
-                    asb.WingXSec(xyz_le=[0, 1, 0], chord=1, airfoil=af),
-                    asb.WingXSec(xyz_le=[0, 1, 1], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 1, 0], chord=1, airfoil=af),
+                    arb.WingXSec(xyz_le=[0, 1, 1], chord=1, airfoil=af),
                 ],
             )
         ]
@@ -104,7 +104,7 @@ def test_vertical():
 
     # airplane_vertical.draw_three_view()
 
-    op_point_vert = asb.OperatingPoint(velocity=100, beta=5)
+    op_point_vert = arb.OperatingPoint(velocity=100, beta=5)
 
     vert = (
         pd.DataFrame(

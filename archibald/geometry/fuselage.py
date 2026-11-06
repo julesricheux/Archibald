@@ -62,8 +62,8 @@ class Fuselage(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of arb.ExplicitAnalysis or
+                    arb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -76,7 +76,7 @@ class Fuselage(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     arb.AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }
@@ -500,45 +500,45 @@ class Fuselage(ArchibaldObject):
 
     def draw(self, *args, **kwargs):
         """
-        An alias to the more general Airplane.draw() method. See there for documentation.
+        An alias to the more general Planform.draw() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to Airplane.draw()
-            **kwargs: Keyword arguments to pass through to Airplane.draw()
+            *args: Arguments to pass through to Planform.draw()
+            **kwargs: Keyword arguments to pass through to Planform.draw()
 
-        Returns: Same return as Airplane.draw()
+        Returns: Same return as Planform.draw()
 
         """
-        from archibald.geometry.airplane import Airplane
-        return Airplane(fuselages=[self]).draw(*args, **kwargs)
+        from archibald.geometry.planform import Planform
+        return Planform(fuselages=[self]).draw(*args, **kwargs)
 
     def draw_wireframe(self, *args, **kwargs):
         """
-        An alias to the more general Airplane.draw_wireframe() method. See there for documentation.
+        An alias to the more general Planform.draw_wireframe() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to Airplane.draw_wireframe()
-            **kwargs: Keyword arguments to pass through to Airplane.draw_wireframe()
+            *args: Arguments to pass through to Planform.draw_wireframe()
+            **kwargs: Keyword arguments to pass through to Planform.draw_wireframe()
 
-        Returns: Same return as Airplane.draw_wireframe()
+        Returns: Same return as Planform.draw_wireframe()
 
         """
-        from archibald.geometry.airplane import Airplane
-        return Airplane(fuselages=[self]).draw_wireframe(*args, **kwargs)
+        from archibald.geometry.planform import Planform
+        return Planform(fuselages=[self]).draw_wireframe(*args, **kwargs)
 
     def draw_three_view(self, *args, **kwargs):
         """
-        An alias to the more general Airplane.draw_three_view() method. See there for documentation.
+        An alias to the more general Planform.draw_three_view() method. See there for documentation.
 
         Args:
-            *args: Arguments to pass through to Airplane.draw_three_view()
-            **kwargs: Keyword arguments to pass through to Airplane.draw_three_view()
+            *args: Arguments to pass through to Planform.draw_three_view()
+            **kwargs: Keyword arguments to pass through to Planform.draw_three_view()
 
-        Returns: Same return as Airplane.draw_three_view()
+        Returns: Same return as Planform.draw_three_view()
 
         """
-        from archibald.geometry.airplane import Airplane
-        return Airplane(fuselages=[self]).draw_three_view(*args, **kwargs)
+        from archibald.geometry.planform import Planform
+        return Planform(fuselages=[self]).draw_three_view(*args, **kwargs)
 
     def subdivide_sections(self,
                            ratio: int,
@@ -691,8 +691,8 @@ class FuselageXSec(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of arb.ExplicitAnalysis or
+                    arb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -705,7 +705,7 @@ class FuselageXSec(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     arb.AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }

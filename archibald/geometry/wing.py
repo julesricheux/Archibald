@@ -74,8 +74,8 @@ class Wing(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of arb.ExplicitAnalysis or
+                    arb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -88,7 +88,7 @@ class Wing(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     arb.AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }
@@ -758,7 +758,7 @@ class Wing(ArchibaldObject):
         Args:
             control_surface_mappings: A dictionary mapping control surface names to their deflection angles, in degrees.
 
-                Note: control surface names are set in the asb.ControlSurface constructor.
+                Note: control surface names are set in the arb.ControlSurface constructor.
 
         Returns:
 
@@ -791,7 +791,7 @@ class Wing(ArchibaldObject):
 
             by_name: If not None, only control surfaces with this name will be included in the area calculation.
 
-                Note: control surface names are set in the asb.ControlSurface constructor.
+                Note: control surface names are set in the arb.ControlSurface constructor.
 
             type: One of the following options, as a string:
 
@@ -2203,8 +2203,8 @@ class WingXSec(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of arb.ExplicitAnalysis or
+                    arb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -2217,7 +2217,7 @@ class WingXSec(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     arb.AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }
@@ -2230,7 +2230,7 @@ class WingXSec(ArchibaldObject):
 
                 Usage example:
 
-                >>> xsecs = asb.WingXSec(
+                >>> xsecs = arb.WingXSec(
                 >>>     chord = 2
                 >>> )
 
@@ -2239,7 +2239,7 @@ class WingXSec(ArchibaldObject):
 
                 Usage example:
 
-                >>>xsecs = asb.WingXSec(
+                >>>xsecs = arb.WingXSec(
                 >>>    chord = 2,
                 >>>    control_surfaces = [
                 >>>        ControlSurface(
@@ -2253,7 +2253,7 @@ class WingXSec(ArchibaldObject):
 
                 Usage example:
 
-                >>>xsecs = asb.WingXSec(
+                >>>xsecs = arb.WingXSec(
                 >>>    chord = 2,
                 >>>    control_surfaces = None
                 >>>)
@@ -2301,7 +2301,7 @@ class WingXSec(ArchibaldObject):
             import warnings
 
             warnings.warn(
-                "DEPRECATED: Define control surfaces using the `control_surfaces` parameter, which takes in a list of asb.ControlSurface objects.",
+                "DEPRECATED: Define control surfaces using the `control_surfaces` parameter, which takes in a list of arb.ControlSurface objects.",
                 stacklevel=2,
             )
             if "control_surface_is_symmetric" not in locals():
@@ -2404,8 +2404,8 @@ class ControlSurface(ArchibaldObject):
 
                 This should be a dictionary where:
 
-                    * Keys are specific analysis types (typically a subclass of asb.ExplicitAnalysis or
-                    asb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
+                    * Keys are specific analysis types (typically a subclass of arb.ExplicitAnalysis or
+                    arb.ImplicitAnalysis), but if you decide to write your own analysis and want to make this key
                     something else (like a string), that's totally fine - it's just a unique identifier for the
                     specific analysis you're running.
 
@@ -2418,7 +2418,7 @@ class ControlSurface(ArchibaldObject):
                 This is more easily demonstrated / understood with an example:
 
                 >>> analysis_specific_options = {
-                >>>     asb.AeroBuildup: dict(
+                >>>     arb.AeroBuildup: dict(
                 >>>         include_wave_drag=True,
                 >>>     )
                 >>> }

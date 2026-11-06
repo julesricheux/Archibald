@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 from archibald.modeling.black_box import black_box
 import pytest
@@ -40,7 +40,7 @@ def test_black_box_with_optimization():
     def my_func(x):
         return (x - 3) ** 2 + 5
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     wrapped = black_box(my_func, n_in=1, n_out=1)
 
     x = opti.variable(init_guess=0)
@@ -58,7 +58,7 @@ def test_black_box_with_constraints():
     def constraint_func(x):
         return x**2
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     wrapped = black_box(constraint_func, n_in=1, n_out=1)
 
     x = opti.variable(init_guess=2)
@@ -107,7 +107,7 @@ def test_black_box_fd_method_central():
 
     wrapped = black_box(my_func, n_in=1, n_out=1, fd_method="central")
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=2)
     opti.minimize(wrapped(x) + (x - 1) ** 2)
 
@@ -125,7 +125,7 @@ def test_black_box_fd_method_forward():
 
     wrapped = black_box(my_func, n_in=1, n_out=1, fd_method="forward")
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(
         init_guess=-2, lower_bound=-5, upper_bound=5
     )  ### Better init guess near minimum
@@ -148,7 +148,7 @@ def test_black_box_fd_method_backward():
 
     wrapped = black_box(my_func, n_in=1, n_out=1, fd_method="backward")
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(
         init_guess=1, lower_bound=-5, upper_bound=5
     )  ### Better init guess
@@ -171,7 +171,7 @@ def test_black_box_multiple_optimization_calls():
 
     wrapped = black_box(my_func, n_in=1, n_out=1)
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=3)
     y = opti.variable(init_guess=4)
 
@@ -193,7 +193,7 @@ def test_black_box_nonsmooth_function():
 
     wrapped = black_box(my_func, n_in=1, n_out=1)
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=0)
     opti.minimize(wrapped(x))
 
@@ -211,7 +211,7 @@ def test_black_box_trigonometric_function():
 
     wrapped = black_box(my_func, n_in=1, n_out=1)
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=2, lower_bound=-np.pi, upper_bound=np.pi)
     opti.minimize(wrapped(x))
 
@@ -229,7 +229,7 @@ def test_black_box_exponential_function():
 
     wrapped = black_box(my_func, n_in=1, n_out=1)
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=0, lower_bound=-5, upper_bound=5)
     opti.minimize(wrapped(x))
 
@@ -323,7 +323,7 @@ def test_black_box_complex_objective():
 
     wrapped = black_box(rosenbrock, n_in=2, n_out=1)
 
-    opti = asb.Opti()
+    opti = arb.Opti()
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)
 

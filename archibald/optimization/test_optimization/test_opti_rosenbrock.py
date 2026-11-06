@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 """
@@ -22,7 +22,7 @@ b = 100
 
 
 def test_2D_rosenbrock():  # 2-dimensional rosenbrock
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     # Define optimization variables
     x = opti.variable(init_guess=0)
@@ -40,7 +40,7 @@ def test_2D_rosenbrock():  # 2-dimensional rosenbrock
 
 
 def test_2D_rosenbrock_circle_constrained():  # 2-dimensional rosenbrock, constrained to be within the unit circle.
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     # Define optimization variables
     x = opti.variable(init_guess=0)
@@ -65,7 +65,7 @@ def test_2D_rosenbrock_circle_constrained():  # 2-dimensional rosenbrock, constr
 def test_ND_rosenbrock_constrained(N=10):  # N-dimensional rosenbrock
     # Problem is unimodal for N=2, N=3, and N>=8. Bimodal for 4<=N<=7. Global min is always a vector of ones.
 
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     x = opti.variable(init_guess=1, n_vars=N)  # vector of variables
 
@@ -84,7 +84,7 @@ def test_ND_rosenbrock_constrained(N=10):  # N-dimensional rosenbrock
 
 
 def test_2D_rosenbrock_frozen():
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     # Define optimization variables
     x = opti.variable(init_guess=1)

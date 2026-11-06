@@ -29,9 +29,9 @@ class NonlinearLiftingLine(ImplicitAnalysis):
     Nonlinear, and includes viscous effects based on 2D data.
 
     Usage example:
-        >>> analysis = asb.NonlinearLiftingLine(
+        >>> analysis = arb.NonlinearLiftingLine(
         >>>     airplane=my_airplane,
-        >>>     op_point=asb.OperatingPoint(
+        >>>     op_point=arb.OperatingPoint(
         >>>         velocity=100, # m/s
         >>>         alpha=5, # deg
         >>>         beta=4, # deg
@@ -70,7 +70,7 @@ class NonlinearLiftingLine(ImplicitAnalysis):
             run_symmetric_if_possible: If this flag is True and the problem fomulation is XZ-symmetric, the solver will
             attempt to exploit the symmetry. This results in roughly half the number of governing equations.
 
-            opti: An asb.Opti environment.
+            opti: An arb.Opti environment.
 
                 If provided, adds the governing equations to that instance. Does not solve the equations (you need to
                 call `sol = opti.solve()` to do that).
@@ -840,7 +840,7 @@ class NonlinearLiftingLine(ImplicitAnalysis):
             import pyvista as pv
 
             plotter = pv.Plotter()
-            plotter.title = "ASB NonlinearLiftingLine"
+            plotter.title = "Archibald NonlinearLiftingLine"
             plotter.add_axes()
             plotter.show_grid(color="gray")
 
@@ -947,7 +947,7 @@ class NonlinearLiftingLine(ImplicitAnalysis):
 
 if __name__ == "__main__":
     ### Import Vanilla Airplane
-    import archibald as asb
+    import archibald as arb
 
     from pathlib import Path
 
@@ -962,8 +962,8 @@ if __name__ == "__main__":
     ### Do the AVL run
     LL_aeros = NonlinearLiftingLine(
         airplane=vanilla,
-        op_point=asb.OperatingPoint(
-            atmosphere=asb.Atmosphere(altitude=0), velocity=10, alpha=5  # m/s
+        op_point=arb.OperatingPoint(
+            atmosphere=arb.Atmosphere(altitude=0), velocity=10, alpha=5  # m/s
         ),
         verbose=True,
         spanwise_resolution=5,

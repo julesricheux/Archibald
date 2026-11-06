@@ -1,6 +1,6 @@
 from archibald.modeling.interpolation import InterpolatedModel
 import pytest
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 
 
@@ -43,7 +43,7 @@ def plot_interpolated_model(interpolated_model=get_interpolated_model()):
 
 
 def test_solve_actual_function():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=-6)
 
@@ -55,7 +55,7 @@ def test_solve_actual_function():
 
 
 def test_solve_interpolated_unbounded(interpolated_model=get_interpolated_model()):
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=-5)
 
@@ -69,7 +69,7 @@ def test_solve_interpolated_unbounded(interpolated_model=get_interpolated_model(
 # def test_solve_interpolated_infeasible_start_but_bounded(
 #         interpolated_model=get_interpolated_model()
 # ):
-#     opti = asb.Opti()
+#     opti = arb.Opti()
 #
 #     x = opti.variable(init_guess=-11, lower_bound=-10, upper_bound=10)
 #

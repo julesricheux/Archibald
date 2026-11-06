@@ -1,7 +1,7 @@
-import aerosandbox as asb
+import archibald as arb
 
-af = asb.Airfoil("naca0012")
-cache = asb._asb_root / "geometry/airfoil/test_airfoil/naca0012.json"
+af = arb.Airfoil("naca0012")
+cache = arb._archibald_root / "geometry/airfoil/test_airfoil/naca0012.json"
 
 
 def make_cache():

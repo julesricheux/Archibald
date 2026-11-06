@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 
 
 def is_tool(name):
@@ -20,9 +20,9 @@ def test_conventional():
         airplane,
     )
 
-    analysis = asb.AVL(
+    analysis = arb.AVL(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -34,9 +34,9 @@ def test_vanilla():
         airplane,
     )
 
-    analysis = asb.AVL(
+    analysis = arb.AVL(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -48,9 +48,9 @@ def test_flat_plate():
         airplane,
     )
 
-    analysis = asb.AVL(
+    analysis = arb.AVL(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 
@@ -62,9 +62,9 @@ def test_flat_plate_mirrored():
         airplane,
     )
 
-    analysis = asb.AVL(
+    analysis = arb.AVL(
         airplane=airplane,
-        op_point=asb.OperatingPoint(alpha=10),
+        op_point=arb.OperatingPoint(alpha=10),
     )
     return analysis.run()
 

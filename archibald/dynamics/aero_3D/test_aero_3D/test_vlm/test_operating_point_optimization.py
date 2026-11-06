@@ -1,15 +1,15 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
-airplane = asb.Airplane(
+airplane = arb.Airplane(
     wings=[
-        asb.Wing(
+        arb.Wing(
             xsecs=[
-                asb.WingXSec(
-                    xyz_le=[0, 0, 0], chord=1, airfoil=asb.Airfoil("naca0001")
+                arb.WingXSec(
+                    xyz_le=[0, 0, 0], chord=1, airfoil=arb.Airfoil("naca0001")
                 ),
-                asb.WingXSec(
-                    xyz_le=[0, 1, 0], chord=1, airfoil=asb.Airfoil("naca0001")
+                arb.WingXSec(
+                    xyz_le=[0, 1, 0], chord=1, airfoil=arb.Airfoil("naca0001")
                 ),
             ]
         )
@@ -18,12 +18,12 @@ airplane = asb.Airplane(
 
 
 def LD_from_alpha(alpha):
-    op_point = asb.OperatingPoint(
+    op_point = arb.OperatingPoint(
         velocity=1,
         alpha=alpha,
     )
 
-    vlm = asb.VortexLatticeMethod(
+    vlm = arb.VortexLatticeMethod(
         airplane, op_point, align_trailing_vortices_with_wind=True
     )
     aero = vlm.run()
@@ -35,7 +35,7 @@ def LD_from_alpha(alpha):
 
 
 def test_vlm_optimization_operating_point():
-    opti = asb.Opti()
+    opti = arb.Opti()
     alpha = opti.variable(init_guess=0, lower_bound=-30, upper_bound=30)
     LD = LD_from_alpha(alpha)
     opti.minimize(-LD)

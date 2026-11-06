@@ -89,7 +89,7 @@ class KulfanAirfoil(Airfoil):
             "The coordinates of a `KulfanAirfoil` can't be modified directly, "
             "as they're a function of the Kulfan parameters.\n"
             "Instead, you can either modify the Kulfan parameters directly, or use the "
-            "more general (coordinate-parameterized) `asb.Airfoil` class."
+            "more general (coordinate-parameterized) `arb.Airfoil` class."
         )
 
     def to_airfoil(
@@ -285,7 +285,7 @@ class KulfanAirfoil(Airfoil):
             alpha_stall_positive = 20
             alpha_stall_negative = -20
 
-            # This will be an input to a tanh() sigmoid blend via asb.numpy.blend(), so a value of 1 means the flow is
+            # This will be an input to a tanh() sigmoid blend via arb.numpy.blend(), so a value of 1 means the flow is
             # ~90% separated, and a value of -1 means the flow is ~90% attached.
             is_separated = (
                 np.softmax(alpha - alpha_stall_positive, alpha_stall_negative - alpha)

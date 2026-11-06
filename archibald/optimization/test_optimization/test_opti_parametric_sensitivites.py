@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -19,7 +19,7 @@ x ** 2 + y ** 2 <= r
 
 
 def test_rosenbrock_constrained(plot=False):
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=0)
     y = opti.variable(init_guess=0)

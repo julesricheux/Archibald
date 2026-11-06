@@ -1,4 +1,4 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
@@ -13,7 +13,7 @@ def sumsqr(x):
 
 
 def test_opti():
-    opti = asb.Opti()  # set up an optimization environment
+    opti = arb.Opti()  # set up an optimization environment
 
     # Define optimization variables
     x = opti.variable(init_guess=0)
@@ -33,7 +33,7 @@ def test_opti():
 def test_save_opti(tmp_path):
     temp_filename = tmp_path / "temp.json"
 
-    opti = asb.Opti(cache_filename=temp_filename)  # set up an optimization environment
+    opti = arb.Opti(cache_filename=temp_filename)  # set up an optimization environment
 
     # Define optimization variables
     x = opti.variable(init_guess=0)
@@ -54,7 +54,7 @@ def test_save_and_load_opti(tmp_path):
 
     ### Round 1 optimization: free optimization
 
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         save_to_cache_on_solve=True,
     )
@@ -75,7 +75,7 @@ def test_save_and_load_opti(tmp_path):
     assert sol(f) == pytest.approx(0)
 
     ### Round 2 optimization: Cat 1 is fixed from before; slightly different objective now
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=["Cat 1"],
         load_frozen_variables_from_cache=True,
@@ -101,7 +101,7 @@ def test_save_and_load_opti_uncategorized(tmp_path):
 
     ### Round 1 optimization: free optimization
 
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         save_to_cache_on_solve=True,
     )
@@ -122,7 +122,7 @@ def test_save_and_load_opti_uncategorized(tmp_path):
     assert sol(f) == pytest.approx(0)
 
     ### Round 2 optimization: Cat 1 is fixed from before; slightly different objective now
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=["Uncategorized"],
         load_frozen_variables_from_cache=True,
@@ -148,7 +148,7 @@ def test_save_and_load_opti_vectorized(tmp_path):
 
     ### Round 1 optimization: free optimization
 
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=[],
         save_to_cache_on_solve=True,
@@ -170,7 +170,7 @@ def test_save_and_load_opti_vectorized(tmp_path):
     assert sol(f) == pytest.approx(0)
 
     ### Round 2 optimization: Cat 1 is fixed from before; slightly different objective now
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=["Cat 1"],
         load_frozen_variables_from_cache=True,
@@ -196,7 +196,7 @@ def test_save_and_load_opti_freeze_override(tmp_path):
 
     ### Round 1 optimization: free optimization
 
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=[],
         save_to_cache_on_solve=True,
@@ -218,7 +218,7 @@ def test_save_and_load_opti_freeze_override(tmp_path):
     assert sol(f) == pytest.approx(0)
 
     ### Round 2 optimization: Cat 1 is fixed from before but then overridden; slightly different objective now
-    opti = asb.Opti(
+    opti = arb.Opti(
         cache_filename=temp_filename,
         variable_categories_to_freeze=["Cat 1"],
         load_frozen_variables_from_cache=True,

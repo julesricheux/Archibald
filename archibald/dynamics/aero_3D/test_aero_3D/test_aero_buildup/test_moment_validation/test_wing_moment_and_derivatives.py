@@ -1,20 +1,20 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 from typing import Type
 
 
 def test_wing_aero_3D_matches_2D_in_high_AR_limit():
-    airfoil = asb.Airfoil("naca2412")
+    airfoil = arb.Airfoil("naca2412")
 
-    wing = asb.Wing(
+    wing = arb.Wing(
         xsecs=[
-            asb.WingXSec(
+            arb.WingXSec(
                 xyz_le=np.array([0, 0, 0]),
                 chord=1,
                 airfoil=airfoil,
             ),
-            asb.WingXSec(
+            arb.WingXSec(
                 xyz_le=np.array([0, 0.5e12, 0]),
                 chord=1,
                 airfoil=airfoil,
@@ -22,13 +22,13 @@ def test_wing_aero_3D_matches_2D_in_high_AR_limit():
         ]
     )
 
-    airplane = asb.Airplane(
+    airplane = arb.Airplane(
         wings=[wing],
     )
 
     Q = 1000
 
-    op_point = asb.OperatingPoint(
+    op_point = arb.OperatingPoint(
         velocity=(2 * Q / 1.225) ** 0.5,
         alpha=5.0,
     )
@@ -49,7 +49,7 @@ def test_wing_aero_3D_matches_2D_in_high_AR_limit():
     }
 
     ### Do 3D predictions
-    aero = asb.AeroBuildup(
+    aero = arb.AeroBuildup(
         airplane=airplane, op_point=op_point, xyz_ref=xyz_ref, model_size="large"
     ).run()
 
@@ -96,33 +96,33 @@ def test_wing_aero_3D_matches_2D_in_high_AR_limit():
     assert aero["Cm"] == pytest.approx(expected_aero["Cm"], rel=rtol)
 
 
-wing = asb.Wing(
+wing = arb.Wing(
     symmetric=True,
     xsecs=[
-        asb.WingXSec(
+        arb.WingXSec(
             xyz_le=np.array([0.0, 0, 0]),
             chord=1.0,
-            airfoil=asb.Airfoil("naca2412"),
+            airfoil=arb.Airfoil("naca2412"),
         ),
-        asb.WingXSec(
+        arb.WingXSec(
             xyz_le=np.array([0.0, 5, 0]),
             chord=1.0,
-            airfoil=asb.Airfoil("naca2412"),
+            airfoil=arb.Airfoil("naca2412"),
         ),
     ],
 )
 
-airplane = asb.Airplane(
+airplane = arb.Airplane(
     wings=[wing],
 )
 
 
 def test_simple_wing_stability_derivatives(
-    AeroAnalysis: Type = asb.AeroBuildup,
+    AeroAnalysis: Type = arb.AeroBuildup,
 ):
     analysis = AeroAnalysis(
         airplane=airplane,
-        op_point=asb.OperatingPoint(
+        op_point=arb.OperatingPoint(
             velocity=100.0,
             alpha=0.0,
             beta=5.0,

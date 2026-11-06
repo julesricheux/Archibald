@@ -1,27 +1,27 @@
-import archibald as asb
+import archibald as arb
 import archibald.numpy as np
 import pytest
 
 
 def test_fuselage_aerodynamics_optimization():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     alpha = opti.variable(init_guess=0, lower_bound=0, upper_bound=30)
     beta = opti.variable(init_guess=0)
 
-    fuselage = asb.Fuselage(
+    fuselage = arb.Fuselage(
         xsecs=[
-            asb.FuselageXSec(
+            arb.FuselageXSec(
                 xyz_c=[xi, 0, 0],
-                radius=asb.Airfoil("naca0010").local_thickness(0.8 * xi),
+                radius=arb.Airfoil("naca0010").local_thickness(0.8 * xi),
             )
             for xi in np.cosspace(0, 1, 20)
         ],
     )
 
-    aero = asb.AeroBuildup(
-        airplane=asb.Airplane(fuselages=[fuselage]),
-        op_point=asb.OperatingPoint(velocity=10, alpha=alpha, beta=beta),
+    aero = arb.AeroBuildup(
+        airplane=arb.Airplane(fuselages=[fuselage]),
+        op_point=arb.OperatingPoint(velocity=10, alpha=alpha, beta=beta),
     ).run()
 
     opti.minimize(-aero["L"] / aero["D"])

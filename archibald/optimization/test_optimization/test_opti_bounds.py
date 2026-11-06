@@ -1,9 +1,9 @@
-import archibald as asb
+import archibald as arb
 import pytest
 
 
 def test_bounds():
-    opti = asb.Opti()
+    opti = arb.Opti()
 
     x = opti.variable(init_guess=5, lower_bound=3)
     opti.minimize(x**2)

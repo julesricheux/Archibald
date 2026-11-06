@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Union, Callable, List
-from aerosandbox.tools.string_formatting import eng_string
+from archibald.toolbox.string_formatting import eng_string
 import seaborn as sns
 
 
@@ -120,7 +120,7 @@ def pie(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import aerosandbox.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     data = {
         "USA": 336997624,
