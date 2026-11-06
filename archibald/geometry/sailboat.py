@@ -26,6 +26,8 @@ from archibald.performance.operating_point import OperatingPoint
 from archibald.dynamics.aero_3D import HydroVortexLatticeMethod, AeroVortexLatticeMethod
 from archibald.dynamics.hydro import multihull
 
+from archibald.weights.mass_properties import MassProperties
+
 import archibald.numpy as np
 import archibald.toolbox.units as u
 
@@ -55,16 +57,24 @@ class Sailboat(ArchibaldObject):
             appendages: List[Appendage] = [],
             propellers: List[Propeller] = [],
             fittings: List[ArchibaldMesh] = [],
+            masses: Optional[List[MassProperties]] = None,
         ):
-        
+
+        if masses and displacement is not None:
+            raise ValueError(
+                "Give either `masses` or `displacement` and `cog`, not both: "
+                "the weight would otherwise be ambiguous."
+            )
+
         self.hulls = hulls
         self.rigs = rigs
         self.appendages = appendages
         self.propellers = propellers
         self.fittings = fittings
+        self.masses = masses if masses is not None else []
         self.displacement = displacement
-        self.cog = wide(np.array(cog))
-        
+        self.cog = wide(np.array(cog)) if cog is not None else None
+
         self.forces = {}
         self.moments = {}
         self.hull_interaction = None
@@ -134,27 +144,53 @@ class Sailboat(ArchibaldObject):
             self,
             op_point: OperatingPoint = OperatingPoint(),
         ):
-        
-        # TODO: bring back cog in underway axes AND transform it with the rest
-        
-        weight = self.displacement
-        g = op_point.environment.gravity
-        
-        center = op_point.apply_transformations(wide(self.cog))
-        
-        Fw = wide(np.array([
-            0.,
-            0.,
-            -weight*g
-        ]))
-        
-        Mw = np.cross(center, Fw)
-        
-        self.forces["Fw"] = Fw
-        self.moments["Mw"] = Mw
-        
-        return Fw, Mw
-    
+        """
+        Weight force and moment of each mass and of the whole boat.
+
+        Each center of gravity is given in boat-fixed coordinates and follows
+        the boat through the operating point. Results are stored in the boat
+        motion reference frame: ``forces["Fw_<i>"]`` and ``moments["Mw_<i>"]``
+        for the i-th mass of ``masses``, ``forces["Fw"]`` and ``moments["Mw"]``
+        for their sum. Without ``masses``, ``displacement`` and ``cog`` act as
+        a single mass.
+
+        Returns
+        -------
+        Fw, Mw : total weight force [N] and moment [N.m], of shape (1, 3).
+        """
+        masses = self.masses
+
+        if not masses and self.displacement is not None:
+            if self.cog is None:
+                raise ValueError("`displacement` requires `cog` to compute the weight.")
+            cog = wide(self.cog)
+            masses = [MassProperties(
+                mass=self.displacement,
+                x_cg=cog[0, 0],
+                y_cg=cog[0, 1],
+                z_cg=cog[0, 2],
+            )]
+
+        # clear the results of a previous call, e.g. with more masses
+        for key in [k for k in self.forces if k.startswith("Fw_")]:
+            del self.forces[key]
+        for key in [k for k in self.moments if k.startswith("Mw_")]:
+            del self.moments[key]
+
+        self.forces["Fw"] = wide(np.zeros(3))
+        self.moments["Mw"] = wide(np.zeros(3))
+
+        for i, mass in enumerate(masses):
+            Fw_i, Mw_i = mass.compute_weight(op_point)
+
+            self.forces[f"Fw_{i}"] = Fw_i
+            self.moments[f"Mw_{i}"] = Mw_i
+
+            self.forces["Fw"] += Fw_i
+            self.moments["Mw"] += Mw_i
+
+        return self.forces["Fw"], self.moments["Mw"]
+
     
     def compute_buoyancy(
             self,

@@ -324,6 +324,32 @@ class MassProperties(ArchibaldObject):
     def xyz_cg(self):
         return self.x_cg, self.y_cg, self.z_cg
 
+    def compute_weight(self, op_point):
+        """
+        Computes the weight torsor of this mass at a given operating point.
+
+        The center of gravity is read as boat-fixed coordinates, and moves with the boat attitude and position through
+        `op_point.apply_transformations`. The force and moment are expressed in the boat motion reference frame (x
+        forward, y port, z up), and the moment is taken about its origin, as for the other sailboat components.
+
+        Args:
+
+            op_point: The OperatingPoint giving the boat attitude and position, and the gravity of its environment.
+
+        Returns: A tuple (Fw, Mw) of the weight force [N] and moment [N.m], each of shape (1, 3).
+
+        """
+        g = op_point.environment.gravity
+
+        center = op_point.apply_transformations(
+            np.reshape(np.array([self.x_cg, self.y_cg, self.z_cg]), (1, -1))
+        )
+
+        Fw = np.reshape(np.array([0.0, 0.0, -self.mass * g]), (1, -1))
+        Mw = np.cross(center, Fw)
+
+        return Fw, Mw
+
     @property
     def inertia_tensor(self):
         # Returns the inertia tensor about the component's centroid.

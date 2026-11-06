@@ -205,5 +205,5 @@ for k, v in nacra.forces.items():
 # print("Holtrop")
 # print(nacra.forces["Fh"])
 
-# nacra.draw()
-nacra.draw_vlm(cmap="fire")
+nacra.draw(backend="matplotlib")
+# nacra.draw_vlm(cmap="fire", backend="plotly")

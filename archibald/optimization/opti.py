@@ -1386,6 +1386,10 @@ class OptiSol:
         ):
             return x
 
+        # Integer and boolean arrays cannot hold symbolic variables, and must keep their type (e.g., mesh faces)
+        if issubclass(t, np.ndarray) and x.dtype.kind in "biu":
+            return x.copy()
+
         # Skip certain CasADi types
         if issubclass(
             t,
