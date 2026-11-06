@@ -35,6 +35,20 @@ dependencies = [
     "sortedcontainers",
     "dill",
     "neuralfoil",
+    "xarray",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "seaborn",
+    "shapely",
+]
+viz = [
+    "imageio",
+    "plotly",
+    "pyvista",
+    "seaborn",
 ]
 
 [project.urls]

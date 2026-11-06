@@ -92,14 +92,16 @@ $env:MPLBACKEND = "Agg"
 & "$env:USERPROFILE\anaconda3\envs\py313\python.exe" -m pytest archibald -q -p no:cacheprovider --continue-on-collection-errors
 ```
 
-- `pytest` is not installed in `py313`. Installing it there or appending the base conda `site-packages` to `sys.path` both work.
+- `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
 - **Test baseline: 273 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
 - `Sailboat` and `draw_vlm` have no unit tests. Check them with a script.
 - Examples use relative data paths, so run them from their own folder.
-- `pyvista` and `plotly` are optional and not in `pyproject.toml`. `imageio` is needed for `draw_vlm(gif_path=...)` and is not installed in `py313`.
+- **CI:** `.github/workflows/run-pytest.yml` runs on `main` and `develop` with Python 3.11-3.13. It excludes the known-broken tests above by name, so when you fix one, remove its entry. A new top-level import of an undeclared package breaks `import archibald` for pip users, so declare it in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
+- **Publishing:** `publish.yml` runs on `v*` tags and only exists on `main` for now, so tag from `main`. The tag must match the `pyproject.toml` version.
+- Optional packages are in the `viz` extra (`pyvista`, `plotly`, `seaborn`, `imageio`). `imageio` is needed for `draw_vlm(gif_path=...)` and is not installed in `py313`. `tqdm`, `cadquery` and non-test `shapely` uses are not declared anywhere.
 - For headless rendering, force `off_screen=True` and use `plotter.screenshot`.
 - The repo is on a synced SharePoint folder, so `git grep` and broad searches can time out. Scope searches to `archibald/` with a file filter and exclude `archibald/data`.
 

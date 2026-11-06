@@ -12,3 +12,4 @@ polars
 sortedcontainers
 dill
 neuralfoil
+xarray
