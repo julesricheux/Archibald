@@ -47,11 +47,11 @@ DEFAULT_RESISTANCE_METHODS = {
     "composite": {
         
         "Rf": dsyhs.compute_Rf_dsyhs,
-        "Rw": dsyhs.compute_Rw_dsyhs,
+        # "Rw": dsyhs.compute_Rw_dsyhs,
         "Rtr": dsyhs.compute_Rtr_dsyhs,
         
         # "Rw": michell.compute_Rw_michell,
-        # "Rw": holtrop.compute_Rw_holtrop,
+        "Rw": holtrop.compute_Rw_holtrop,
         # "Rw": lambda **kwargs: 0.,
         
         # "Rf": savitsky.compute_Rf_savitsky,
@@ -97,7 +97,7 @@ T0, ref = 0., 0.290513
 overhang = 3.775 # deg for 49er
 hullStl = r'data/49er_data/hull.stl'
 
-stw = np.arange(2, 19, 4)
+stw = np.arange(4, 18+1, 2)
 
 Rf = []
 Rw = []
@@ -118,18 +118,18 @@ for s in stw:
     
     # T = 3e-2
     # trim = overhang
-    # T = 0.
-    # trim = 0.
+    T = 0.
+    trim = 0.
     # T = 0.13
     # trim = 4.
     # # trim = 2.
-    T = s / 100
-    trim = s / 5.
+    # T = s / 100
+    # trim = s / 5.
 
     
     T = opti.variable(init_guess=T)
     # trim = opti.variable(init_guess=trim, lower_bound=overhang + 2.)
-    trim = opti.variable(init_guess=trim, lower_bound=0., upper_bound=20.)
+    trim = opti.variable(init_guess=trim, lower_bound=-5., upper_bound=10.)
     
     op_point = OperatingPoint(
         stw=s,
@@ -157,7 +157,7 @@ for s in stw:
         op_point,
         method=DEFAULT_RESISTANCE_METHODS["composite"],
         # **{'Csternchoice': 1, 'Bulbchoice': 0}
-        **{'trim': tau, 'deadrise': deadrise, "use_Aws": True}
+        **{'trim': tau, 'deadrise': deadrise, "use_Aws": True,}
     )
         
     froude =  op_point._stw / np.sqrt(hull.hydrostatics_data["Lwl"] * 9.8066)
@@ -178,17 +178,29 @@ for s in stw:
     
     # val = 1.
     
-    Fz = hrc["Fz"]
-    Fx = hrc["Rp"]
-    # Fz = 0.
-    # Fx = 0.
+    tau = np.softplus(tau, beta=1e2)
     
+    lam = hull.hydrostatics_data["Lwl"]
+    CL0 = 0.0120 * tau ** 1.1 * np.sqrt(lam)
+    CL_b = CL0 - 0.0065 * deadrise * CL0 ** 0.6
+    L = 0.5 * 1025 * CL_b * op_point.environment.water.density * (s * 0.5144) ** 2. * hull.hydrostatics_data["Bwl"] ** 2.
+    Dp = L * np.tand(tau)
+    
+    
+    # Fz = hrc["Fz"]
+    # Fx = hrc["Rp"]
+    # Fz = L
+    # Fx = Dp
+    Fz = 0.
+    Fx = 0.
+    
+
     opti.minimize(
         hrc["Rf"] +
-        # hrc["Rw"] +
+        hrc["Rw"] +
         hrc["Rtr"] + 
         Fx +
-        hrc["Rsp"] +
+        # hrc["Rsp"] +
         0.
     )
     
@@ -215,8 +227,8 @@ for s in stw:
     print()
     
     Rf.append(hrc["Rf"])
-    # Rw.append(hrc["Rw"])
-    Rw.append(0.)
+    Rw.append(hrc["Rw"])
+    # Rw.append(0.)
     Rtr.append(hrc["Rtr"])
     Rsp.append(hrc["Rsp"])
     Rp.append(sol(Fx))
@@ -233,7 +245,33 @@ R = np.asarray(R) / g
 
 #%%
 
-fig, ax = plt.subplots(figsize=(8, 5))
+# Bethwaite / Watin results
+
+# Red experimental points
+speed_red = [4.3, 4.3, 4.5, 5.5]
+drag_red  = [3.0, 3.5, 3.0, 6.2]
+
+# Blue experimental points
+speed_blue = [5.9, 5.9, 6.8, 6.9, 8.0, 8.1]
+drag_blue  = [12.0, 12.5, 16.8, 17.2, 19.8, 20.0]
+
+# Green / Dark experimental points
+speed_green = [9.8, 9.9, 11.5, 11.8, 11.9, 14.0, 14.6, 14.7, 17.8, 18.0, 18.1]
+drag_green  = [25.5, 25.8, 34.0, 33.2, 33.0, 42.0, 41.5, 42.2, 51.5, 53.0, 53.5]
+
+speed_exp = np.array([
+    4.3, 4.3, 4.5, 5.5, 
+    5.9, 5.9, 6.8, 6.9, 8.0, 8.1, 
+    9.8, 9.9, 11.5, 11.8, 11.9, 14.0, 14.6, 14.7, 17.8, 18.0, 18.1
+])
+
+drag_exp = np.array([
+    3.0, 3.5, 3.0, 6.2, 
+    12.0, 12.5, 16.8, 17.2, 19.8, 20.0, 
+    25.5, 25.8, 34.0, 33.2, 33.0, 42.0, 41.5, 42.2, 51.5, 53.0, 53.5
+])
+
+fig, ax1 = plt.subplots(figsize=(8, 5))
 
 b = 1.1228946447372437
 L = 4.8577
@@ -241,7 +279,7 @@ L = 4.8577
 # stw = stw * 0.5144 / np.sqrt(L * 9.8066)
 # stw = stw * 0.5144 / np.sqrt(b * 9.8066)
 
-ax.fill_between(
+ax1.fill_between(
     stw,
     0,
     Rf,
@@ -249,7 +287,7 @@ ax.fill_between(
     label="Frictional resistance",
 )
 
-ax.fill_between(
+ax1.fill_between(
     stw,
     Rf,
     Rf + Rw,
@@ -257,7 +295,7 @@ ax.fill_between(
     label="Wave resistance",
 )
 
-ax.fill_between(
+ax1.fill_between(
     stw,
     Rf + Rw,
     Rf + Rw + Rtr,
@@ -265,7 +303,7 @@ ax.fill_between(
     label="Transom resistance",
 )
 
-ax.fill_between(
+ax1.fill_between(
     stw,
     Rf + Rw + Rtr,
     Rf + Rw + Rtr + Rp,
@@ -273,7 +311,7 @@ ax.fill_between(
     label="Pressure resistance",
 )
 
-ax.fill_between(
+ax1.fill_between(
     stw,
     Rf + Rw + Rtr + Rp,
     Rf + Rw + Rtr + Rp + Rsp,
@@ -281,21 +319,34 @@ ax.fill_between(
     label="Spray resistance",
 )
 
-# ax.plot(
-#     stw,
-#     R,
-#     linewidth=2,
-#     label="Total resistance",
-# )
+ax1.scatter(speed_exp, drag_exp, label="Bethwaite & Watin (2007)", c="red", s=10.)
 
-ax.set_xlabel("STW [kn]")
-ax.set_ylabel("Resistance [N]")
-ax.set_xlim(stw[0], stw[-1])
-# ax.grid(True, alpha=0.2)
-ax.legend()
+# --- Secondary Y-axis for Trim ---
+ax2 = ax1.twinx()
+ax2.plot(
+    stw, 
+    TRIM, 
+    color="black", 
+    linestyle="--", 
+    linewidth=2, 
+    label="Trim"
+)
+ax2.set_ylabel("Trim [deg]")
+ax2.grid(False)  # Disable grid on secondary axis to prevent clutter
+ax2.set_ylim(-5, 15)  # Adjust limits as needed for your trim range
 
-plt.xlim(0., stw[-1])
-plt.ylim(0, 70)
+# --- Axis Labels and Limits ---
+ax1.set_xlabel("STW [kn]")
+ax1.set_ylabel("Resistance [kg]")
+ax1.set_xlim(stw[0] - 1, stw[-1] + 1)
+ax1.set_ylim(0, 10 * ((np.max(Rf + Rp + Rsp) + 10) // 10))
+
+# --- Combined Legend ---
+lines_1, labels_1 = ax1.get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
 fig.tight_layout()
 plt.show()
+
+
