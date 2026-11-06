@@ -1,4 +1,4 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 
 
 def induced_drag(
@@ -82,7 +82,7 @@ def oswalds_efficiency(
     elif method == "kroo":
         mach_correction_factor = 1
         Q = 1 / (e_theo * k_e_F)
-        from archibald2.library.aerodynamics.viscous import Cf_flat_plate
+        from archibald.library.aerodynamics.viscous import Cf_flat_plate
 
         P = 0.38 * Cf_flat_plate(Re_L=1e6)
 
@@ -197,7 +197,7 @@ def induced_drag_ratio_from_ground_effect(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import archibald2.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     fig, ax = plt.subplots()
     machs = np.linspace(0, 2, 500)

@@ -1,4 +1,4 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 
 
 def Cd_cylinder(
@@ -117,7 +117,7 @@ def Cf_flat_plate(Re_L: float, method="hybrid-sharpe-convex") -> float:
         C_f: The skin friction coefficient, normalized to the length of the plate.
 
     You can view all of these functions graphically using
-    `archibald2.library.aerodynamics.test_aerodynamics.test_Cf_flat_plate.py`
+    `archibald.library.aerodynamics.test_aerodynamics.test_Cf_flat_plate.py`
 
     """
     Re_L = np.abs(Re_L)

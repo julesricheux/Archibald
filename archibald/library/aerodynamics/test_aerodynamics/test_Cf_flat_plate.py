@@ -1,9 +1,9 @@
-import archibald2.numpy as np
-import archibald2.library.aerodynamics as aero
+import archibald.numpy as np
+import archibald.library.aerodynamics as aero
 
 
 def plot_Cf_flat_plates():
-    from archibald2.tools.pretty_plots import plt, show_plot
+    from archibald.toolbox.pretty_plots import plt, show_plot
 
     Res = np.geomspace(1e3, 1e8, 500)
     for method in [

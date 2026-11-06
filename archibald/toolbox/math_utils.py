@@ -15,7 +15,7 @@ Useful math tools for Archibald
 import csv
 import casadi as ca
 import xarray as xr
-import archibald2.numpy as np
+import archibald.numpy as np
 # import scipy.interpolate as itrp # TODO remove
 
 #%% FUNCTIONS

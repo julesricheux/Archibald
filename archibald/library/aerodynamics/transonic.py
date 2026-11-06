@@ -1,5 +1,5 @@
-import archibald2.numpy as np
-from archibald2.modeling.splines.hermite import (
+import archibald.numpy as np
+from archibald.modeling.splines.hermite import (
     cubic_hermite_patch,
 )
 
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         return approximate_CD_wave(mach, mach_crit=mc, CD_wave_at_fully_supersonic=1)
 
     import matplotlib.pyplot as plt
-    import archibald2.tools.pretty_plots as p
+    import archibald.toolbox.pretty_plots as p
 
     fig, ax = plt.subplots(1, 3, figsize=(10, 5))
 

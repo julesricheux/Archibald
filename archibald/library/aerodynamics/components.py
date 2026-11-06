@@ -1,4 +1,4 @@
-import archibald2.numpy as np
+import archibald.numpy as np
 from typing import Union
 
 

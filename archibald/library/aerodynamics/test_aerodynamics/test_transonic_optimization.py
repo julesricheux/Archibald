@@ -1,7 +1,7 @@
-import archibald2 as asb
+import archibald as asb
 import pytest
 
-from archibald2.library.aerodynamics import transonic
+from archibald.library.aerodynamics import transonic
 
 
 def test_simple_scalar_optimization():
