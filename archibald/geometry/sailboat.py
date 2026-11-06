@@ -155,6 +155,7 @@ class Sailboat(ArchibaldObject):
         
         return Fw, Mw
     
+    
     def compute_buoyancy(
             self,
             op_point: OperatingPoint,
@@ -387,6 +388,82 @@ class Sailboat(ArchibaldObject):
             self.moments["Maa"] = self.moments["Maa"] + Ma_c
         
         return self.forces["Faa"], self.moments["Maa"]
+    
+    def compute_propeller(
+            self,
+            op_point: OperatingPoint = OperatingPoint(),
+            recompute_statics: bool = True,
+            full_output: bool = False,
+            shaft_efficiency: float = 0.98,
+        ):
+
+        if self.propeller:
+            if self.hull:
+                if recompute_statics:
+                    self.hull.compute_statics(op_point)
+                w, t, etaR = self.hull.compute_propulsion_coefficients(op_point.stw, self.propeller.blade_area_ratio)
+            else:
+                w, t, etaR = 0., 0., 1.
+            
+            etaS = shaft_efficiency
+            etaH = (1-t)/(1-w)
+            
+            # leeway = op_point.leeway
+            
+            rpm = op_point.rpm
+            n = rpm / 60. # rps
+            V = op_point._stw # m/s
+            D = self.propeller.diameter # m
+            J = (1 - w) * V / (n*D)
+            
+            Kt, Kq, eta0 = self.propeller.compute_performance(J)
+            
+            T, Qo, Po, n = self.propeller.compute_forces(
+                J,
+                op_point.environment.water.density,
+                rpm=rpm
+            )
+            
+            F = np.sum(T*(1-t))
+            
+            center = self.propeller.center
+            axis = tall(self.propeller.axis)
+            
+            prop = {
+                'J': J,
+                'Kt': Kt,
+                'Kq': Kq,
+                'eta0': eta0,
+                'etaH': etaH,
+                'etaS': etaS,
+                'etaR': etaR,
+                'eta': eta0*etaH*etaS*etaR,
+                'T': T,
+                'Q': Qo / etaR,
+                'P': Po / etaR,
+                'Qo': Qo,
+                'Po': Po,
+                'BHP': Po / (etaR * etaS),
+                'n': n,
+                'w': w,
+                't': t,
+                'F_b': F * np.array([1.,0.,0.]),
+                'M_b': np.zeros(3),
+                'F_ab': F * axis,
+                'M_ab': np.cross(center, F * axis),
+                'w': w,
+                't': t,
+            }
+            
+            Fprop = prop['F_ab']
+            Mprop = prop['M_ab']
+            
+        else:
+            Fprop, Mprop, prop = np.zeros(3), np.zeros(3), {}
+        
+        if full_output:
+            return Fprop, Mprop, prop
+        return Fprop, Mprop
         
         
     def compute_torsor(
