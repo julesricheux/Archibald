@@ -3,9 +3,8 @@
 Created on Fri Nov  6 00:38:27 2026
 
 @author: jules
-"""
 
-"""Animated potential flow past a sphere (dark theme) with PyVista.
+Animated potential flow past a sphere (dark theme) with PyVista.
 
 pip install pyvista numpy
 """
@@ -28,7 +27,7 @@ Y, Z = np.meshgrid(g, g)
 seeds = np.c_[np.full(Y.size, -4.0), Y.ravel(), Z.ravel()]
 seeds = seeds[np.hypot(seeds[:, 1], seeds[:, 2]) < 1.8]
 
-n_steps, dt = 220, 0.04
+n_steps, dt = 4*220, 0.04/4
 paths = np.empty((len(seeds), n_steps, 3))
 p = seeds.copy()
 for i in range(n_steps):
@@ -61,7 +60,7 @@ pl = pv.Plotter(window_size=(540, 960))
 pl.set_background("#050818")  # flat colour: gradients can break shaders on some GPUs
 pl.add_mesh(body, scalars="Cp", cmap="turbo", smooth_shading=True, show_scalar_bar=False)
 pl.add_mesh(tubes, scalars="speed", cmap="viridis", opacity=0.35, show_scalar_bar=False)
-pl.add_mesh(particles, color="white", point_size=7, render_points_as_spheres=True)
+pl.add_mesh(particles, color="white", point_size=7, render_points_as_spheres=False)
 pl.add_axes(color="white")
 pl.camera.zoom(1.3)
 

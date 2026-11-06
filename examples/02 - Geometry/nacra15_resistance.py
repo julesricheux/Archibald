@@ -84,7 +84,7 @@ for file, af in zip(dxf_files, airfoils):
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    airfoil=Airfoil(af).scale(scale_y=-1.0),
+                    # airfoil=Airfoil(af).scale(scale_y=-1.0),
                     twist=0.,
                 )
             for i, (xyz, c) in enumerate(zip(le, chords))]
@@ -204,4 +204,4 @@ for k, v in nacra.forces.items():
 # print("Holtrop")
 # print(nacra.forces["Fh"])
 
-# nacra.draw()
+nacra.draw()
