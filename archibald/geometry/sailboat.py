@@ -913,6 +913,27 @@ class Sailboat(ArchibaldObject):
         paths = paths[onp.all(onp.isfinite(paths), axis=(1, 2))]  # drop diverged lines
         return paths if len(paths) else None
 
+    @staticmethod
+    def _streamlines_travel_time(vlm, paths):
+        """
+        Time [s] taken by a fluid particle to reach each point of the streamlines
+        (n_lines, n_steps, 3), from the local velocity of the VLM. Far from the lifting
+        surfaces, this velocity tends to the freestream: ``op_point._stw`` in water and
+        ``op_point._aws(z)`` in air. As the streamlines run close to the wake filaments,
+        where the velocity is singular, the local speed is limited to [0.1, 3] x freestream.
+        """
+        n, m = paths.shape[:2]
+        points = paths.reshape(-1, 3)
+        V = onp.asarray(vlm.get_velocity_at_points(points), dtype=float)
+        Vinf = onp.asarray(vlm.get_freestream_velocity_at_points(points), dtype=float)
+        speed = onp.linalg.norm(V, axis=1).reshape(n, m)
+        speed_inf = onp.linalg.norm(Vinf, axis=1).reshape(n, m)
+        speed = onp.clip(speed, 0.1 * speed_inf, 3. * speed_inf)
+
+        ds = onp.linalg.norm(onp.diff(paths, axis=1), axis=2)
+        dt = ds / (0.5 * (speed[:, 1:] + speed[:, :-1]))
+        return onp.hstack([onp.zeros((n, 1)), onp.cumsum(dt, axis=1)])
+
     def draw_vlm(
         self,
         backend: str = "pyvista",
@@ -932,9 +953,9 @@ class Sailboat(ArchibaldObject):
         seed_fn: Optional[callable] = None,
         recalculate_streamlines: bool = False,
         # --- animation (pyvista only) ---
-        animate: bool = False,
+        animate: Optional[bool] = None,
         particles_per_line: int = 4,
-        particle_speed: float = 1.0,
+        particle_speed: float = 0.1,
         particle_size: float = 7.,
         gif_path: Optional[str] = None,
         n_frames: int = 150,
@@ -974,9 +995,10 @@ class Sailboat(ArchibaldObject):
         seed_fn : optional ``f(vlm) -> (n, 3)`` array of custom seed points.
         recalculate_streamlines : ignore the streamlines already stored on the VLMs.
         animate : animate particles along the streamlines (pyvista only). The window stays
-            open until closed or 'q' is pressed.
-        particles_per_line, particle_speed, particle_size :
-            Number of particles per streamline, their speed [streamline points / frame], their size [px].
+            open until closed or 'q' is pressed. Default: True with pyvista.
+        particles_per_line, particle_size : Number of particles per streamline, their size [px].
+        particle_speed : playback rate of the particles [s of flow / s of animation at ``fps``], 1 is
+            real time. Particles move at the local flow speed, with the same clock in air and water.
         gif_path : if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
             (implies ``animate``).
         theme : "dark" or "light".
@@ -1006,6 +1028,8 @@ class Sailboat(ArchibaldObject):
                 "No VLM solution to draw: call compute_aerodynamics() and/or compute_hydrodynamics() first."
             )
 
+        if animate is None:
+            animate = backend == "pyvista"
         animate = animate or gif_path is not None
         if animate and backend != "pyvista":
             warnings.warn("Animation is only available with the 'pyvista' backend: drawing a static figure.")
@@ -1029,6 +1053,7 @@ class Sailboat(ArchibaldObject):
         diag = float(onp.linalg.norm(all_points.max(axis=0) - all_points.min(axis=0)))
 
         lines = []
+        line_vlms = []
         if draw_streamlines:
             if streamlines_length is None:
                 chords = [getattr(getattr(v, "airplane", None), "c_ref", None) for v, _ in entries]
@@ -1041,6 +1066,7 @@ class Sailboat(ArchibaldObject):
                 )
                 if paths is not None:
                     lines.append(paths)
+                    line_vlms.append(vlm)
 
         water = None
         if draw_water:
@@ -1175,20 +1201,22 @@ class Sailboat(ArchibaldObject):
                 rng = onp.random.default_rng(0)
                 k = max(int(particles_per_line), 1)
                 groups = []
-                for paths in lines:
-                    n, m = paths.shape[:2]
-                    # evenly spaced along each line, with a random phase per line
+                for paths, vlm in zip(lines, line_vlms):
+                    n = paths.shape[0]
+                    times = self._streamlines_travel_time(vlm, paths)
+                    # evenly spaced in time along each line, with a random phase per line
                     phase = (rng.random((n, 1)) + onp.arange(k)[None, :] / k) % 1.
-                    groups.append((paths, phase * (m - 1), onp.arange(n)[:, None]))
+                    groups.append((paths, times, phase * times[:, -1:]))
 
                 def positions(frame):
+                    clock = frame * particle_speed / max(int(fps), 1)  # flow time [s]
                     out = []
-                    for paths, phase0, rows in groups:
-                        m = paths.shape[1]
-                        ph = (phase0 + frame * particle_speed) % (m - 1)
-                        i0 = ph.astype(int)
-                        w = (ph - i0)[..., None]  # linear interpolation: smooth for any speed
-                        out.append(((1 - w) * paths[rows, i0] + w * paths[rows, i0 + 1]).reshape(-1, 3))
+                    for paths, times, t0 in groups:
+                        for line, t_line, t0_line in zip(paths, times, t0):
+                            t = (t0_line + clock) % t_line[-1]
+                            i0 = onp.clip(onp.searchsorted(t_line, t, side="right") - 1, 0, len(t_line) - 2)
+                            w = ((t - t_line[i0]) / (t_line[i0 + 1] - t_line[i0]))[:, None]
+                            out.append((1 - w) * line[i0] + w * line[i0 + 1])
                     return onp.vstack(out)
 
                 return positions
@@ -1201,7 +1229,7 @@ class Sailboat(ArchibaldObject):
                     particles,
                     color=th["particles"],
                     point_size=particle_size,
-                    render_points_as_spheres=True,
+                    render_points_as_spheres=False,
                     lighting=False,
                     show_scalar_bar=False,
                 )
@@ -1222,7 +1250,7 @@ class Sailboat(ArchibaldObject):
                     pl.write_frame()
                 pl.close()
 
-            elif animate and show:
+            elif particles is not None and show:
                 pl.show(interactive_update=True, auto_close=False, **show_kwargs)
 
                 state = {"running": True}
@@ -1236,9 +1264,8 @@ class Sailboat(ArchibaldObject):
                 frame = 0
                 while state["running"] and not getattr(pl, "_closed", False):
                     frame += 1
-                    if particles is not None:
-                        particles.points[:] = positions(frame)  # in-place update
-                        particles.points = particles.points      # flag points as modified
+                    particles.points[:] = positions(frame)  # in-place update
+                    particles.points = particles.points      # flag points as modified
                     pl.update(stime=1000 // max(int(fps), 1), force_redraw=True)
 
                 if not getattr(pl, "_closed", False):
