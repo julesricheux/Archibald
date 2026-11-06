@@ -14,6 +14,8 @@ import copy
 
 from typing import List, Dict, Union, Optional, Tuple
 
+import numpy as onp  # plain numpy, used for visualization only
+
 from archibald.geometry.hull import Hull, DEFAULT_WINDAGE_METHODS
 from archibald.geometry.planform import Rig, Appendage, Planform
 from archibald.geometry.propeller import Propeller, BSeriesPropeller
@@ -68,6 +70,9 @@ class Sailboat(ArchibaldObject):
         self.hull_interaction = None
         self.windage_components = {}
         
+        self.aero_vlms = []
+        self.hydro_vlms = []
+        
     def compute_aerodynamics(
             self,
             op_point: OperatingPoint = OperatingPoint(),
@@ -79,6 +84,7 @@ class Sailboat(ArchibaldObject):
         # Keeping full VLM computation capabilities while handling empty rigs gracefully if needed.
         self.forces["Fsail"] = wide(np.zeros(3))
         self.moments["Msail"] = wide(np.zeros(3))
+        self.aero_vlms = []
         
         for i, rig in enumerate(self.rigs):
             self.aero_vlm = AeroVortexLatticeMethod(
@@ -89,6 +95,7 @@ class Sailboat(ArchibaldObject):
             )
             
             res = self.aero_vlm.run(alpha_stall=alpha_stall)
+            self.aero_vlms.append(self.aero_vlm)
             
             self.forces[f"Fsail_{i}"] = res["F_ab"]
             self.moments[f"Msail_{i}"] = res["M_ab"]
@@ -105,6 +112,7 @@ class Sailboat(ArchibaldObject):
         ):
         self.forces["Fapp"] = wide(np.zeros(3))
         self.moments["Mapp"] = wide(np.zeros(3))
+        self.hydro_vlms = []
         for i, appendage in enumerate(self.appendages):
             self.hydro_vlm = HydroVortexLatticeMethod(
                 appendage,
@@ -114,6 +122,7 @@ class Sailboat(ArchibaldObject):
             )
             
             res = self.hydro_vlm.run(alpha_stall=alpha_stall)
+            self.hydro_vlms.append(self.hydro_vlm)
             
             self.forces[f"Fapp_{i}"] = res["F_ab"]
             self.moments[f"Mapp_{i}"] = res["M_ab"]
@@ -427,6 +436,144 @@ class Sailboat(ArchibaldObject):
         return self.forces["Ftot"], self.moments["Mtot"]
     
     
+    # =========================================================================
+    # VISUALIZATION
+    # =========================================================================
+
+    _THEMES = {
+        "dark": dict(
+            background="#050818",
+            foreground="white",
+            water="#4a62c9",
+            streamlines="#9db4ff",
+            particles="white",
+        ),
+        "light": dict(
+            background="white",
+            foreground="black",
+            water="slateblue",
+            streamlines="slateblue",
+            particles="#1b2a6b",
+        ),
+    }
+
+    # ----------------------------- geometry helpers --------------------------
+
+    @staticmethod
+    def _quads_to_triangles(faces):
+        """(N, 4) quad faces -> (2N, 3) triangles. Triangle k and N + k come from quad k."""
+        faces = onp.asarray(faces, dtype=int)
+        if faces.shape[1] == 3:
+            return faces
+        return onp.vstack([faces[:, [0, 1, 2]], faces[:, [0, 2, 3]]])
+
+    def _body_meshes(self, thin_wings: bool = False):
+        """(points, faces) of every rig and appendage."""
+        out = []
+        for part in list(self.rigs) + list(self.appendages):
+            p, f = part.mesh_body(method="quad", thin_wings=thin_wings)
+            out.append((onp.asarray(p, dtype=float), onp.asarray(f, dtype=int)))
+        return out
+
+    def _hull_vertices(self):
+        """Vertices of all the hulls (``hull.mesh.vertices``), stacked as (N, 3).
+        Falls back on the rigs / appendages if no hull mesh is available."""
+        chunks = []
+        for hull in self.hulls:
+            try:
+                chunks.append(onp.asarray(hull.mesh.vertices, dtype=float).reshape(-1, 3))
+            except AttributeError:
+                continue
+        if not chunks:
+            chunks = [p for p, _ in self._body_meshes()]
+        return onp.vstack(chunks) if chunks else None
+
+    def _water_plane(
+            self,
+            origin=(0., 0., 0.),
+            normal=(0., 0., 1.),
+            margin: float = 0.4,
+            vertices=None,
+        ):
+        """
+        Corners (4, 3) of a rectangle lying in the plane (origin, normal), sized
+        and centred on the hull vertices projected onto that plane.
+
+        margin : relative enlargement of the hull footprint (0.4 -> 40 % larger).
+        Returns None if there is no geometry to fit the plane on.
+        """
+        if vertices is None:
+            vertices = self._hull_vertices()
+        if vertices is None or len(vertices) == 0:
+            return None
+
+        origin = onp.asarray(origin, dtype=float).reshape(3)
+        n = onp.asarray(normal, dtype=float).reshape(3)
+        n = n / onp.linalg.norm(n)
+
+        # In-plane orthonormal basis (u, v); for n = +z this gives u = +x, v = +y
+        ref = onp.array([1., 0., 0.]) if abs(n[0]) < 0.9 else onp.array([0., 1., 0.])
+        u = ref - (ref @ n) * n
+        u /= onp.linalg.norm(u)
+        v = onp.cross(n, u)
+
+        rel = onp.asarray(vertices, dtype=float) - origin
+        s, t = rel @ u, rel @ v
+
+        centre_s, centre_t = 0.5 * (s.min() + s.max()), 0.5 * (t.min() + t.max())
+        half_s = max(0.5 * (s.max() - s.min()) * (1. + margin), 1e-6)
+        half_t = max(0.5 * (t.max() - t.min()) * (1. + margin), 1e-6)
+
+        ds = centre_s + onp.array([-1., 1., 1., -1.]) * half_s
+        dt = centre_t + onp.array([-1., -1., 1., 1.]) * half_t
+        return origin + ds[:, None] * u + dt[:, None] * v
+
+    @staticmethod
+    def _add_water_pyvista(plotter, corners, color, opacity, outline_color=None):
+        import pyvista as pv
+
+        plotter.add_mesh(
+            pv.PolyData(corners, faces=onp.array([4, 0, 1, 2, 3])),
+            color=color,
+            opacity=opacity,
+            lighting=False,
+            show_scalar_bar=False,
+            name="water",
+        )
+        plotter.add_mesh(
+            pv.lines_from_points(onp.vstack([corners, corners[:1]])),
+            color=outline_color or color,
+            line_width=1,
+            opacity=min(1., 2.5 * opacity),
+            lighting=False,
+            name="water_outline",
+        )
+
+    @staticmethod
+    def _add_water_plotly(fig, corners, color, opacity):
+        import plotly.graph_objects as go
+
+        fig.add_trace(
+            go.Mesh3d(
+                x=corners[:, 0], y=corners[:, 1], z=corners[:, 2],
+                i=[0, 0], j=[1, 2], k=[2, 3],
+                color=color,
+                opacity=opacity,
+                hoverinfo="skip",
+                name="Water",
+            )
+        )
+
+    @staticmethod
+    def _add_water_matplotlib(ax, corners, color, opacity):
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+        ax.add_collection3d(
+            Poly3DCollection([corners], facecolor=color, alpha=opacity, edgecolor=color)
+        )
+
+    # --------------------------------- draw ----------------------------------
+
     def draw(
         self,
         backend: str = "pyvista",
@@ -434,257 +581,564 @@ class Sailboat(ArchibaldObject):
         mesh_color: str = "lightgrey",
         show: bool = True,
         show_kwargs: Dict = None,
+        draw_water: bool = True,
+        water_origin: Union[np.ndarray, List, Tuple] = (0., 0., 0.),
+        water_normal: Union[np.ndarray, List, Tuple] = (0., 0., 1.),
+        water_margin: float = 0.4,
+        water_color: str = "slateblue",
+        water_opacity: float = 0.25,
         **kwargs,
     ):
         """
         Visualizes the sailboat by aggregating all wings, appendages and hulls
         into a single scene.
+
+        Parameters
+        ----------
+        draw_water : bool
+            Draw the waterplane.
+        water_origin, water_normal :
+            Point and normal of the waterplane. Default: (0, 0, 0) and (0, 0, 1).
+        water_margin : float
+            The waterplane is centred on the hull (``hull.mesh.vertices``) and is
+            ``1 + water_margin`` times larger than its footprint.
+        water_color, water_opacity :
+            Appearance of the waterplane.
+        **kwargs :
+            Forwarded to ``hull.draw`` and ``fitting.draw``.
         """
         if show_kwargs is None:
             show_kwargs = {}
-    
-        # =========================================================================
+
+        water = None
+        if draw_water:
+            water = self._water_plane(water_origin, water_normal, water_margin)
+
+        # =====================================================================
         # PYVISTA
-        # =========================================================================
+        # =====================================================================
         if backend == "pyvista":
             import pyvista as pv
-            import archibald.toolbox.mesh_utils as mesh_utils
-    
+
             plotter = pv.Plotter()
-    
-            # --- Rigs ---
-            for rig in self.rigs:
-                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
-                mesh = pv.PolyData(
-                    *mesh_utils.convert_mesh_to_polydata_format(p, f)
-                )
+
+            for p, f in self._body_meshes(thin_wings):
+                faces = onp.hstack([onp.full((len(f), 1), f.shape[1]), f]).ravel()
                 plotter.add_mesh(
-                    mesh,
+                    pv.PolyData(p, faces),
                     color=mesh_color,
                     show_edges=True,
                 )
-    
-            # --- Appendages ---
-            for app in self.appendages:
-                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
-                mesh = pv.PolyData(
-                    *mesh_utils.convert_mesh_to_polydata_format(p, f)
-                )
-                plotter.add_mesh(
-                    mesh,
-                    color=mesh_color,
-                    show_edges=True,
-                )
-    
-            # --- Hulls ---
+
             for hull in self.hulls:
-                hull.draw(
-                    backend="pyvista",
-                    show=False,
-                    plotter=plotter,
-                    **kwargs,
-                )
-                
-            # --- Fittings ---
+                hull.draw(backend="pyvista", show=False, plotter=plotter, **kwargs)
+
             for fitting in self.fittings:
-                fitting.draw(
-                    backend="pyvista",
-                    show=False,
-                    plotter=plotter,
-                    **kwargs,
-                )
-    
+                fitting.draw(backend="pyvista", show=False, plotter=plotter, **kwargs)
+
+            if water is not None:
+                self._add_water_pyvista(plotter, water, water_color, water_opacity)
+
             if show:
                 plotter.show(**show_kwargs)
-    
+
             return plotter
-    
-        # =========================================================================
+
+        # =====================================================================
         # PLOTLY
-        # =========================================================================
+        # =====================================================================
         elif backend == "plotly":
             import plotly.graph_objects as go
             import plotly.offline as pyo
-    
+
             fig = go.Figure()
-    
-            # --- Rigs ---
-            for rig in self.rigs:
-                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
-    
-                # Split quads into triangles if necessary
-                if f.shape[1] == 4:
-                    faces = np.vstack([
-                        f[:, [0, 1, 2]],
-                        f[:, [0, 2, 3]],
-                    ])
-                else:
-                    faces = f
-    
-                i, j, k = faces.T
-    
+
+            for p, f in self._body_meshes(thin_wings):
+                i, j, k = self._quads_to_triangles(f).T
                 fig.add_trace(
                     go.Mesh3d(
-                        x=p[:, 0],
-                        y=p[:, 1],
-                        z=p[:, 2],
-                        i=i,
-                        j=j,
-                        k=k,
+                        x=p[:, 0], y=p[:, 1], z=p[:, 2],
+                        i=i, j=j, k=k,
                         color=mesh_color,
                         opacity=1.0,
                         flatshading=True,
                     )
                 )
-    
-            # --- Appendages ---
-            for app in self.appendages:
-                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
-    
-                if f.shape[1] == 4:
-                    faces = np.vstack([
-                        f[:, [0, 1, 2]],
-                        f[:, [0, 2, 3]],
-                    ])
-                else:
-                    faces = f
-    
-                i, j, k = faces.T
-    
-                fig.add_trace(
-                    go.Mesh3d(
-                        x=p[:, 0],
-                        y=p[:, 1],
-                        z=p[:, 2],
-                        i=i,
-                        j=j,
-                        k=k,
-                        color=mesh_color,
-                        opacity=1.0,
-                        flatshading=True,
-                    )
-                )
-    
-            # --- Hulls ---
+
             for hull in self.hulls:
-                hull.draw(
-                    backend="plotly",
-                    show=False,
-                    fig=fig,
-                    **kwargs,
-                )
-                
-            # --- Fittings ---
+                hull.draw(backend="plotly", show=False, fig=fig, **kwargs)
+
             for fitting in self.fittings:
-                fitting.draw(
-                    backend="plotly",
-                    show=False,
-                    fig=fig,
-                    **kwargs,
-                )
-    
-            fig.update_layout(
-                scene=dict(
-                    aspectmode="data",
-                )
-            )
-    
+                fitting.draw(backend="plotly", show=False, fig=fig, **kwargs)
+
+            if water is not None:
+                self._add_water_plotly(fig, water, water_color, water_opacity)
+
+            fig.update_layout(scene=dict(aspectmode="data"))
+
             if show:
                 pyo.plot(fig, auto_open=True)
-    
+
             return fig
-    
-        # =========================================================================
+
+        # =====================================================================
         # MATPLOTLIB
-        # =========================================================================
+        # =====================================================================
         elif backend == "matplotlib":
             import matplotlib.pyplot as plt
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-    
+
             fig = plt.figure()
             ax = fig.add_subplot(111, projection="3d")
-    
+
             vertices = []
-    
-            # --- Rigs ---
-            for rig in self.rigs:
-                p, f = rig.mesh_body(method="quad", thin_wings=thin_wings)
-    
-                polys = [p[face] for face in f]
-    
+
+            for p, f in self._body_meshes(thin_wings):
                 ax.add_collection3d(
                     Poly3DCollection(
-                        polys,
+                        [p[face] for face in f],
                         facecolor=mesh_color,
                         edgecolor="k",
                         linewidth=0.3,
                     )
                 )
-    
                 vertices.append(p)
-    
-            # --- Appendages ---
-            for app in self.appendages:
-                p, f = app.mesh_body(method="quad", thin_wings=thin_wings)
-    
-                polys = [p[face] for face in f]
-    
-                ax.add_collection3d(
-                    Poly3DCollection(
-                        polys,
-                        facecolor=mesh_color,
-                        edgecolor="k",
-                        linewidth=0.3,
-                    )
-                )
-    
-                vertices.append(p)
-    
-            # --- Hulls ---
+
             for hull in self.hulls:
-                hull.draw(
-                    backend="matplotlib",
-                    show=False,
-                    ax=ax,
-                    **kwargs,
-                )
-                
-            # --- Fittings ---
+                hull.draw(backend="matplotlib", show=False, ax=ax, **kwargs)
+
             for fitting in self.fittings:
-                fitting.draw(
-                    backend="matplotlib",
-                    show=False,
-                    ax=ax,
-                    **kwargs,
-                )
-    
+                fitting.draw(backend="matplotlib", show=False, ax=ax, **kwargs)
+
+            if water is not None:
+                self._add_water_matplotlib(ax, water, water_color, water_opacity)
+                vertices.append(water)
+
+            hull_vertices = self._hull_vertices()
+            if hull_vertices is not None:
+                vertices.append(hull_vertices)
+
             # Equal scaling
             if len(vertices):
-                xyz = np.vstack(vertices)
-    
-                mins = xyz.min(axis=0)
-                maxs = xyz.max(axis=0)
-    
-                center = 0.5 * (mins + maxs)
-                radius = 0.5 * np.max(maxs - mins)
-    
-                ax.set_xlim(center[0] - radius, center[0] + radius)
-                ax.set_ylim(center[1] - radius, center[1] + radius)
-                ax.set_zlim(center[2] - radius, center[2] + radius)
-    
+                xyz = onp.vstack(vertices)
+                mins, maxs = xyz.min(axis=0), xyz.max(axis=0)
+                centre = 0.5 * (mins + maxs)
+                radius = 0.5 * onp.max(maxs - mins)
+
+                ax.set_xlim(centre[0] - radius, centre[0] + radius)
+                ax.set_ylim(centre[1] - radius, centre[1] + radius)
+                ax.set_zlim(centre[2] - radius, centre[2] + radius)
+
             ax.set_box_aspect((1, 1, 1))
-    
+
             if show:
                 plt.show()
-    
+
             return ax
-    
+
         else:
             raise ValueError(
                 f"Unknown backend '{backend}'. "
                 "Available backends are 'pyvista', 'plotly' and 'matplotlib'."
             )
-    
+
+    # ------------------------------- draw_vlm --------------------------------
+
+    @staticmethod
+    def _vlm_panels(vlm):
+        """Quad panel mesh of a VLM: points (4N, 3) and faces (N, 4)."""
+        points = onp.concatenate([
+            onp.asarray(vlm.front_left_vertices, dtype=float),
+            onp.asarray(vlm.back_left_vertices, dtype=float),
+            onp.asarray(vlm.back_right_vertices, dtype=float),
+            onp.asarray(vlm.front_right_vertices, dtype=float),
+        ])
+        N = len(vlm.front_left_vertices)
+        faces = onp.arange(N)[:, None] + (onp.arange(4) * N)[None, :]
+        return points, faces
+
+    @staticmethod
+    def _default_seed_points(vlm):
+        """Middle of the trailing edge of every trailing-edge panel."""
+        mask = vlm.is_trailing_edge
+        return 0.5 * (
+            onp.asarray(vlm.back_left_vertices, dtype=float)[mask]
+            + onp.asarray(vlm.back_right_vertices, dtype=float)[mask]
+        )
+
+    def _get_streamlines(
+            self,
+            vlm,
+            below_water: bool,
+            length: float,
+            seed_stride: int,
+            seed_fn: Optional[callable],
+            recalculate: bool,
+            water_origin,
+            water_normal,
+        ):
+        """
+        Streamlines of a VLM as an array (n_lines, n_steps, 3), computed (and cached
+        on the VLM object) if necessary. None if there is no streamline to draw.
+        """
+        if recalculate or not hasattr(vlm, "streamlines"):
+            seeds = (seed_fn or self._default_seed_points)(vlm)
+            seeds = onp.asarray(seeds, dtype=float).reshape(-1, 3)
+
+            if below_water:  # hydrodynamic seeds above the free surface are meaningless
+                n = onp.asarray(water_normal, dtype=float)
+                n = n / onp.linalg.norm(n)
+                seeds = seeds[(seeds - onp.asarray(water_origin, dtype=float)) @ n < 0.]
+
+            seeds = seeds[::max(int(seed_stride), 1)]
+            if len(seeds) == 0:
+                return None
+
+            vlm.calculate_streamlines(seed_points=seeds, length=length)
+
+        paths = onp.transpose(onp.asarray(vlm.streamlines, dtype=float), (0, 2, 1))
+        paths = paths[onp.all(onp.isfinite(paths), axis=(1, 2))]  # drop diverged lines
+        return paths if len(paths) else None
+
+    def draw_vlm(
+        self,
+        backend: str = "pyvista",
+        *,
+        # --- colouring ---
+        cmap: str = "viridis",
+        clim: Optional[Tuple[float, float]] = None,
+        clip_quantiles: Optional[Tuple[float, float]] = (0.02, 0.98),
+        colorbar_label: str = "Cp",
+        draw_colorbar: bool = True,
+        show_edges: bool = False,
+        # --- streamlines ---
+        draw_streamlines: bool = True,
+        streamlines_length: Optional[float] = None,
+        streamlines_radius: Optional[float] = None,
+        seed_stride: int = 2,
+        seed_fn: Optional[callable] = None,
+        recalculate_streamlines: bool = False,
+        # --- animation (pyvista only) ---
+        animate: bool = False,
+        particles_per_line: int = 4,
+        particle_speed: float = 1.0,
+        particle_size: float = 7.,
+        gif_path: Optional[str] = None,
+        n_frames: int = 150,
+        fps: int = 30,
+        # --- scene ---
+        theme: str = "dark",
+        draw_hulls: bool = True,
+        hull_kwargs: Optional[Dict] = None,
+        draw_water: bool = True,
+        water_origin: Union[np.ndarray, List, Tuple] = (0., 0., 0.),
+        water_normal: Union[np.ndarray, List, Tuple] = (0., 0., 1.),
+        water_margin: float = 0.4,
+        plot_axes: bool = True,
+        window_size: Optional[Tuple[int, int]] = None,
+        show: bool = True,
+        show_kwargs: Optional[Dict] = None,
+    ):
+        """
+        Draws the VLM solution of the rigs and appendages: the panels are coloured
+        by pressure coefficient (``vlm.pressure_coef``) and the flow is shown with
+        streamlines, optionally animated by particles advected along them.
+
+        ``compute_aerodynamics`` and/or ``compute_hydrodynamics`` must have been called
+        with numerical (not symbolic) values beforehand.
+
+        Parameters
+        ----------
+        backend : "pyvista" (default, supports animation) or "plotly" (static).
+        cmap : colormap name. One colour scale is shared by the sails and the appendages.
+        clim : (min, max) of the colour scale. Default: ``clip_quantiles`` of all the Cp.
+        clip_quantiles : quantiles of Cp setting the colour limits when ``clim`` is None,
+            so that stagnation / tip peaks do not wash out the rest. None: min / max.
+        draw_streamlines : draw the streamlines (computed on demand, cached on the VLM).
+        streamlines_length : length of the streamlines [m]. Default: 5 x the largest reference chord.
+        streamlines_radius : tube radius of the streamlines [m]. Default: 0.15 % of the size of the boat.
+        seed_stride : keep one seed out of ``seed_stride`` (appendage seeds above the water are removed).
+        seed_fn : optional ``f(vlm) -> (n, 3)`` array of custom seed points.
+        recalculate_streamlines : ignore the streamlines already stored on the VLMs.
+        animate : animate particles along the streamlines (pyvista only). The window stays
+            open until closed or 'q' is pressed.
+        particles_per_line, particle_speed, particle_size :
+            Number of particles per streamline, their speed [streamline points / frame], their size [px].
+        gif_path : if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
+            (implies ``animate``).
+        theme : "dark" or "light".
+        draw_hulls : draw the hulls and fittings (``hull.draw``), with ``hull_kwargs``.
+        draw_water, water_origin, water_normal, water_margin : waterplane, see ``draw``.
+        plot_axes : show the orientation axes (pyvista).
+        window_size : (width, height) in pixels (pyvista).
+
+        Returns
+        -------
+        pyvista.Plotter or plotly.graph_objects.Figure
+        """
+        import warnings
+
+        if theme not in self._THEMES:
+            raise ValueError(f"Unknown theme '{theme}'. Available: {list(self._THEMES)}")
+        th = self._THEMES[theme]
+
+        show_kwargs = show_kwargs or {}
+        hull_kwargs = hull_kwargs or {}
+
+        aero_vlms = list(getattr(self, "aero_vlms", []))
+        hydro_vlms = list(getattr(self, "hydro_vlms", []))
+        entries = [(v, False) for v in aero_vlms] + [(v, True) for v in hydro_vlms]
+        if not entries:
+            raise RuntimeError(
+                "No VLM solution to draw: call compute_aerodynamics() and/or compute_hydrodynamics() first."
+            )
+
+        animate = animate or gif_path is not None
+        if animate and backend != "pyvista":
+            warnings.warn("Animation is only available with the 'pyvista' backend: drawing a static figure.")
+            animate = False
+
+        # --- panel meshes and pressure coefficient -------------------------------
+        panels = [self._vlm_panels(v) for v, _ in entries]
+        cps = [onp.asarray(v.pressure_coef, dtype=float).ravel() for v, _ in entries]
+
+        if clim is None:
+            allcp = onp.concatenate(cps)
+            allcp = allcp[onp.isfinite(allcp)]
+            if clip_quantiles is None:
+                clim = (float(allcp.min()), float(allcp.max()))
+            else:
+                clim = tuple(float(q) for q in onp.quantile(allcp, clip_quantiles))
+        cps = [onp.clip(c, *clim) for c in cps]
+
+        # --- streamlines ---------------------------------------------------------
+        all_points = onp.vstack([p for p, _ in panels])
+        diag = float(onp.linalg.norm(all_points.max(axis=0) - all_points.min(axis=0)))
+
+        lines = []
+        if draw_streamlines:
+            if streamlines_length is None:
+                chords = [getattr(getattr(v, "airplane", None), "c_ref", None) for v, _ in entries]
+                chords = [float(c) for c in chords if c is not None]
+                streamlines_length = 5. * max(chords) if chords else 0.5 * diag
+            for vlm, is_hydro in entries:
+                paths = self._get_streamlines(
+                    vlm, is_hydro, streamlines_length, seed_stride, seed_fn,
+                    recalculate_streamlines, water_origin, water_normal,
+                )
+                if paths is not None:
+                    lines.append(paths)
+
+        water = None
+        if draw_water:
+            water = self._water_plane(water_origin, water_normal, water_margin)
+
+        # =====================================================================
+        # PLOTLY (static)
+        # =====================================================================
+        if backend == "plotly":
+            import plotly.graph_objects as go
+
+            fig = go.Figure()
+
+            for idx, ((points, faces), cp) in enumerate(zip(panels, cps)):
+                tri = self._quads_to_triangles(faces)
+                fig.add_trace(go.Mesh3d(
+                    x=points[:, 0], y=points[:, 1], z=points[:, 2],
+                    i=tri[:, 0], j=tri[:, 1], k=tri[:, 2],
+                    intensity=onp.concatenate([cp, cp]),  # one value per triangle
+                    intensitymode="cell",
+                    colorscale=cmap.title(),
+                    cmin=clim[0], cmax=clim[1],
+                    showscale=draw_colorbar and idx == 0,
+                    colorbar=dict(title=dict(text="Cp", font=dict(color=th["foreground"])),
+                                  tickfont=dict(color=th["foreground"])),
+                    flatshading=True,
+                    name=f"{'Hydro' if entries[idx][1] else 'Aero'} VLM",
+                ))
+
+            for paths in lines:  # one trace per VLM, lines separated by NaN
+                sep = onp.full((len(paths), 1, 3), onp.nan)
+                xyz = onp.concatenate([paths, sep], axis=1).reshape(-1, 3)
+                fig.add_trace(go.Scatter3d(
+                    x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2],
+                    mode="lines",
+                    line=dict(color=th["streamlines"], width=2),
+                    opacity=0.7,
+                    hoverinfo="skip",
+                    name="Streamlines",
+                ))
+
+            if draw_hulls:
+                for hull in self.hulls:
+                    hull.draw(backend="plotly", show=False, fig=fig, **hull_kwargs)
+                for fitting in self.fittings:
+                    fitting.draw(backend="plotly", show=False, fig=fig, **hull_kwargs)
+
+            if water is not None:
+                self._add_water_plotly(fig, water, th["water"], 0.25)
+
+            axis = dict(visible=False)
+            fig.update_layout(
+                scene=dict(xaxis=axis, yaxis=axis, zaxis=axis, aspectmode="data",
+                           bgcolor=th["background"]),
+                paper_bgcolor=th["background"],
+                showlegend=False,
+                margin=dict(l=0, r=0, t=0, b=0),
+            )
+
+            if show:
+                from plotly.offline import plot
+                plot(fig)
+            return fig
+
+        # =====================================================================
+        # PYVISTA (static or animated)
+        # =====================================================================
+        elif backend == "pyvista":
+            import pyvista as pv
+
+            off_screen = gif_path is not None
+            pl = pv.Plotter(off_screen=off_screen, window_size=window_size)
+            pl.title = "Sailboat VLM"
+            pl.set_background(th["background"])  # flat colour: gradients break shaders on some GPUs
+
+            # Panels, coloured by Cp
+            for idx, ((points, faces), cp) in enumerate(zip(panels, cps)):
+                cells = onp.hstack([onp.full((len(faces), 1), 4), faces]).ravel()
+                mesh = pv.PolyData(points, cells)
+                mesh.cell_data["Cp"] = cp
+                pl.add_mesh(
+                    mesh,
+                    scalars="Cp",
+                    cmap=cmap,
+                    clim=clim,
+                    show_edges=show_edges,
+                    edge_color=th["background"],
+                    line_width=0.5,
+                    show_scalar_bar=draw_colorbar and idx == 0,
+                    scalar_bar_args=dict(
+                        title=colorbar_label,
+                        color=th["foreground"],
+                        n_labels=5,
+                        fmt="%.2f",
+                        vertical=True,
+                    ),
+                    smooth_shading=False,
+                    specular=0.3,
+                )
+
+            # Static streamlines (one polyline per line)
+            radius = streamlines_radius if streamlines_radius is not None else 1.5e-3 * diag
+            for paths in lines:
+                n, m = paths.shape[:2]
+                cells = onp.hstack([onp.full((n, 1), m), onp.arange(n * m).reshape(n, m)]).ravel()
+                polylines = pv.PolyData(paths.reshape(-1, 3), lines=cells)
+                # real tube geometry rather than the line-as-tube shader, which
+                # misbehaves on some GPUs / software renderers
+                tubes = polylines.tube(radius=radius, n_sides=6, capping=False)
+                pl.add_mesh(
+                    tubes,
+                    color=th["streamlines"],
+                    opacity=0.45 if animate else 0.7,
+                    lighting=False,
+                    show_scalar_bar=False,
+                )
+
+            if draw_hulls:
+                for hull in self.hulls:
+                    hull.draw(backend="pyvista", show=False, plotter=pl, **hull_kwargs)
+                for fitting in self.fittings:
+                    fitting.draw(backend="pyvista", show=False, plotter=pl, **hull_kwargs)
+
+            if water is not None:
+                self._add_water_pyvista(pl, water, th["water"], 0.25)
+
+            if plot_axes:
+                pl.add_axes(color=th["foreground"])
+
+            # --- Particles advected along the streamlines ------------------------
+            def make_stepper():
+                rng = onp.random.default_rng(0)
+                k = max(int(particles_per_line), 1)
+                groups = []
+                for paths in lines:
+                    n, m = paths.shape[:2]
+                    # evenly spaced along each line, with a random phase per line
+                    phase = (rng.random((n, 1)) + onp.arange(k)[None, :] / k) % 1.
+                    groups.append((paths, phase * (m - 1), onp.arange(n)[:, None]))
+
+                def positions(frame):
+                    out = []
+                    for paths, phase0, rows in groups:
+                        m = paths.shape[1]
+                        ph = (phase0 + frame * particle_speed) % (m - 1)
+                        i0 = ph.astype(int)
+                        w = (ph - i0)[..., None]  # linear interpolation: smooth for any speed
+                        out.append(((1 - w) * paths[rows, i0] + w * paths[rows, i0 + 1]).reshape(-1, 3))
+                    return onp.vstack(out)
+
+                return positions
+
+            particles = None
+            if animate and lines:
+                positions = make_stepper()
+                particles = pv.PolyData(positions(0))
+                pl.add_mesh(
+                    particles,
+                    color=th["particles"],
+                    point_size=particle_size,
+                    render_points_as_spheres=True,
+                    lighting=False,
+                    show_scalar_bar=False,
+                )
+
+            pl.view_isometric()
+
+            # --- Render ----------------------------------------------------------
+            if gif_path is not None:
+                try:
+                    pl.open_gif(gif_path, fps=fps)
+                except TypeError:  # older pyvista without fps argument
+                    pl.open_gif(gif_path)
+                pl.show(auto_close=False)
+                for frame in range(n_frames):
+                    if particles is not None:
+                        particles.points[:] = positions(frame)
+                        particles.points = particles.points
+                    pl.write_frame()
+                pl.close()
+
+            elif animate and show:
+                pl.show(interactive_update=True, auto_close=False, **show_kwargs)
+
+                state = {"running": True}
+
+                def stop(*_):
+                    state["running"] = False
+
+                # fires when the window is closed (X button) or 'q' is pressed
+                pl.iren.interactor.AddObserver("ExitEvent", stop)
+
+                frame = 0
+                while state["running"] and not getattr(pl, "_closed", False):
+                    frame += 1
+                    if particles is not None:
+                        particles.points[:] = positions(frame)  # in-place update
+                        particles.points = particles.points      # flag points as modified
+                    pl.update(stime=1000 // max(int(fps), 1), force_redraw=True)
+
+                if not getattr(pl, "_closed", False):
+                    pl.close()  # release the GL context cleanly
+
+            elif show:
+                pl.show(**show_kwargs)
+
+            return pl
+
+        else:
+            raise ValueError("Unknown backend. Available backends for draw_vlm are 'pyvista' and 'plotly'.")
+
     
     def _get_target_residual(
             self,
