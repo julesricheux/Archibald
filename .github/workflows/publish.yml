@@ -39,10 +39,13 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-  publish-to-pypi:
+publish-to-pypi:
     name: Publish Python distribution 📦 to PyPI
     needs: build
     runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/archibald-design
     permissions:
       id-token: write
 
