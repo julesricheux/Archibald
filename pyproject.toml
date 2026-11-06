@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "archibald-vpp"  # PyPI name; the import name stays `archibald`
-version = "2.1.0"       # must match the release tag: v2.1.0
+version = "v1.0.0"       # must match the release tag: v2.1.0
 description = "Core computational and geometry processing library for Archibald."
 readme = "README.md"
 requires-python = ">=3.11"
