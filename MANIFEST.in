@@ -1,0 +1,4 @@
+# Ship only the archibald package (README, LICENSE and pyproject.toml are added automatically)
+graft archibald
+prune archibald/tests
+global-exclude *.py[cod] __pycache__ .DS_Store
