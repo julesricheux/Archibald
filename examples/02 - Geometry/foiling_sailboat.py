@@ -71,7 +71,9 @@ custom_process = {
 #     **{'Csternchoice': 1, 'Bulbchoice': 0}
 # )
 
-Ftot, Mtot = sailboat.compute_torsor(
+sailboat.compute_weight(op_point)
+sailboat.compute_buoyancy(op_point)
+sailboat.compute_resistance(
     op_point,
     # method="dsyhs",
     # method="holtrop",
@@ -79,20 +81,22 @@ Ftot, Mtot = sailboat.compute_torsor(
     **{'Csternchoice': 1, 'Bulbchoice': 0}
 )
 
+Ftot, Mtot = sailboat.compute_torsor(op_point)
+
 Fprop = 13e3
 Ffoil = 10000./(1+np.abs(T)**3) * stw**2. * (1+trim/10.) * 2.
 # Ffoil = 1e4 / (1+np.abs(T-2))
 Fhull = stw**2. * 1e2 * np.softplus(T)
 Fdrag = Ffoil/100. + stw**2.
 
-opti.subject_to((Ftot[0] + Fprop - Fdrag) == 0)
+opti.subject_to((Ftot[0, 0] + Fprop - Fdrag) == 0)
 # opti.subject_to((Fprop - Fdrag - Fhull) == 0)
-opti.subject_to((Ftot[2] + Ffoil) == 0)
-# opti.subject_to((Ftot[0] + Fprop - Fdrag) == 0)
-# opti.subject_to((Ftot[2] + Ffoil) == 0)
+opti.subject_to((Ftot[0, 2] + Ffoil) == 0)
+# opti.subject_to((Ftot[0, 0] + Fprop - Fdrag) == 0)
+# opti.subject_to((Ftot[0, 2] + Ffoil) == 0)
 # opti.subject_to((np.softplus(T, beta=1e3)*1e6 + sailboat.forces["Fw"][:,2] + Ffoil) == 0)
-# opti.subject_to(Mtot[0] == 0)
-# opti.subject_to(Mtot[1] == 0)
+# opti.subject_to(Mtot[0, 0] == 0)
+# opti.subject_to(Mtot[0, 1] == 0)
 
 opti.minimize(0.)
 # opti.minimize(T)

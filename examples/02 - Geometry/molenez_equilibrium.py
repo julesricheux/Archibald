@@ -16,8 +16,6 @@ from archibald.weights import MassProperties
 
 hullStl = r'data//molenez2_data//hull.stl'
 
-Lref = 25.9  # hull length, used to scale the moments [m]
-
 boat = Sailboat(
     hulls=[Hull(name='hull', mesh=hullStl)],
     masses=[
@@ -43,21 +41,17 @@ op_point = OperatingPoint(dz=-T, heel=heel, trim=trim)
 boat.compute_weight(op_point)
 boat.compute_buoyancy(op_point)
 Fw, Mw = boat.forces["Fw"], boat.moments["Mw"]
-Fb, Mb = boat.forces["Fb"], boat.moments["Mb"]
 
-Ftot = Fw + Fb
-Mtot = Mw + Mb
+Ftot, Mtot = boat.compute_torsor(op_point)
 
-# Three equations for three unknowns, scaled by the weight of the boat
-weight = sum(boat.masses).mass * op_point.environment.gravity
-
-opti.subject_to([
-    Ftot[0, 2] == 0.,
-    Mtot[0, 0] == 0.,
-    Mtot[0, 1] == 0.,
-])
-
-sol = opti.solve(verbose=True)
+# Three equations for three unknowns
+sol = boat.find_equilibrium(
+    opti,
+    Ftot,
+    Mtot,
+    dofs=["Fz", "Mx", "My"],
+    verbose=True,
+)
 
 
 #%% RESULTS

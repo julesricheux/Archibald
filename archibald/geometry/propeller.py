@@ -259,18 +259,20 @@ class Propeller:
         blade_area_ratio: float = 1.0,
         diameter: float = 1.0,
         pitch_ratio: float = 1.0,
+        rpm: float | None = None,
     ):
         """
         Initializes a Propeller.
 
         Args:
             name: Propeller name.
-            xyz_center: Center coordinates [m].
-            axis: Rotation axis vector.
+            xyz_center: Center coordinates in boat axes [m].
+            axis: Direction of the thrust in boat axes.
             blades_number: Number of blades (Z).
             blade_area_ratio: Expanded area ratio (Ae/Ao).
             diameter: Propeller diameter (D) [m].
-            pitch_ratio: Pitch-to-diameter ratio (P/D).
+            pitch_ratio: Pitch-to-diameter ratio (P/D). Can be an Opti variable.
+            rpm: Rotation speed [rpm]. Can be an Opti variable.
         """
         if xyz_center is None:
             xyz_center = np.zeros(3)
@@ -287,9 +289,10 @@ class Propeller:
         self._ae_ao = blade_area_ratio
         self._d = diameter
         self._r = diameter / 2
-        self._p_d = pitch_ratio
-        self._p_angle = np.degrees(np.arctan(self._p_d))
-        
+        self.pitch_ratio = pitch_ratio
+        self.rpm = rpm
+        self.performance = {}
+
     @property
     def center(self) -> np.ndarray:
         return self._center
@@ -317,7 +320,12 @@ class Propeller:
     @property
     def pitch_ratio(self) -> float:
         return self._p_d
-    
+
+    @pitch_ratio.setter
+    def pitch_ratio(self, pitch_ratio: float) -> None:
+        self._p_d = pitch_ratio
+        self._p_angle = np.arctan(pitch_ratio) * 180. / np.pi
+
     @property
     def pitch_angle(self) -> float:
         return self._p_angle
@@ -336,19 +344,101 @@ class Propeller:
     @center.setter
     def center(self, xyz: Iterable[float]) -> None:
         xyz = np.array(xyz)
-        if xyz.size != 3:
+        if np.length(xyz) != 3:
             raise ValueError("Passed array must have 3 elements.")
         self._center = xyz
-        
+
+    @axis.setter
+    def axis(self, axis: Iterable[float]) -> None:
+        axis = np.array(axis)
+        if np.length(axis) != 3:
+            raise ValueError("Passed array must have 3 elements.")
+        self._axis = axis
+
     def translate(self, xyz: Iterable[float]) -> None:
         """
         Translates the propeller center.
         """
         xyz = np.array(xyz)
-        if xyz.size != 3:
+        if np.length(xyz) != 3:
             raise ValueError("Passed array must have 3 elements.")
-        self._center += xyz
-        
+        self._center = self._center + xyz
+
+    def compute_propulsion(
+        self,
+        op_point,
+        wake_fraction: float = 0.0,
+        thrust_deduction: float = 0.0,
+        relative_rotative_efficiency: float = 1.0,
+        shaft_efficiency: float = 0.98,
+    ) -> tuple:
+        """
+        Computes the force of the propeller on the boat at its ``rpm``.
+
+        The advance speed is ``(1 - w) * stw``, whatever the angle between the flow
+        and the shaft. The torque reaction is not in the moment, as it depends on the
+        handedness of the propeller. It is available in ``performance``, along with
+        J, Kt, Kq, thrust ``T``, torque ``Q``, delivered power ``P``, brake power
+        ``BHP`` and the efficiencies.
+
+        Needs ``compute_performance`` and ``compute_forces`` from a propeller model,
+        such as ``BSeriesPropeller``.
+
+        Args:
+            op_point: OperatingPoint, giving the speed, the water density and the
+                position of the propeller.
+            wake_fraction: Wake fraction (w) [-].
+            thrust_deduction: Thrust deduction (t) [-].
+            relative_rotative_efficiency: Relative rotative efficiency (etaR) [-].
+            shaft_efficiency: Shaft efficiency (etaS) [-].
+
+        Returns:
+            Force [N] and moment [N.m] of shape (1, 3), in the boat motion frame,
+            the moment being about its origin.
+        """
+        if self.rpm is None:
+            raise ValueError(f"Propeller '{self.name}' has no `rpm`.")
+
+        w, t = wake_fraction, thrust_deduction
+        etaR, etaS = relative_rotative_efficiency, shaft_efficiency
+
+        J = (1 - w) * op_point._stw / (self.rpm / 60. * self._d)
+        kt, kq, eta0 = self.compute_performance(J)
+        thrust, torque_open_water, power_open_water, n = self.compute_forces(
+            J,
+            rho=op_point.environment.water.density,
+            rpm=self.rpm,
+        )
+
+        direction = op_point.apply_transformations(wide(self._axis), is_vector=True)
+        direction = direction / np.sum(direction ** 2) ** 0.5
+        center = op_point.apply_transformations(wide(self._center))
+
+        force = (1 - t) * thrust * direction
+        moment = np.cross(center, force)
+
+        self.performance = {
+            'J': J,
+            'Kt': kt,
+            'Kq': kq,
+            'eta0': eta0,
+            'etaH': (1 - t) / (1 - w),
+            'etaR': etaR,
+            'etaS': etaS,
+            'eta': eta0 * (1 - t) / (1 - w) * etaR * etaS,
+            'T': thrust,
+            'Q': torque_open_water / etaR,
+            'P': power_open_water / etaR,
+            'Qo': torque_open_water,
+            'Po': power_open_water,
+            'BHP': power_open_water / (etaR * etaS),
+            'n': n,
+            'w': w,
+            't': t,
+        }
+
+        return force, moment
+
     def _global_rotation_from_matrix(
         self,
         rot_mat: np.ndarray,
@@ -402,6 +492,7 @@ class BSeriesPropeller(Propeller):
         blade_area_ratio: float = 1.0,
         diameter: float = 1.0,
         pitch_ratio: float = 1.0,
+        rpm: float | None = None,
     ):
         super().__init__(
             name=name,
@@ -411,6 +502,7 @@ class BSeriesPropeller(Propeller):
             blade_area_ratio=blade_area_ratio,
             diameter=diameter,
             pitch_ratio=pitch_ratio,
+            rpm=rpm,
         )
         
         _data_path = Path(_archibald_root) / "data" / "propeller"

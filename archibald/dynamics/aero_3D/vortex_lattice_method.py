@@ -386,7 +386,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 chordwise_spacing_function=self.chordwise_spacing_function,
                 add_camber=True
             )
-            
+
+            # The wings are defined in boat axes and solved in the boat motion
+            # frame, where the flow comes along -x and the water is at z=0.
+            points = self.op_point.apply_transformations(points)
+
             front_left_vertices.append(points[faces[:, 0], :])
             back_left_vertices.append(points[faces[:, 1], :])
             back_right_vertices.append(points[faces[:, 2], :])
@@ -490,12 +494,12 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # for c in strips_quarters:
         #     print(c.shape)
         
-        self.strips_x = np.concatenate(strips_x)
-        self.strips_y = np.concatenate(strips_y)
-        self.strips_z = np.concatenate(strips_z)
+        self.strips_x = self.op_point.apply_transformations(np.concatenate(strips_x), is_vector=True)
+        self.strips_y = self.op_point.apply_transformations(np.concatenate(strips_y), is_vector=True)
+        self.strips_z = self.op_point.apply_transformations(np.concatenate(strips_z), is_vector=True)
         self.strips_chords = np.concatenate(strips_chords)
         self.strips_areas = np.concatenate(strips_areas)
-        self.strips_quarters = np.concatenate(strips_quarters)
+        self.strips_quarters = self.op_point.apply_transformations(np.concatenate(strips_quarters))
         # self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
 
         
@@ -676,8 +680,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.alphai = np.arctan2d(strips_forces_strips_freestream[:,0], strips_forces_strips_freestream[:,2])
         
         ### Freestream angle of attack by strips
-        stream_angle = np.arctan2(-self.strips_freestream_x[:,1], self.strips_freestream_x[:,0])
-        deflection_angle = np.arctan2(-self.strips_x[:,1], self.strips_x[:,0])
+        # read in the x-y plane of the boat, so that alpha follows the wing when the boat heels
+        stream_boat = self.op_point.apply_transformations(self.strips_freestream_x, inverse=True, is_vector=True)
+        chord_boat = self.op_point.apply_transformations(self.strips_x, inverse=True, is_vector=True)
+        stream_angle = np.arctan2(-stream_boat[:,1], stream_boat[:,0])
+        deflection_angle = np.arctan2(-chord_boat[:,1], chord_boat[:,0])
         # self.alpha = np.rad2deg(stream_angle-deflection_angle)
         alpha = (stream_angle-deflection_angle) * 180/np.pi
         
@@ -825,7 +832,8 @@ class VortexLatticeMethod(ExplicitAnalysis):
             is_soft=self.is_soft[self.le_idx],
         ) # 0 when stalled, 1 when attached
         
-        self.nf_results = [
+        # Not stored: substituting a solution in these symbolic graphs would take minutes
+        nf_results = [
                 af.get_aero_from_neuralfoil(
                     alpha=self.alphaeff[i],
                     Re=self.strips_reynolds[i],
@@ -843,10 +851,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 ) for i, af in enumerate(self.airfoils)
             ]
         
-        self.strips_CL = np.array([res['CL'][0] for res in self.nf_results])
-        self.strips_CD = np.array([res['CD'][0] for res in self.nf_results])
+        self.strips_CL = np.array([res['CL'][0] for res in nf_results])
+        self.strips_CD = np.array([res['CD'][0] for res in nf_results])
         self.strips_CF = np.sqrt(self.strips_CL**2 + self.strips_CD**2)
-        self.strips_CM = np.array([res['CM'][0] for res in self.nf_results])
+        self.strips_CM = np.array([res['CM'][0] for res in nf_results])
         
         self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2 *\
             tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small

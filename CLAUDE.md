@@ -48,11 +48,38 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 
 ## Sailboat torsors
 
-Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Ftot` total.
+Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Fprop` propellers, `Ftot` total. `Fh` includes `Fi` when `compute_resistance` computed the interaction; `compute_torsor` sums elements, so it does not count it twice.
 
-- **Shapes:** results are `(1, 3)` "wide" arrays, built with `wide()`. Moments are `np.cross(center, F)`.
+- **Shapes:** results are `(1, 3)` "wide" arrays, built with `wide()`. Moments are `np.cross(center, F)`. Index totals as `Ftot[0, i]`.
 - **CasADi pitfall:** `(1x3) + (3x1)` raises in CasADi but broadcasts in NumPy, so keep everything wide. Prefer `x = x + y` to `+=` in accumulators.
-- **Stale keys:** methods whose element count can change clear old keys first (see `compute_weight`, `compute_windage`).
+- **New components:** use `_start_torsor(group, op_point)` and `_add_torsor(group, element, F, M)`. They clear stale keys, and record the operating point checked by `compute_torsor`.
+
+Equilibrium, with `Opti` only and no registry of what varies (`examples/02 - Geometry/molenez_propulsion.py`):
+
+```python
+opti = Opti()
+op_point = OperatingPoint(stw=8., dz=-opti.variable(init_guess=1.3), heel=opti.variable(init_guess=0.))  # any number can vary
+boat.masses[2].y_cg = opti.variable(init_guess=3.)                  # masses
+boat.propellers[0].rpm = opti.variable(init_guess=150.)             # propeller, also pitch_ratio, center, axis
+rig["mainsail"] = rig["mainsail"].rotate_local(angle_deg=opti.variable(init_guess=-15.), axis=axis, origin=origin)  # wings
+
+boat.compute_weight(op_point)                                       # what is computed
+boat.compute_buoyancy(op_point)
+boat.compute_propellers(op_point)
+Ftot, Mtot = boat.compute_torsor(op_point, exclude=["w_2"])         # what is summed, no physics here
+
+opti.subject_to(boat.propellers[0].performance["BHP"] <= 500e3)     # other constraints and objectives
+sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fz", "Mx", "My"])  # what is balanced, then solve
+```
+
+- `compute_torsor(op_point, components=None, exclude=None)` takes groups (`w`, `b`, `h`, `i`, `aa`, `sail`, `app`, `prop`) or elements (`w_1`, `aa_crew`). Default is all that was computed. It lists what it summed in `boat.torsor_elements`. Typos, components asked for but not computed, and included groups computed with another `OperatingPoint` object all raise.
+- `find_equilibrium` and `equilibrium_residuals` are static and take `Ftot`, `Mtot` explicitly, so external terms go in as `Ftot + Ffoil`. Call `find_equilibrium` once per `Opti`, since each call adds its constraints.
+- Bounds are ordinary constraints that iterates can violate. Pass `detect_simple_bounds=True` when leaving them is catastrophic, such as a negative speed in a resistance polynomial.
+
+VLM:
+- `mesh_geometry` applies `op_point.apply_transformations` to the panels and strips, so results follow heel, trim, leeway and immersion, in the motion frame. `Sailboat` passes `xyz_ref=[0, 0, 0]`, so moments are about the motion frame origin like every other torsor. `draw_vlm` draws moved copies of the hulls.
+- `alpha` is read in the boat x-y plane, so it stays correct under heel but is still poor for near-horizontal strips.
+- NeuralFoil results are not stored on the VLM: substituting a solution in them took minutes and ended in `std::bad_alloc`.
 
 Weight:
 - `Sailboat(masses=[MassProperties(...), ...])`, computed by `MassProperties.compute_weight(op_point)`. CoGs are boat-fixed coordinates, and mass and CoG can be `Opti` variables.
@@ -109,11 +136,11 @@ $env:MPLBACKEND = "Agg"
 
 Confirmed and not fixed unless noted otherwise. Check they still exist before relying on this list.
 
-- `compute_torsor`: `Ftot` and `Mtot` omit `Fsail` and `Fapp`.
-- `compute_torsor`: `windage=None` raises despite its documentation (`compute_windage` requires `tws` and `twa`).
-- `find_equilibrium`: calls `compute_torsor` without `method`, and rebuilds the `OperatingPoint` from attitude only, losing speed, wind and environment. Until fixed, build equilibria directly with `Opti` as in `molenez_equilibrium.py`.
-- `compute_aerodynamics`, `compute_hydrodynamics`: `+=` fails symbolically because `res["F_ab"]` is 3x1 against a 1x3 array.
-- `compute_propeller`: uses nonexistent `self.propeller` and `self.hull`.
+- VLM, section order: a vertical `Fin` at leeway -3 gives Fy = -2458 N with sections listed bottom to top, but +16496 N with the same sections top to bottom. Not investigated.
+- `ThinAirfoil` with `mc=0` is not symmetric through NeuralFoil: CL is +0.77 at +8 deg and -0.28 at -8 deg. Use a section with thickness, such as `Airfoil("naca0012")`, for appendages.
+- Nacra 15 sailing equilibrium has not converged on any set of dofs tried. Yaw cannot balance at a sensible leeway: the sail centre of effort (x about 2.2 m) is ahead of the fin (1.5 m) and rudders (0 m), with no hull side force. For speed and leeway, Fx and Fy are nearly tangent at TWA 55 (appendage L/D of only 3 to 5). Not tried on a reach.
+- `Hull.compute_resistance`: DSYHS `Rw` is noisy with mesh-derived hull parameters (factor 4 for 1.5 cm of immersion on the Nacra), and changes with leeway through the hull dimensions.
+- `compute_propulsion`: the advance speed ignores the angle between flow and shaft, and the torque reaction is not in the moment. Wake, thrust deduction and etaR are inputs, as hulls do not compute them.
 - `Sailboat.__init__`: `name` and `xyz_ref` are not stored, and list arguments use mutable defaults.
 - `ArchibaldMesh.draw(draw_plane=True)`: `projected_centroid` subtracts one scalar from all three coordinates, so the plane is off-centre in x and y. Its height is correct for a vertical normal.
 - Hydrostatics depend on mesh resolution, and not monotonically. On a box at `dz` = 0.2 and 0.3, the volume error is -8% and -11% at 12 faces, +0.8% and -1.2% at 8k, -1.4% and +2.0% at 34k, -0.25% and +0.37% at 135k. Heel differences of about 0.2° are unreliable on the 908-face Molenez mesh, where the upright centre of buoyancy sits about 3 mm off centre.
@@ -126,3 +153,5 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - Stale `archibald.aerodynamics` and `geometry.airplane` imports were fixed.
 - `visualization` moved under `archibald/toolbox/`, with a docstring-only `__init__.py`, so importing the package does not pull in plotly or change matplotlib settings.
 - `Sailboat.masses` was added, and `draw_vlm` particles were reworked as described above.
+- `compute_torsor` was rewritten to sum without running physics, and `find_equilibrium` to take an `Opti`. `compute_propeller` became `compute_propellers`, built on `Propeller.compute_propulsion`.
+- The VLM used to ignore heel, trim, leeway and immersion entirely. Non-zero attitude results changed when this was fixed.

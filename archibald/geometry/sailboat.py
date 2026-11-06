@@ -42,6 +42,12 @@ def tall(array):
 def wide(array):
     return np.reshape(array, (1, -1))
 
+
+# Groups of torsor elements, named after the keys of `Sailboat.forces` and `Sailboat.moments`
+TORSOR_GROUPS = ("w", "b", "h", "i", "aa", "sail", "app", "prop")
+
+EQUILIBRIUM_DOFS = ("Fx", "Fy", "Fz", "Mx", "My", "Mz")
+
 #%%
 
 class Sailboat(ArchibaldObject):
@@ -77,12 +83,40 @@ class Sailboat(ArchibaldObject):
 
         self.forces = {}
         self.moments = {}
+        self.torsor_elements = []
+        self._torsor_op_points = {}  # operating point of each computed group
         self.hull_interaction = None
         self.windage_components = {}
         
         self.aero_vlms = []
         self.hydro_vlms = []
         
+    # =========================================================================
+    # TORSORS
+    # =========================================================================
+
+    def _clear_torsor(self, group: str):
+        """Forgets the results of a group of torsor elements, e.g. "w" or "sail"."""
+        for store, prefix in ((self.forces, f"F{group}"), (self.moments, f"M{group}")):
+            for key in [k for k in store if k == prefix or k.startswith(f"{prefix}_")]:
+                del store[key]
+        self._torsor_op_points.pop(group, None)
+
+    def _start_torsor(self, group: str, op_point: OperatingPoint):
+        """Resets a group of torsor elements, and records the operating point of its results."""
+        self._clear_torsor(group)
+        self.forces[f"F{group}"] = wide(np.zeros(3))
+        self.moments[f"M{group}"] = wide(np.zeros(3))
+        self._torsor_op_points[group] = op_point
+
+    def _add_torsor(self, group: str, element: Union[int, str], F: np.ndarray, M: np.ndarray):
+        """Stores the torsor of an element, and adds it to the total of its group."""
+        F, M = wide(F), wide(M)
+        self.forces[f"F{group}_{element}"] = F
+        self.moments[f"M{group}_{element}"] = M
+        self.forces[f"F{group}"] = self.forces[f"F{group}"] + F
+        self.moments[f"M{group}"] = self.moments[f"M{group}"] + M
+
     def compute_aerodynamics(
             self,
             op_point: OperatingPoint = OperatingPoint(),
@@ -90,29 +124,37 @@ class Sailboat(ArchibaldObject):
             spanwise_resolution=1,
             alpha_stall=20,
         ):
-        # Included fallback/stub check or full VLM computation from both branches:
-        # Keeping full VLM computation capabilities while handling empty rigs gracefully if needed.
-        self.forces["Fsail"] = wide(np.zeros(3))
-        self.moments["Msail"] = wide(np.zeros(3))
+        """
+        Aerodynamic force and moment of each rig, from a vortex lattice method.
+
+        The wings follow the boat through the operating point. Results are stored
+        in the boat motion reference frame, with moments about its origin:
+        ``forces["Fsail_<i>"]``, ``moments["Msail_<i>"]`` for the i-th rig, and
+        ``forces["Fsail"]``, ``moments["Msail"]`` for their sum.
+
+        Returns
+        -------
+        Fsail, Msail : total force [N] and moment [N.m], of shape (1, 3).
+        """
+        self._start_torsor("sail", op_point)
         self.aero_vlms = []
-        
+
         for i, rig in enumerate(self.rigs):
             self.aero_vlm = AeroVortexLatticeMethod(
                 rig,
                 op_point,
+                xyz_ref=[0., 0., 0.],
                 chordwise_resolution=chordwise_resolution,
                 spanwise_resolution=spanwise_resolution,
             )
-            
+
             res = self.aero_vlm.run(alpha_stall=alpha_stall)
             self.aero_vlms.append(self.aero_vlm)
-            
-            self.forces[f"Fsail_{i}"] = res["F_ab"]
-            self.moments[f"Msail_{i}"] = res["M_ab"]
-            
-            self.forces["Fsail"] += res["F_ab"]
-            self.moments["Msail"] += res["M_ab"]
-    
+
+            self._add_torsor("sail", i, res["F_ab"], res["M_ab"])
+
+        return self.forces["Fsail"], self.moments["Msail"]
+
     def compute_hydrodynamics(
             self,
             op_point: OperatingPoint = OperatingPoint(),
@@ -120,26 +162,37 @@ class Sailboat(ArchibaldObject):
             spanwise_resolution=1,
             alpha_stall=20,
         ):
-        self.forces["Fapp"] = wide(np.zeros(3))
-        self.moments["Mapp"] = wide(np.zeros(3))
+        """
+        Hydrodynamic force and moment of each appendage, from a vortex lattice method.
+
+        The wings follow the boat through the operating point. Results are stored
+        in the boat motion reference frame, with moments about its origin:
+        ``forces["Fapp_<i>"]``, ``moments["Mapp_<i>"]`` for the i-th appendage, and
+        ``forces["Fapp"]``, ``moments["Mapp"]`` for their sum.
+
+        Returns
+        -------
+        Fapp, Mapp : total force [N] and moment [N.m], of shape (1, 3).
+        """
+        self._start_torsor("app", op_point)
         self.hydro_vlms = []
+
         for i, appendage in enumerate(self.appendages):
             self.hydro_vlm = HydroVortexLatticeMethod(
                 appendage,
                 op_point,
+                xyz_ref=[0., 0., 0.],
                 chordwise_resolution=chordwise_resolution,
                 spanwise_resolution=spanwise_resolution,
             )
-            
+
             res = self.hydro_vlm.run(alpha_stall=alpha_stall)
             self.hydro_vlms.append(self.hydro_vlm)
-            
-            self.forces[f"Fapp_{i}"] = res["F_ab"]
-            self.moments[f"Mapp_{i}"] = res["M_ab"]
-            
-            self.forces["Fapp"] += res["F_ab"]
-            self.moments["Mapp"] += res["M_ab"]
-        
+
+            self._add_torsor("app", i, res["F_ab"], res["M_ab"])
+
+        return self.forces["Fapp"], self.moments["Mapp"]
+
     def compute_weight(
             self,
             op_point: OperatingPoint = OperatingPoint(),
@@ -171,47 +224,40 @@ class Sailboat(ArchibaldObject):
                 z_cg=cog[0, 2],
             )]
 
-        # clear the results of a previous call, e.g. with more masses
-        for key in [k for k in self.forces if k.startswith("Fw_")]:
-            del self.forces[key]
-        for key in [k for k in self.moments if k.startswith("Mw_")]:
-            del self.moments[key]
-
-        self.forces["Fw"] = wide(np.zeros(3))
-        self.moments["Mw"] = wide(np.zeros(3))
+        self._start_torsor("w", op_point)
 
         for i, mass in enumerate(masses):
             Fw_i, Mw_i = mass.compute_weight(op_point)
-
-            self.forces[f"Fw_{i}"] = Fw_i
-            self.moments[f"Mw_{i}"] = Mw_i
-
-            self.forces["Fw"] += Fw_i
-            self.moments["Mw"] += Mw_i
+            self._add_torsor("w", i, Fw_i, Mw_i)
 
         return self.forces["Fw"], self.moments["Mw"]
 
-    
+
     def compute_buoyancy(
             self,
             op_point: OperatingPoint,
             recompute_statics: bool = True,
         ):
-        self.forces["Fb"] = wide(np.zeros(3))
-        self.moments["Mb"] = wide(np.zeros(3))
-        
+        """
+        Buoyancy force and moment of each hull, stored as ``forces["Fb_<i>"]`` and
+        ``moments["Mb_<i>"]``, and ``forces["Fb"]`` and ``moments["Mb"]`` for their sum.
+
+        Returns
+        -------
+        Fb, Mb : total buoyancy force [N] and moment [N.m], of shape (1, 3).
+        """
+        self._start_torsor("b", op_point)
+
         for i, hull in enumerate(self.hulls):
             Fb_i, Mb_i = hull.compute_buoyancy(
                 op_point=op_point,
                 recompute_statics=recompute_statics,
             )
-            self.forces[f"Fb_{i}"] = Fb_i
-            self.moments[f"Mb_{i}"] = Mb_i
-            
-            self.forces["Fb"] += Fb_i
-            self.moments["Mb"] += Mb_i
-            
-            
+            self._add_torsor("b", i, Fb_i, Mb_i)
+
+        return self.forces["Fb"], self.moments["Mb"]
+
+
     def compute_hull_interaction(
             self,
             op_point: OperatingPoint,
@@ -221,22 +267,22 @@ class Sailboat(ArchibaldObject):
         ):
         """
         Interaction resistance between the hulls of the boat.
-        
+
         The hydrostatics of every hull must have been computed beforehand
         (``compute_buoyancy`` or ``hull.compute_hydrostatics_properties``) and,
         for the calibrated / tabulated methods, so must the individual
         resistances (``hull.compute_resistance``).
-        
+
         The interference of each hull is applied as a drag force along -x at the
         hull centre of water, as done in ``Hull.compute_resistance``.
-        
+
         Parameters
         ----------
         op_point : OperatingPoint
         method : str or dict, key of ``multihull.INTERACTION_METHODS`` or custom dict.
         positions : list of (x, y) or None, hull positions, default from ``hull.get_position``.
         **kwargs : method parameters (``calibrate``, ``fn_grid``, ``tau_table``...).
-        
+
         Returns
         -------
         dict, ``dRw`` (n x n), ``dRf``, ``dR_hull`` and ``dR`` [N].
@@ -248,29 +294,24 @@ class Sailboat(ArchibaldObject):
             positions=positions,
             **kwargs,
         )
-        
-        self.forces["Fi"] = wide(np.zeros(3))
-        self.moments["Mi"] = wide(np.zeros(3))
-        
+
+        self._start_torsor("i", op_point)
+
         for i, hull in enumerate(self.hulls):
             center = op_point.apply_transformations(hull.hydrostatics_data['cow'])
-            
+
             Fi_i = wide(np.array([
                 -1.,
                 0.,
                 0.,
             ])) * self.hull_interaction["dR_hull"][i]
             Mi_i = np.cross(center, Fi_i)
-            
-            self.forces[f"Fi_{i}"] = Fi_i
-            self.moments[f"Mi_{i}"] = Mi_i
-            
-            self.forces["Fi"] += Fi_i
-            self.moments["Mi"] += Mi_i
-            
+
+            self._add_torsor("i", i, Fi_i, Mi_i)
+
         return self.hull_interaction
-            
-            
+
+
     def compute_resistance(
             self,
             op_point: OperatingPoint,
@@ -282,7 +323,12 @@ class Sailboat(ArchibaldObject):
         ):
         """
         Resistance of the hulls, computed individually, plus their interaction.
-        
+
+        The individual resistances are stored as ``forces["Fh_<i>"]`` and
+        ``moments["Mh_<i>"]``, the interaction as ``forces["Fi_<i>"]`` and
+        ``moments["Mi_<i>"]``. The totals ``forces["Fh"]`` and ``moments["Mh"]``
+        include the interaction.
+
         Parameters
         ----------
         method : str or dict, individual resistance method (see ``Hull.compute_resistance``).
@@ -290,39 +336,41 @@ class Sailboat(ArchibaldObject):
             ``compute_hull_interaction``). None: hulls are independent.
         interaction_kwargs : dict, parameters of the interaction method.
         **kwargs : parameters of the individual resistance method.
+
+        Returns
+        -------
+        Fh, Mh : total resistance force [N] and moment [N.m], of shape (1, 3).
         """
-        self.forces["Fh"] = wide(np.zeros(3))
-        self.moments["Mh"] = wide(np.zeros(3))
+        self._start_torsor("h", op_point)
+        self._clear_torsor("i")
         self.hull_interaction = None
-        
+
         for i, hull in enumerate(self.hulls):
-            Fb_i, Mb_i = hull.compute_resistance(
+            Fh_i, Mh_i = hull.compute_resistance(
                 op_point=op_point,
                 method=method,
                 recompute_statics=recompute_statics,
                 **kwargs,
             )
-            self.forces[f"Fh_{i}"] = Fb_i
-            self.moments[f"Mh_{i}"] = Mb_i
-            
-            self.forces["Fh"] += Fb_i
-            self.moments["Mh"] += Mb_i
-            
+            self._add_torsor("h", i, Fh_i, Mh_i)
+
         if interaction is not None and len(self.hulls) > 1:
             self.compute_hull_interaction(
                 op_point=op_point,
                 method=interaction,
                 **(interaction_kwargs or {}),
             )
-            self.forces["Fh"] += self.forces["Fi"]
-            self.moments["Mh"] += self.moments["Mi"]
-            
-        
+            self.forces["Fh"] = self.forces["Fh"] + self.forces["Fi"]
+            self.moments["Mh"] = self.moments["Mh"] + self.moments["Mi"]
+
+        return self.forces["Fh"], self.moments["Mh"]
+
+
     def compute_windage(
             self,
             op_point: OperatingPoint,
-            tws: float,
-            twa: float,
+            tws: Optional[float] = None,
+            twa: Optional[float] = None,
             method: Union[str, Dict] = "orc",
             recompute_statics: bool = True,
             crew_hull: int = 0,
@@ -331,22 +379,23 @@ class Sailboat(ArchibaldObject):
         ):
         """
         Aerodynamic drag of the above-water part of the hulls, and of the crew.
-        
+
         The hull elements of the method are evaluated for every hull. The element
         named "Crew" is not related to a hull, so it is evaluated only once for the
         whole boat, with the aerostatics of the hull ``crew_hull``.
-        
+
         The aerostatics of every hull are (re)computed unless ``recompute_statics``
         is False. The hydrostatics must have been computed beforehand
         (``compute_buoyancy``) for the methods requiring ``Cwp``.
-        
+
         The rig is not included: its aerodynamics is the purpose of ``compute_aerodynamics``.
-        
+
         Parameters
         ----------
         op_point : OperatingPoint
-        tws : float, True wind speed [kt].
-        twa : float, True wind angle [deg], positive when the wind comes from starboard.
+        tws : float or None, True wind speed [kt]. Default: ``op_point.tws0``.
+        twa : float or None, True wind angle [deg], positive when the wind comes
+            from starboard. Default: ``op_point.twa``.
         method : str or dict, key of ``hull.DEFAULT_WINDAGE_METHODS`` or custom dict of methods.
         recompute_statics : bool, whether to recompute the aerostatics of the hulls.
         crew_hull : int, index of the hull whose geometry (freeboard, beam) gives the
@@ -358,14 +407,17 @@ class Sailboat(ArchibaldObject):
             its centre of effort. Default: horizontal position of the lateral centre of
             effort of ``crew_hull``, and ORC height of the crew.
         **kwargs : parameters of the windage methods (crew_mass, n_crew, ship_type, ...).
-        
+
         Returns
         -------
         Fa, Ma : (1, 3) arrays, total force [N] and moment [N.m] in the water axes.
         """
         if len(self.hulls) == 0:
             raise ValueError("The boat has no hull.")
-        
+
+        tws = op_point.tws0 if tws is None else tws
+        twa = op_point.twa if twa is None else twa
+
         if type(method) == str and method in DEFAULT_WINDAGE_METHODS.keys():
             process = DEFAULT_WINDAGE_METHODS[method]
         elif type(method) == dict:
@@ -375,20 +427,13 @@ class Sailboat(ArchibaldObject):
                 f"Unknown method '{method}'. Should be in {list(DEFAULT_WINDAGE_METHODS.keys())} or a custom dictionary of methods.")
         else:
             raise TypeError("method argument should be str or dict")
-        
+
         hull_process = {k: f for k, f in process.items() if k != "Crew"}
         crew_process = {k: f for k, f in process.items() if k == "Crew"}
-        
-        # clear the results of a previous call, e.g. with a different method
-        for key in [k for k in self.forces if k.startswith("Faa_")]:
-            del self.forces[key]
-        for key in [k for k in self.moments if k.startswith("Maa_")]:
-            del self.moments[key]
-        
-        self.forces["Faa"] = wide(np.zeros(3))
-        self.moments["Maa"] = wide(np.zeros(3))
+
+        self._start_torsor("aa", op_point)
         self.windage_components = {}
-        
+
         for i, hull in enumerate(self.hulls):
             Fa_i, Ma_i = hull.compute_windage(
                 op_point=op_point,
@@ -398,13 +443,9 @@ class Sailboat(ArchibaldObject):
                 recompute_statics=recompute_statics,
                 **kwargs,
             )
-            self.forces[f"Faa_{i}"] = Fa_i
-            self.moments[f"Maa_{i}"] = Ma_i
+            self._add_torsor("aa", i, Fa_i, Ma_i)
             self.windage_components[f"hull_{i}"] = hull.windage_components
-            
-            self.forces["Faa"] = self.forces["Faa"] + Fa_i
-            self.moments["Maa"] = self.moments["Maa"] + Ma_i
-            
+
         if len(crew_process) > 0:
             # aerostatics of the hulls have just been computed above
             Fa_c, Ma_c = self.hulls[crew_hull].compute_windage(
@@ -416,139 +457,226 @@ class Sailboat(ArchibaldObject):
                 crew_position=crew_position,
                 **kwargs,
             )
-            self.forces["Faa_crew"] = Fa_c
-            self.moments["Maa_crew"] = Ma_c
+            self._add_torsor("aa", "crew", Fa_c, Ma_c)
             self.windage_components["crew"] = self.hulls[crew_hull].windage_components
-            
-            self.forces["Faa"] = self.forces["Faa"] + Fa_c
-            self.moments["Maa"] = self.moments["Maa"] + Ma_c
-        
+
         return self.forces["Faa"], self.moments["Maa"]
-    
-    def compute_propeller(
+
+    def compute_propellers(
             self,
-            op_point: OperatingPoint = OperatingPoint(),
-            recompute_statics: bool = True,
-            full_output: bool = False,
+            op_point: OperatingPoint,
+            wake_fraction: float = 0.,
+            thrust_deduction: float = 0.,
+            relative_rotative_efficiency: float = 1.,
             shaft_efficiency: float = 0.98,
         ):
+        """
+        Thrust of each propeller at its own ``rpm`` (see ``Propeller.compute_propulsion``).
 
-        if self.propeller:
-            if self.hull:
-                if recompute_statics:
-                    self.hull.compute_statics(op_point)
-                w, t, etaR = self.hull.compute_propulsion_coefficients(op_point.stw, self.propeller.blade_area_ratio)
-            else:
-                w, t, etaR = 0., 0., 1.
-            
-            etaS = shaft_efficiency
-            etaH = (1-t)/(1-w)
-            
-            # leeway = op_point.leeway
-            
-            rpm = op_point.rpm
-            n = rpm / 60. # rps
-            V = op_point._stw # m/s
-            D = self.propeller.diameter # m
-            J = (1 - w) * V / (n*D)
-            
-            Kt, Kq, eta0 = self.propeller.compute_performance(J)
-            
-            T, Qo, Po, n = self.propeller.compute_forces(
-                J,
-                op_point.environment.water.density,
-                rpm=rpm
+        Results are stored in the boat motion reference frame:
+        ``forces["Fprop_<i>"]`` and ``moments["Mprop_<i>"]`` for the i-th propeller,
+        ``forces["Fprop"]`` and ``moments["Mprop"]`` for their sum. The details of each
+        propeller (J, Kt, torque, power...) are in ``propeller.performance``.
+
+        Parameters
+        ----------
+        op_point : OperatingPoint
+        wake_fraction : float, wake fraction w [-].
+        thrust_deduction : float, thrust deduction t [-].
+        relative_rotative_efficiency : float, etaR [-].
+        shaft_efficiency : float, etaS [-].
+
+        Returns
+        -------
+        Fprop, Mprop : total force [N] and moment [N.m], of shape (1, 3).
+        """
+        self._start_torsor("prop", op_point)
+
+        for i, propeller in enumerate(self.propellers):
+            Fprop_i, Mprop_i = propeller.compute_propulsion(
+                op_point=op_point,
+                wake_fraction=wake_fraction,
+                thrust_deduction=thrust_deduction,
+                relative_rotative_efficiency=relative_rotative_efficiency,
+                shaft_efficiency=shaft_efficiency,
             )
-            
-            F = np.sum(T*(1-t))
-            
-            center = self.propeller.center
-            axis = tall(self.propeller.axis)
-            
-            prop = {
-                'J': J,
-                'Kt': Kt,
-                'Kq': Kq,
-                'eta0': eta0,
-                'etaH': etaH,
-                'etaS': etaS,
-                'etaR': etaR,
-                'eta': eta0*etaH*etaS*etaR,
-                'T': T,
-                'Q': Qo / etaR,
-                'P': Po / etaR,
-                'Qo': Qo,
-                'Po': Po,
-                'BHP': Po / (etaR * etaS),
-                'n': n,
-                'w': w,
-                't': t,
-                'F_b': F * np.array([1.,0.,0.]),
-                'M_b': np.zeros(3),
-                'F_ab': F * axis,
-                'M_ab': np.cross(center, F * axis),
-                'w': w,
-                't': t,
-            }
-            
-            Fprop = prop['F_ab']
-            Mprop = prop['M_ab']
-            
-        else:
-            Fprop, Mprop, prop = np.zeros(3), np.zeros(3), {}
-        
-        if full_output:
-            return Fprop, Mprop, prop
-        return Fprop, Mprop
-        
-        
+            self._add_torsor("prop", i, Fprop_i, Mprop_i)
+
+        return self.forces["Fprop"], self.moments["Mprop"]
+
     def compute_torsor(
             self,
             op_point: OperatingPoint,
-            method: str,
-            recompute_statics: bool = True,
-            interaction: Optional[Union[str, Dict]] = None,
-            interaction_kwargs: Optional[Dict] = None,
-            windage: Optional[Union[str, Dict]] = None,
-            windage_kwargs: Optional[Dict] = None,
-            **kwargs,
+            components: Optional[Union[str, List[str]]] = None,
+            exclude: Optional[Union[str, List[str]]] = None,
         ):
         """
-        Total force and moment on the boat.
-        
+        Sums the torsors already computed, without running any physics.
+
+        Each component is computed by its own method, called explicitly with the
+        models and settings wanted: ``compute_weight``, ``compute_buoyancy``,
+        ``compute_resistance``, ``compute_hull_interaction``, ``compute_windage``,
+        ``compute_aerodynamics``, ``compute_hydrodynamics``, ``compute_propellers``.
+        A component which was not computed is not in the sum.
+
+        Components are named after the keys of ``forces`` and ``moments``, either a
+        group (``"w"``, ``"b"``, ``"h"``, ``"i"``, ``"aa"``, ``"sail"``, ``"app"``,
+        ``"prop"``) or one element of a group (``"w_1"``, ``"aa_crew"``, ``"prop_0"``).
+
+        The sum is stored in ``forces["Ftot"]`` and ``moments["Mtot"]``, and the
+        elements it contains in ``torsor_elements``.
+
+        >>> boat.compute_weight(op_point)
+        >>> boat.compute_buoyancy(op_point)
+        >>> boat.compute_propellers(op_point)
+        >>> Ftot, Mtot = boat.compute_torsor(op_point, exclude=["prop", "w_2"])
+
         Parameters
         ----------
-        windage : str, dict or None, windage method of the hulls and crew (see
-            ``compute_windage``). None: no windage.
-        windage_kwargs : dict, parameters of the windage method, including the
-            wind (``tws`` [kt] and ``twa`` [deg]).
-        **kwargs : parameters of the individual resistance method.
+        op_point : OperatingPoint, the operating point of the sum. Summing a group
+            computed with another one raises, unless that group is excluded.
+        components : str, list of str or None, what to sum. Default: all that was computed.
+        exclude : str, list of str or None, what to leave out of ``components``.
+
+        Returns
+        -------
+        Ftot, Mtot : total force [N] and moment [N.m], of shape (1, 3).
         """
-        self.compute_aerodynamics(op_point)
-        self.compute_hydrodynamics(op_point)
-        self.compute_weight(op_point)
-        self.compute_buoyancy(op_point)
-        self.compute_resistance(
-            op_point=op_point,
-            method=method,
-            recompute_statics=recompute_statics,
-            interaction=interaction,
-            interaction_kwargs=interaction_kwargs,
-            **kwargs,
+        components = [components] if isinstance(components, str) else components
+        exclude = [exclude] if isinstance(exclude, str) else (exclude or [])
+
+        for name in (components or []) + exclude:
+            if name.split("_")[0] not in TORSOR_GROUPS:
+                raise ValueError(f"Unknown component '{name}'. Groups are {list(TORSOR_GROUPS)}.")
+
+        # Groups to sum, in a fixed order
+        if components is None:
+            groups = [g for g in TORSOR_GROUPS if g in self._torsor_op_points]
+        else:
+            groups = [g for g in TORSOR_GROUPS if any(n.split("_")[0] == g for n in components)]
+
+        for group in groups:
+            if group not in self._torsor_op_points:
+                raise ValueError(f"Component '{group}' was asked for but has not been computed.")
+
+        # Every element named must exist, so that a typo never silently changes the sum
+        computed = [k[1:] for k in self.forces if k.split("_")[0][1:] in self._torsor_op_points and "_" in k]
+        for name in (components or []) + exclude:
+            if "_" in name and name.split("_")[0] in self._torsor_op_points and name not in computed:
+                raise ValueError(f"Unknown element '{name}'. Computed elements are {computed}.")
+
+        def is_in(element, names):
+            return any(element == n or element.startswith(f"{n}_") for n in names)
+
+        elements = []
+        for element in computed:
+            if element.split("_")[0] in groups and not is_in(element, exclude):
+                if components is None or is_in(element, components):
+                    elements.append(element)
+
+        # Excluded groups may be stale, but what is summed may not
+        for group in {e.split("_")[0] for e in elements}:
+            if self._torsor_op_points[group] is not op_point:
+                raise ValueError(
+                    f"Component '{group}' was computed with another OperatingPoint: "
+                    f"compute it again with this one, or exclude it."
+                )
+
+        Ftot = wide(np.zeros(3))
+        Mtot = wide(np.zeros(3))
+        for element in elements:
+            Ftot = Ftot + self.forces[f"F{element}"]
+            Mtot = Mtot + self.moments[f"M{element}"]
+
+        self.forces["Ftot"] = Ftot
+        self.moments["Mtot"] = Mtot
+        self.torsor_elements = elements
+
+        return Ftot, Mtot
+
+    @staticmethod
+    def equilibrium_residuals(
+            Ftot: np.ndarray,
+            Mtot: np.ndarray,
+            dofs: Union[str, List[str]] = ("Fz", "Mx", "My"),
+            force_scale: float = 1.,
+            moment_scale: float = 1.,
+        ) -> Dict[str, np.ndarray]:
+        """
+        Residuals of a set of degrees of freedom of a torsor.
+
+        Parameters
+        ----------
+        Ftot, Mtot : force [N] and moment [N.m] of shape (1, 3).
+        dofs : str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
+        force_scale : float, reference force dividing the force residuals [N].
+        moment_scale : float, reference moment dividing the moment residuals [N.m].
+
+        Returns
+        -------
+        dict, residual of each degree of freedom, scaled.
+        """
+        dofs = [dofs] if isinstance(dofs, str) else dofs
+
+        residuals = {}
+        for dof in dofs:
+            if dof not in EQUILIBRIUM_DOFS:
+                raise ValueError(f"Unknown degree of freedom '{dof}'. Use some of {list(EQUILIBRIUM_DOFS)}.")
+            torsor, scale = (Ftot, force_scale) if dof[0] == "F" else (Mtot, moment_scale)
+            residuals[dof] = wide(torsor)[0, "xyz".index(dof[1])] / scale
+
+        return residuals
+
+    @staticmethod
+    def find_equilibrium(
+            opti,
+            Ftot: np.ndarray,
+            Mtot: np.ndarray,
+            dofs: Union[str, List[str]] = ("Fz", "Mx", "My"),
+            force_scale: float = 1.,
+            moment_scale: float = 1.,
+            **solve_kwargs,
+        ):
+        """
+        Constrains degrees of freedom of a torsor to zero and solves the problem.
+
+        What varies is what the user made an ``opti.variable`` when building the
+        problem: any number of the operating point, of the masses, of the wings or of
+        the propellers. Any other constraint or objective goes through
+        ``opti.subject_to`` and ``opti.minimize`` before this call, and terms external
+        to the boat through the torsor, as in ``Ftot + Ffoil``.
+
+        Call it once per ``Opti``: each call adds its constraints to the problem.
+
+        >>> Ftot, Mtot = boat.compute_torsor(op_point)
+        >>> opti.subject_to(boat.propellers[0].performance["P"] <= 500e3)
+        >>> sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fx", "Fz", "Mx", "My"])
+
+        Parameters
+        ----------
+        opti : Opti, the problem the variables belong to.
+        Ftot, Mtot : force [N] and moment [N.m] of shape (1, 3).
+        dofs : str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
+        force_scale : float, reference force dividing the force residuals [N].
+        moment_scale : float, reference moment dividing the moment residuals [N.m].
+        **solve_kwargs : arguments of ``opti.solve``.
+
+        Returns
+        -------
+        OptiSol, the solution.
+        """
+        residuals = Sailboat.equilibrium_residuals(
+            Ftot,
+            Mtot,
+            dofs=dofs,
+            force_scale=force_scale,
+            moment_scale=moment_scale,
         )
-        self.compute_windage(
-            op_point=op_point,
-            method=windage,
-            recompute_statics=recompute_statics,
-            **(windage_kwargs or {}),
-        )
-        
-        self.forces["Ftot"] = self.forces["Fb"] + self.forces["Fw"] + self.forces["Fh"] + self.forces["Faa"]
-        self.moments["Mtot"] = self.moments["Mb"] + self.moments["Mw"] + self.moments["Mh"] + self.moments["Maa"]
-        
-        return self.forces["Ftot"], self.moments["Mtot"]
-    
-    
+        opti.subject_to([residual == 0. for residual in residuals.values()])
+
+        return opti.solve(**solve_kwargs)
+
+
     # =========================================================================
     # VISUALIZATION
     # =========================================================================
@@ -1002,7 +1130,7 @@ class Sailboat(ArchibaldObject):
         gif_path : if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
             (implies ``animate``).
         theme : "dark" or "light".
-        draw_hulls : draw the hulls and fittings (``hull.draw``), with ``hull_kwargs``.
+        draw_hulls : draw the hulls and fittings at the operating point of the VLM, with ``hull_kwargs``.
         draw_water, water_origin, water_normal, water_margin : waterplane, see ``draw``.
         plot_axes : show the orientation axes (pyvista).
         window_size : (width, height) in pixels (pyvista).
@@ -1072,6 +1200,13 @@ class Sailboat(ArchibaldObject):
         if draw_water:
             water = self._water_plane(water_origin, water_normal, water_margin)
 
+        # The panels and the flow are in the boat motion frame: move copies of the hulls there
+        moved_meshes = []
+        if draw_hulls:
+            for mesh in [hull.mesh for hull in self.hulls if hull.mesh is not None] + list(self.fittings):
+                moved_meshes.append(copy.copy(mesh))
+                moved_meshes[-1].transform(entries[0][0].op_point)
+
         # =====================================================================
         # PLOTLY (static)
         # =====================================================================
@@ -1109,10 +1244,8 @@ class Sailboat(ArchibaldObject):
                 ))
 
             if draw_hulls:
-                for hull in self.hulls:
-                    hull.draw(backend="plotly", show=False, fig=fig, **hull_kwargs)
-                for fitting in self.fittings:
-                    fitting.draw(backend="plotly", show=False, fig=fig, **hull_kwargs)
+                for mesh in moved_meshes:
+                    mesh.draw(backend="plotly", show=False, fig=fig, **hull_kwargs)
 
             if water is not None:
                 self._add_water_plotly(fig, water, th["water"], 0.25)
@@ -1185,10 +1318,8 @@ class Sailboat(ArchibaldObject):
                 )
 
             if draw_hulls:
-                for hull in self.hulls:
-                    hull.draw(backend="pyvista", show=False, plotter=pl, **hull_kwargs)
-                for fitting in self.fittings:
-                    fitting.draw(backend="pyvista", show=False, plotter=pl, **hull_kwargs)
+                for mesh in moved_meshes:
+                    mesh.draw(backend="pyvista", show=False, plotter=pl, **hull_kwargs)
 
             if water is not None:
                 self._add_water_pyvista(pl, water, th["water"], 0.25)
@@ -1278,112 +1409,3 @@ class Sailboat(ArchibaldObject):
 
         else:
             raise ValueError("Unknown backend. Available backends for draw_vlm are 'pyvista' and 'plotly'.")
-
-    
-    def _get_target_residual(
-            self,
-            target_name: str,
-            Ftot: np.ndarray,
-            Mtot: np.ndarray
-        ):
-        """Helper to map string targets to actual torsor arrays."""
-        target_map = {
-            'Fx': Ftot[0], 'Fy': Ftot[1], 'Fz': Ftot[2],
-            'Mx': Mtot[0], 'My': Mtot[1], 'Mz': Mtot[2]
-        }
-        if target_name not in target_map:
-            raise ValueError(f"Target '{target_name}' not recognized. Use one of: {list(target_map.keys())}")
-        return target_map[target_name]
-
-
-    def find_equilibrium(
-            self,
-            initial_op: OperatingPoint,
-            free_variables: List[str] = ["dz", "heel", "trim"],
-            targets: List[str] = ["Fz", "Mx", "My"],
-            additional_constraints: Optional[List[callable]] = None,
-            objective: Optional[callable] = None,
-            verbose: bool = True
-        ) -> Dict[str, any]:
-        """
-        Solves the static equilibrium of the sailboat.
-        
-        Parameters:
-        -----------
-        initial_op : OperatingPoint
-            The starting operating point containing initial guesses and fixed parameters.
-        free_variables : List[str]
-            List of attributes on the OperatingPoint that the solver is allowed to vary.
-        targets : List[str]
-            List of forces/moments that must equal zero (e.g., ['Fz', 'Mx', 'My']).
-        additional_constraints : List[callable], optional
-            A list of functions: f(opti, Ftot, Mtot, vars_dict) -> constraint_expression.
-        objective : callable, optional
-            A function to minimize: f(opti, Ftot, Mtot, vars_dict) -> objective_expression.
-            
-        Returns:
-        --------
-        Dict containing the converged OperatingPoint, and the resulting forces/moments.
-        """
-        from archibald.optimization import Opti
-        opti = Opti()
-        
-        # 1. Dynamically build the solver's OperatingPoint
-        solver_kwargs = {}
-        vars_dict = {}
-        
-        # Assuming OperatingPoint exposes its attributes (or defaults to 0)
-        standard_attributes = ["dx", "dy", "dz", "heel", "trim", "leeway"]
-        
-        for attr in standard_attributes:
-            init_val = getattr(initial_op, attr, 0.0)
-            
-            if attr in free_variables:
-                var = opti.variable(init_guess=init_val)
-                solver_kwargs[attr] = var
-                vars_dict[attr] = var
-            else:
-                param = opti.parameter(init_val)
-                solver_kwargs[attr] = param
-                vars_dict[attr] = param
-                
-        solver_op = OperatingPoint(**solver_kwargs)
-        
-        # 2. Compute Torsor with symbolic/optimization variables
-        Ftot, Mtot = self.compute_torsor(solver_op)
-        
-        # 3. Apply equilibrium constraints (Residuals == 0)
-        for target in targets:
-            residual = self._get_target_residual(target, Ftot, Mtot)
-            opti.subject_to(residual == 0)
-            
-        # 4. Apply custom constraints
-        if additional_constraints is not None:
-            for constraint_func in additional_constraints:
-                opti.subject_to(constraint_func(opti, Ftot, Mtot, vars_dict))
-                
-        # 5. Apply objective function
-        if objective is not None:
-            opti.minimize(objective(opti, Ftot, Mtot, vars_dict))
-            
-        # 6. Solve the system
-        try:
-            sol = opti.solve()
-        except RuntimeError as e:
-            if verbose: print(f"Solver failed to converge: {e}")
-            raise
-            
-        # 7. Reconstruct the numerical OperatingPoint and Results
-        resolved_kwargs = {}
-        for attr in standard_attributes:
-            resolved_kwargs[attr] = float(sol(solver_kwargs[attr]))
-            
-        converged_op = OperatingPoint(**resolved_kwargs)
-        
-        return {
-            "converged_op": converged_op,
-            "Ftot": np.array(sol(Ftot)).flatten(),
-            "Mtot": np.array(sol(Mtot)).flatten(),
-            "sol_object": sol, # Keep underlying sol object if user wants to query inner forces
-            "success": True
-        }
