@@ -1,0 +1,5 @@
+# TO FILL. Measured catamaran interference of the NPL round bilge series, for the blue points of multihull_interaction.py and to use the insel_molland method.
+# Insel & Molland (1992), Trans RINA 134; Molland, Wellicome & Couser (1994), Southampton Ship Science Report 71, https://eprints.soton.ac.uk/46442/
+# Could not be read: the Southampton repository sits behind a bot check, which was not circumvented.
+# Fn: Froude number. SL: separation / length. tau: wave interference factor. visc: multiplier (1 + beta k) / (1 + k). hull: 4a, 5b ...
+hull,Fn,SL,tau,visc

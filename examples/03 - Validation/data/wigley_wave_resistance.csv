@@ -1,0 +1,4 @@
+# TO FILL. Published wave resistance of the Wigley hull with L/B = 10 and L/T = 16, by thin ship theory or wave pattern analysis.
+# A table of Cw would be a direct check of michell.py. arXiv 1410.2800 (Dambrine, Pierre, Rousseaux) plots such a curve, Figure 6, but gives no table.
+# Fn: Froude number. Cw_x1000: wave resistance coefficient x 1000, on the surface noted in the header of your source. Source: the reference.
+Fn,Cw_x1000,Source

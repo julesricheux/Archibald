@@ -22,13 +22,12 @@ from archibald.geometry.propeller import Propeller, BSeriesPropeller
 from archibald.geometry.mesh import ArchibaldMesh
 
 from archibald.performance.operating_point import OperatingPoint
-hod, AeroVortexLatticeMethod
 from archibald.dynamics.hydro import multihull
 
 from archibald.weights.mass_properties import MassProperties
 
 import archibald.numpy as np
-from archibald.dynamics.aero_3D import HydroVortexLatticeMet
+from archibald.dynamics.aero_3D import HydroVortexLatticeMethod, AeroVortexLatticeMethod
 import archibald.toolbox.units as u
 
 from archibald.common import ArchibaldObject

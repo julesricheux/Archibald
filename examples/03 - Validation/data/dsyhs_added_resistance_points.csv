@@ -1,0 +1,4 @@
+# TO FILL. Added resistance in waves of the DSYHS: Keuning, Gerritsma et al., the paper that holds the a and b tables hard-coded in dsyhs.py, whose reference is not in the code.
+# Any point printed or a copy of the table would allow to check the 450 values of the table and the formula, which could not be traced here.
+# T1_prime: T1 sqrt(g / Lwl). mu: heading [deg]. Fn: Froude number. a, b: table values. Or Raw_N with its Lwl, swh, volume, kyy.
+T1_prime,mu,Fn,a,b,Raw_N,Lwl,swh,volume,kyy

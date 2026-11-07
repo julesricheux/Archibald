@@ -288,7 +288,7 @@ def c_3(
     float, Coefficient c3 [-].
     """
     return (
-        (0.56 * Abt) ** 1.5
+        0.56 * Abt ** 1.5
         / (Bwl * T * (0.31 * np.sqrt(Abt + 1e-12) + T - hB) + 1e-12)
     )
 
@@ -1361,8 +1361,11 @@ def w_single_open_stern(
         Lbp,
         Bwl,
         T,
-        D,
+        volume,
+        Cp,
         Cb,
+        Cstern,
+        lcb,
         rho,
         g,
         **kwargs,
@@ -1372,7 +1375,7 @@ def w_single_open_stern(
     Applied to slender, fast ships. According to :cite:`holtrop1982approximate`, p. 169:
 
     .. math::
-        w = 0.3 C_B + 10 C_V C_B - 0.23 \frac{D}{\sqrt{BT}}
+        w = 0.3 C_B + 10 C_V C_B - 0.1
 
     Parameters
     ----------
@@ -1380,8 +1383,11 @@ def w_single_open_stern(
     Lbp : float, Length between perpendiculars [m].
     Bwl : float, Waterline beam [m].
     T : float, Mean moulded draught [m].
-    D : float, Propeller diameter [m].
+    volume : float, Displaced volume [m³].
+    Cp : float, Prismatic coefficient [-].
     Cb : float, Block coefficient [-].
+    Cstern : float, Stern shape parameter [-].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lbp from midship [-].
     rho : float, Water density [kg/m³].
     g : float, Gravitational acceleration [m/s²].
 
@@ -1389,11 +1395,8 @@ def w_single_open_stern(
     -------
     float, Wake fraction w [-].
     """
-    return (
-        0.3 * Cb
-        + 10.0 * C_V(stw, Lbp, Bwl, T, rho, g) * Cb
-        - 0.23 * D / np.sqrt(Bwl * T)
-    )
+    _CV = C_V(stw=stw, Lbp=Lbp, Bwl=Bwl, T=T, volume=volume, Cp=Cp, Cstern=Cstern, lcb=lcb, rho=rho, g=g)
+    return 0.3 * Cb + 10.0 * _CV * Cb - 0.1
 
 
 def t_single_open_stern(**kwargs):
@@ -1433,8 +1436,12 @@ def w_twin(
         Lbp,
         Bwl,
         T,
+        volume,
         D,
+        Cp,
         Cb,
+        Cstern,
+        lcb,
         rho,
         g,
         **kwargs,
@@ -1452,8 +1459,12 @@ def w_twin(
     Lbp : float, Length between perpendiculars [m].
     Bwl : float, Waterline beam [m].
     T : float, Mean moulded draught [m].
+    volume : float, Displaced volume [m³].
     D : float, Propeller diameter [m].
+    Cp : float, Prismatic coefficient [-].
     Cb : float, Block coefficient [-].
+    Cstern : float, Stern shape parameter [-].
+    lcb : float, Longitudinal centre of buoyancy, as % of Lbp from midship [-].
     rho : float, Water density [kg/m³].
     g : float, Gravitational acceleration [m/s²].
 
@@ -1461,9 +1472,10 @@ def w_twin(
     -------
     float, Wake fraction w [-].
     """
+    _CV = C_V(stw=stw, Lbp=Lbp, Bwl=Bwl, T=T, volume=volume, Cp=Cp, Cstern=Cstern, lcb=lcb, rho=rho, g=g)
     return (
         0.3095 * Cb
-        + 10.0 * C_V(stw, Lbp, Bwl, T, rho, g) * Cb
+        + 10.0 * _CV * Cb
         - 0.23 * D / np.sqrt(Bwl * T)
     )
 
@@ -1512,7 +1524,7 @@ def eta_R_twin(
 
     .. math::
         \eta_R = 0.9737 + 0.111 \left(C_P - 0.0225\,\text{lcb}\right)
-            + 0.06325 \frac{P}{D}
+            - 0.06325 \frac{P}{D}
 
     Parameters
     ----------
@@ -1528,7 +1540,7 @@ def eta_R_twin(
     return (
         0.9737
         + 0.111 * (Cp - 0.0225 * lcb)
-        + 0.06325 * P / D
+        - 0.06325 * P / D
     )
 
 #%% EXAMPLE

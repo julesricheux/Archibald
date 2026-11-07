@@ -1,0 +1,4 @@
+# TO FILL. Towing tank added resistance of the KVLCC2 in regular head waves at Fn = 0.142. Hizir et al. (2019) only show them in figures.
+# For example Sadat-Hosseini et al. (2013), Ocean Engineering 59; Larsson et al. (2010), Gothenburg workshop; the Lee et al. (2013) ITTC comparative campaign.
+# lambda_L: wavelength / Lpp. Caw: R / (rho g A^2 B^2 / L). Source: the reference.
+lambda_L,Caw,Source

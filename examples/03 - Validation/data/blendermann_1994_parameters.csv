@@ -1,0 +1,3 @@
+# TO FILL. Blendermann (1994), "Parameter identification of wind loads on ships", J. Wind Eng. Ind. Aerodyn. 51, table of the parameters.
+# Blendermann (2004) confirms CDt = 0.90 and kappa = 1.4 for a laden container ship. CDlAF = 0.55 and delta = 0.40 in blendermann.py have no source read yet.
+ship_type,CDt,CDlAF_head,CDlAF_stern,delta,kappa

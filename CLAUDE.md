@@ -22,7 +22,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 | `archibald/environment/` | Air, water, gravity |
 | `archibald/modeling/` | Fitting, interpolation, surrogate models |
 | `archibald/toolbox/` | `units`, `mesh_utils`, `statistics/`, `visualization/` (`plotly_Figure3D`, `plotly_utils`, `carpet_plot_utils`) |
-| `examples/` | `01 - Modeling`, `02 - Geometry` |
+| `examples/` | `01 - Modeling`, `02 - Geometry`, `03 - Validation` (literature models against published data, with its own `README.md`) |
 
 `archibald2` and the in-repo `legacy/` are gone. Do not reintroduce them. The sibling folders `../legacy` and `../Experimental` are outside the repo; only read them when asked.
 
@@ -125,11 +125,13 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 273 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 335 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
 - `Sailboat` and `draw_vlm` have no unit tests. Check them with a script.
+- `archibald/numpy/test_numpy/test_all_operations_run.py` calls `np.seterr(all="raise")` when collected, and it applies to every later test of the session: underflows in `softplus` become errors. Tests that hit them need `onp.errstate`, as in `test_validation_published.py`.
+- **Validation:** `examples/03 - Validation/` compares literature models with published data and saves figures. Its `README.md` has the status of each model and what is still needed. A CSV of `data/` with a `# TO FILL` header is a blank, and scripts print `[INPUT NEEDED]` until it has rows. Keep sources in each script's docstring. Numbers that must not move go in `test_validation_published.py` and `test_windage_published.py`.
 - Examples use relative data paths, so run them from their own folder.
 - **CI:** `.github/workflows/run-pytest.yml` runs on `main` and `develop` with Python 3.11-3.13. It excludes the known-broken tests above by name, so when you fix one, remove its entry. A new top-level import of an undeclared package breaks `import archibald` for pip users, so declare it in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
 - **Publishing:** `publish.yml` runs on `v*` tags and only exists on `main` for now, so tag from `main`. The tag must match the `pyproject.toml` version.
@@ -151,6 +153,16 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - Hydrostatics depend on mesh resolution, and not monotonically. On a box at `dz` = 0.2 and 0.3, the volume error is -8% and -11% at 12 faces, +0.8% and -1.2% at 8k, -1.4% and +2.0% at 34k, -0.25% and +0.37% at 135k. Heel differences of about 0.2° are unreliable on the 908-face Molenez mesh, where the upright centre of buoyancy sits about 3 mm off centre.
 - `Opti` equilibria only look for balance, so they can land on an unstable or capsized solution when the bounds are wide. Check that a perturbation gives a restoring moment.
 - `archibald/__init__.py`: `version("archibald")` looks up the wrong distribution name (PyPI is `archibald-vpp`), so `__version__` likely ends up `"unknown"`. Not run to confirm.
+- `compute_Rw_dsyhs`: `smooth_clip(Fr, 0, 0.6, beta=10)` is too soft, so the result leaves the published polynomial, by +131 % at Fn 0.15, -9 % at 0.35 and -26 % at 0.5. `beta=100` matches it within 1 %, untested in solvers. Fixing it moves every Molenez and Nacra result.
+- `savitsky.tau`: `softplus(trim, beta=1)` changes the trim (1° gives 1.31°, 2.88° gives 2.94°), so +3 % on lift and +5 % on pressure drag at 2.88°. `beta=10` would remove it.
+- `ArchibaldMesh.hydrostatics` smooths with lengths fixed in metres. With one large row of faces touching the waterline from above, the volume error is +10.4 % at L = 1 m, +5.4 % at 10 m, -1.0 % at 100 m. With 12 rows it stays near -0.35 %.
+- `michell.py`: `S_MAX = 1` clips the calibration to 1, so `compute_dRw_michell(calibrate=True)` has no effect unless `s_max` is raised. The truncation at `depth_decay=16` costs 0.1 to 0.5 % (1.2 % at Fn 0.15). The default `n_u=401` aliases at large separations (5 % at S/L 50).
+- `compute_Raw_dsyhs`: 7 table entries are zero, and interpolating towards them gives negative resistance (51 of 9430 points, -784 N at worst). The table's source is not referenced.
+- `mittendorf.mm_raw`: the docstring swaps "lower" and "upper". Output 1 is the upper bound.
+- Windage: the drag areas of one crew member are inverted between models. ORC has head 0.271 and beam 0.540 m², Day has head 0.511 and beam 0.305 m².
+- `holtrop.py`: `m_1` divides by `T + 0.1` (about -6.6 % on `Rw` at T = 1.3 m, -0.13 % on `m1` at T = 10 m), `compute_Rtr_holtrop` does not use the paper's `Fr_T`, friction and correlation use `Aws - Atr`, and `lcb` from a mesh is a fraction where the method expects percent. The 1984 terms are cited as 1982. There is no `t_single`.
+- `miyazawa.py` gives 31 % viscous interference at S/L 0.2, large against the module's own note. Its source has not been read.
+- `dynamics/hydro/validation_planing.py` has stale imports and does not run. `savitsky_planing.py` in `03 - Validation` supersedes it.
 
 ## History worth knowing
 
@@ -160,3 +172,4 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - `Sailboat.masses` was added, and `draw_vlm` particles were reworked as described above.
 - `compute_torsor` was rewritten to sum without running physics, and `find_equilibrium` to take an `Opti`. `compute_propeller` became `compute_propellers`, built on `Propeller.compute_propulsion`.
 - The VLM used to ignore heel, trim, leeway and immersion entirely. Non-zero attitude results changed when this was fixed.
+- The worked example of Holtrop & Mennen (1982) found four errors in `holtrop.py`: `c_3` (`RW` was 3.8 % too high), `w_single_open_stern` and `w_twin` (both raised `TypeError`), and the sign in `eta_R_twin`.
