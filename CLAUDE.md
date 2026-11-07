@@ -79,6 +79,7 @@ sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fz", "Mx", "My"])  # what i
 VLM:
 - `mesh_geometry` applies `op_point.apply_transformations` to the panels and strips, so results follow heel, trim, leeway and immersion, in the motion frame. `Sailboat` passes `xyz_ref=[0, 0, 0]`, so moments are about the motion frame origin like every other torsor. `draw_vlm` draws moved copies of the hulls.
 - `alpha` is read in the boat x-y plane, so it stays correct under heel but is still poor for near-horizontal strips.
+- Free surface at z = 0: every panel force (`panels_density`, at the bound vortex centre) and strip force (`strips_density`, at the quarter chord) uses the water density below and the air density above, whichever the analysis, blended by `water_fraction(z) = sigmoid(-FREE_SURFACE_BETA z)`, 99 % at `FREE_SURFACE_TRANSITION` = 1 cm (`vortex_lattice_method.py`). The circulation solve, the freestream (apparent wind for sails, boat speed for appendages) and the NeuralFoil Reynolds number (analysis fluid viscosity) are unchanged. `pressure_coef` divides by the local density, so it does not jump at the surface. The slope is about 1.1e5 kg/m^4 at z = 0, steep for optimizers. On the Nacra, 3 of the 27 appendage strips are in air, and the appendage side force went from 3406 to 2975 N.
 - NeuralFoil results are not stored on the VLM: substituting a solution in them took minutes and ended in `std::bad_alloc`.
 
 Weight:
@@ -110,6 +111,7 @@ boat_sol.draw()
 
 - `animate` defaults to on with pyvista, and the window stays open until closed or `q`. Plotly is static.
 - Particles follow the local VLM velocity (`Sailboat._streamlines_travel_time`), limited to 0.1-3 x free stream because the wake filaments are singular. They tend to `op_point._stw` in water and `op_point._aws(z)` in air.
+- Default seeds start upstream, one per leading-edge panel, moved along the local freestream: to the upstream edge of the drawn water plane for appendages, and one reference chord ahead of the foremost sail point along the apparent wind for sails. `streamlines_length` then counts from the leading edges, with the upstream distance added and the step count raised to keep the step size (capped at 2000). `seed_fn=Sailboat.trailing_edge_seed_points` gives the old wake-only seeds.
 - `particle_speed` is a playback rate in seconds of flow per second of animation (1 is real time, default 0.1), with one clock for air and water.
 - `render_points_as_spheres=False` is deliberate: spheres were reported as not rendering on the author's GPU.
 - `pv.Plotter(off_screen=...)` is passed explicitly, so it overrides `pv.OFF_SCREEN`.
@@ -127,7 +129,7 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 350 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 356 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.

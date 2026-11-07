@@ -1004,13 +1004,66 @@ class Sailboat(ArchibaldObject):
         return points, faces
 
     @staticmethod
-    def _default_seed_points(vlm):
-        """Middle of the trailing edge of every trailing-edge panel."""
+    def trailing_edge_seed_points(vlm):
+        """
+        Middle of the trailing edge of every trailing-edge panel: streamlines of the
+        wake only. Pass it as ``draw_vlm(seed_fn=Sailboat.trailing_edge_seed_points)``.
+        """
         mask = vlm.is_trailing_edge
         return 0.5 * (
             onp.asarray(vlm.back_left_vertices, dtype=float)[mask]
             + onp.asarray(vlm.back_right_vertices, dtype=float)[mask]
         )
+
+    def _default_seed_points(
+            self,
+            vlm,
+            is_hydro: bool,
+            water_plane,
+            upstream_margin: float,
+        ):
+        """
+        Seeds upstream of the leading edges, so that the streamlines show the flow
+        coming onto the wings and around them, not only their wakes.
+
+        Each leading-edge panel gets one seed, moved upstream from the middle of its
+        leading edge along the local freestream (the apparent wind for the sails, the
+        flow of the boat speed for the appendages), until it reaches a line across the
+        flow: the upstream edge of the water plane for the appendages, and a plane
+        ``upstream_margin`` [m] ahead of the foremost panel point for the sails (or
+        appendages without a water plane).
+
+        Returns
+        -------
+        seeds : (n, 3) seed points, and the largest distance [m] they were moved upstream.
+        """
+        mask = onp.asarray(vlm.is_leading_edge, dtype=bool)
+        le = 0.5 * (
+            onp.asarray(vlm.front_left_vertices, dtype=float)[mask]
+            + onp.asarray(vlm.front_right_vertices, dtype=float)[mask]
+        )
+        if len(le) == 0:
+            return onp.zeros((0, 3)), 0.
+
+        # Local upstream direction, and the mean one that sets the start line
+        V = onp.asarray(vlm.get_freestream_velocity_at_points(le), dtype=float).reshape(-1, 3)
+        up = -V / onp.linalg.norm(V, axis=1, keepdims=True)
+        up_mean = up.mean(axis=0)
+        up_mean /= onp.linalg.norm(up_mean)
+
+        if is_hydro and water_plane is not None:
+            start = float(onp.max(onp.asarray(water_plane, dtype=float) @ up_mean))
+        else:
+            panels = onp.concatenate([
+                onp.asarray(vlm.front_left_vertices, dtype=float),
+                onp.asarray(vlm.front_right_vertices, dtype=float),
+            ])
+            start = float(onp.max(panels @ up_mean)) + upstream_margin
+
+        # Distance along each local direction to reach the start line
+        distance = (start - le @ up_mean) / onp.clip(up @ up_mean, 0.1, None)
+        distance = onp.maximum(distance, 0.)
+        return le + distance[:, None] * up, float(distance.max())
 
     def _get_streamlines(
             self,
@@ -1022,13 +1075,21 @@ class Sailboat(ArchibaldObject):
             recalculate: bool,
             water_origin,
             water_normal,
+            water_plane=None,
+            upstream_margin: float = 0.,
         ):
         """
         Streamlines of a VLM as an array (n_lines, n_steps, 3), computed (and cached
         on the VLM object) if necessary. None if there is no streamline to draw.
+
+        With the default seeds, ``length`` is counted from the leading edges, and the
+        distance travelled upstream of them is added to it.
         """
         if recalculate or not hasattr(vlm, "streamlines"):
-            seeds = (seed_fn or self._default_seed_points)(vlm)
+            if seed_fn is None:
+                seeds, upstream = self._default_seed_points(vlm, below_water, water_plane, upstream_margin)
+            else:
+                seeds, upstream = seed_fn(vlm), 0.
             seeds = onp.asarray(seeds, dtype=float).reshape(-1, 3)
 
             if below_water:  # hydrodynamic seeds above the free surface are meaningless
@@ -1040,7 +1101,10 @@ class Sailboat(ArchibaldObject):
             if len(seeds) == 0:
                 return None
 
-            vlm.calculate_streamlines(seed_points=seeds, length=length)
+            # Same step as the 300 steps over ``length``, within limits for the cost
+            total = length + upstream
+            n_steps = int(onp.clip(300. * total / length, 300, 2000))
+            vlm.calculate_streamlines(seed_points=seeds, length=total, n_steps=n_steps)
 
         paths = onp.transpose(onp.asarray(vlm.streamlines, dtype=float), (0, 2, 1))
         paths = paths[onp.all(onp.isfinite(paths), axis=(1, 2))]  # drop diverged lines
@@ -1122,10 +1186,14 @@ class Sailboat(ArchibaldObject):
         clip_quantiles : quantiles of Cp setting the colour limits when ``clim`` is None,
             so that stagnation / tip peaks do not wash out the rest. None: min / max.
         draw_streamlines : draw the streamlines (computed on demand, cached on the VLM).
-        streamlines_length : length of the streamlines [m]. Default: 5 x the largest reference chord.
+        streamlines_length : length of the streamlines [m], counted from the leading edges with the
+            default seeds. Default: 5 x the largest reference chord.
         streamlines_radius : tube radius of the streamlines [m]. Default: 0.15 % of the size of the boat.
         seed_stride : keep one seed out of ``seed_stride`` (appendage seeds above the water are removed).
-        seed_fn : optional ``f(vlm) -> (n, 3)`` array of custom seed points.
+        seed_fn : optional ``f(vlm) -> (n, 3)`` array of custom seed points. Default: one seed per
+            leading-edge panel, moved upstream along the local freestream, to the upstream edge of
+            the water plane for the appendages, and one reference chord ahead of the sails along the
+            apparent wind. ``Sailboat.trailing_edge_seed_points`` gives the wakes only.
         recalculate_streamlines : ignore the streamlines already stored on the VLMs.
         animate : animate particles along the streamlines (pyvista only). The window stays
             open until closed or 'q' is pressed. Default: True with pyvista.
@@ -1188,14 +1256,19 @@ class Sailboat(ArchibaldObject):
         lines = []
         line_vlms = []
         if draw_streamlines:
+            chords = [getattr(getattr(v, "airplane", None), "c_ref", None) for v, _ in entries]
+            chords = [float(c) for c in chords if c is not None]
             if streamlines_length is None:
-                chords = [getattr(getattr(v, "airplane", None), "c_ref", None) for v, _ in entries]
-                chords = [float(c) for c in chords if c is not None]
                 streamlines_length = 5. * max(chords) if chords else 0.5 * diag
+            # Where the default seeds start: the upstream edge of the water plane for the
+            # appendages, one reference chord ahead of the sails
+            seed_water_plane = self._water_plane(water_origin, water_normal, water_margin)
+            upstream_margin = max(chords) if chords else 0.1 * diag
             for vlm, is_hydro in entries:
                 paths = self._get_streamlines(
                     vlm, is_hydro, streamlines_length, seed_stride, seed_fn,
                     recalculate_streamlines, water_origin, water_normal,
+                    water_plane=seed_water_plane, upstream_margin=upstream_margin,
                 )
                 if paths is not None:
                     lines.append(paths)

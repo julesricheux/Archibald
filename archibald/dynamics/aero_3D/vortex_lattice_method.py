@@ -40,6 +40,7 @@ from archibald.geometry.planform import Planform, Rig, Appendage
 from typing import Tuple, Union, Dict, List
 
 import archibald.numpy as np
+import math
 
 import neuralfoil as nf
 
@@ -99,6 +100,14 @@ def change_basis(x: Union[float, np.ndarray],
 #                    np.fmax(raw_fac,
 #                            0.)
 #                    )
+
+# Free surface between air and water, at z = 0 in the boat motion frame, where the
+# panels are. The density of each panel and strip is blended between air and water
+# with a tanh sigmoid of its height: 99 % of the density of the fluid on either side
+# is reached FREE_SURFACE_TRANSITION away from the surface.
+FREE_SURFACE_TRANSITION = 0.01                                      # [m]
+FREE_SURFACE_BETA = math.atanh(2. * 0.99 - 1.) / FREE_SURFACE_TRANSITION  # [1/m]
+
 
 def stall_factor(
     alpha: Union[float, np.ndarray],
@@ -204,6 +213,25 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
     def fluid_dynamic_pressure(self):
         return 1.
+
+    def water_fraction(self, z):
+        """
+        Smooth indicator of the water side of the free surface: 1 under water, 0 in air,
+        0.5 at z = 0, 0.99 at z = -FREE_SURFACE_TRANSITION.
+
+        Args:
+            z: heights in the boat motion frame [m].
+        """
+        return np.sigmoid(-FREE_SURFACE_BETA * z)
+
+    def local_density(self, points):
+        """
+        Density [kg/m^3] at points (N, 3) of the boat motion frame: water below the free
+        surface, air above, whatever the analysis (sails or appendages).
+        """
+        rho_air = self.op_point.environment.air.density
+        rho_water = self.op_point.environment.water.density
+        return rho_air + (rho_water - rho_air) * self.water_fraction(points[:, 2])
     
     def reference_speed(self,
                         z: float = None):
@@ -856,10 +884,13 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.strips_CF = np.sqrt(self.strips_CL**2 + self.strips_CD**2)
         self.strips_CM = np.array([res['CM'][0] for res in nf_results])
         
-        self.strips_L = tall(self.strips_CL) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2 *\
+        # Density of each strip from the height of its quarter-chord point
+        self.strips_density = self.local_density(self.strips_quarters)
+
+        self.strips_L = tall(self.strips_CL) * 1/2 * tall(self.strips_density) * tall(self.strips_areas) * tall(self.strips_U)**2 *\
             tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
             
-        self.strips_D = tall(self.strips_CD) * 1/2 * self.fluid.density * tall(self.strips_areas) * tall(self.strips_U)**2
+        self.strips_D = tall(self.strips_CD) * 1/2 * tall(self.strips_density) * tall(self.strips_areas) * tall(self.strips_U)**2
         
         self.strips_Li = tall(self.strips_forces_strips_freestream[:, 2])
         
@@ -870,7 +901,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.strips_F = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.]))) +\
                        np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
         
-        self.strips_M = tall(self.strips_CM) * 1/2 * self.fluid.density * self.strips_areas * tall(self.strips_U)**2 * tall(self.strips_chords)
+        self.strips_M = tall(self.strips_CM) * 1/2 * tall(self.strips_density) * self.strips_areas * tall(self.strips_U)**2 * tall(self.strips_chords)
 
 
         self.strips_coe = self.strips_quarters - self.strips_x*tall(self.strips_CM/self.strips_CF)
@@ -1025,7 +1056,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.insight = np.sigmoid(self.sum_by_strips(tall(Vi2_dot_ni * self.areas)))
 
         Vi_cross_li = np.cross(V_centers, self.vortex_bound_leg, axis=1)
-        forces_geometry = self.fluid.density * Vi_cross_li * tall(self.vortex_strengths)
+        # Density of each panel from the height of its bound vortex, water or air
+        self.panels_density = self.local_density(self.vortex_centers)
+        forces_geometry = tall(self.panels_density) * Vi_cross_li * tall(self.vortex_strengths)
         moments_geometry = np.cross(
             np.add(self.vortex_centers, - wide(np.array(self.xyz_ref))),
             forces_geometry
@@ -1041,7 +1074,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
         # NB: despite the name, this is the pressure difference across the panel,
         # not a dynamic pressure. Kept for compatibility; consider renaming.
         self.dynamic_pressure = normal_force / self.areas
-        self.pressure_coef = self.dynamic_pressure / self.fluid_dynamic_pressure()
+        # Cp on the local fluid: the same as before for panels in the analysis's own fluid
+        self.pressure_coef = self.dynamic_pressure / (
+            self.fluid_dynamic_pressure() * self.panels_density / self.fluid.density
+        )
 
         # --- Viscous / strip-based forces ---
         # Must set: visc_*, induced_force_*, lift_force_*, lift_moment_*, visc_moment_*
