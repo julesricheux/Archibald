@@ -25,7 +25,7 @@ This page says what has been shown and what has not. "Validated" would be too st
 | Michell, thin ship | `michell.py` | Independent integration of the integral, Wigley hull | **Reproduced** to -0.1 to -0.5 % (-1.2 % at Fn 0.15), explained by the truncation |
 | Michell, against measurement | `michell.py` | Kajitani et al. 1983, through Ahmed et al. 2015 | Right magnitude. Humps and hollows are exaggerated, as thin ship theory is known to do |
 | Jamaluddin, catamaran interference | `jamaluddin.py` | Iqbal & Trimulyono 2014, secondary source | Reproduced, 0.08 % at most. **Not tank data** |
-| Insel & Molland, catamaran interference | `insel_molland.py` | Table reader only | No data shipped: awaiting input |
+| Insel & Molland, catamaran interference | `insel_molland.py` | Table reader only, a B-spline on the user's table | No data shipped: awaiting input |
 | Miyazawa, viscous interference | `miyazawa.py` | Nothing | **Not validated.** Its values look large: 31 % at S/L 0.2 |
 | Wageningen B-series | `propeller.py` | MIT 2.611 notes, and Holtrop 1982 p. 170 | **Reproduced** within 0.63 % and 1 %, at the precision of the sources. Bernitsas et al. 1981 values: awaiting input |
 | Mittendorf et al., added resistance | `mittendorf.py` | PRECAL potential code, KVLCC2 | Inside the method's 90 % interval: -13 % at lambda/L 0.5, +3.3 % at 1.2. **Another code, not a measurement** |
@@ -111,6 +111,7 @@ The shipped function differs because `smooth_clip(Fr, 0, 0.6, beta=10)` is too s
 ![Multihull](figures/multihull_interaction.png)
 
 - Jamaluddin: reproduces Tables 5 and 6 of Iqbal & Trimulyono (2014) within 0.08 %. It is a secondary source, not tank data.
+- Between its six fitted Froude numbers, tau is a cubic B-spline (`InterpolatedModel`), an assumption since the source gives the fits only. The spread between interpolations shows how loose this is: at Fn 0.23 and S/L 0.2, linear interpolation gives 1.00 and the spline 1.31. The spline overshoots the fitted values by 1.3 % at S/L 0.2, near Fn 0.27, and dips to 0.55 at S/L 0.4 between 0.67 and 0.59.
 - Michell's interaction factor and Jamaluddin's disagree above Fn 0.37. Michell gives 1.3 to 1.6 at S/L 0.2, Jamaluddin below 1. A regression absorbs the error of thin ship theory, so only the trends are comparable. Tank data are needed to judge.
 - The Michell factor varies strongly with Cp: 1.15 at Cp 0.693, 1.39 at 0.65, 0.87 at 0.75 (Fn 0.37, S/L 0.3). The Cp of 0.693 for NPL 5b comes from memory and is not verified.
 - Miyazawa gives 31 %, 14 % and 8 % at S/L 0.2, 0.3 and 0.4, against 3.4 %, 2.6 % and 2.1 % for Jamaluddin. These are large against the note of the module itself, and its source has not been read.

@@ -125,7 +125,7 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 335 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 337 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
@@ -172,4 +172,6 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - `Sailboat.masses` was added, and `draw_vlm` particles were reworked as described above.
 - `compute_torsor` was rewritten to sum without running physics, and `find_equilibrium` to take an `Opti`. `compute_propeller` became `compute_propellers`, built on `Propeller.compute_propulsion`.
 - The VLM used to ignore heel, trim, leeway and immersion entirely. Non-zero attitude results changed when this was fixed.
+- `multihull_common.interp_nodes` was removed. `jamaluddin.tau_jamaluddin` now uses a 2D bspline `InterpolatedModel` of tau on (Fn, S/L), with `fill_value=None` to hold the edge values. Interpolate tau itself: interpolating A and B of `A (S/L)^B` made a hump of 1.55 at Fn 0.235, S/L 0.2, above every fit. Between the fitted Froude numbers tau changed by up to 0.32 against the old linear interpolation, so `michell_jamaluddin` results move (not rerun on the Nacra).
+- `multihull_common.interp_table` was replaced by `table_model`, which returns `factor(Fn, SL)` built on an `InterpolatedModel` and is used by `insel_molland`. It adds a column at 2 max(S/L) holding 1 (no interference), and clamps Fn and S/L to the grid itself, because the numeric linear path (scipy) extrapolates. CasADi's bspline needs at least 4 nodes per axis and raises otherwise, so shorter tables fall back to linear. Below the first S/L the factor is now held, where the old tent functions pulled it toward 0.
 - The worked example of Holtrop & Mennen (1982) found four errors in `holtrop.py`: `c_3` (`RW` was 3.8 % too high), `w_single_open_stern` and `w_twin` (both raised `TypeError`), and the sign in `eta_R_twin`.

@@ -5,8 +5,11 @@ COMMON FUNCTIONS OF THE MULTIHULL INTERACTION METHODS
 
 #%% DEPENDENCIES
 
+import numpy as onp
+
 import archibald.numpy as np
 import archibald.toolbox.units as u
+from archibald.modeling.interpolation import InterpolatedModel
 
 EPS = 1e-12
 
@@ -104,79 +107,56 @@ def separation_to_length(
 
 #%% FACTOR TABLES
 
-def interp_table(
-        Fn,
-        SL,
+def table_model(
         fn_grid,
         sl_grid,
         table,
         outside=1.,
+        method="bspline",
         **kwargs,
     ):
-    r"""Differentiable bilinear interpolation of an interference factor table.
+    r"""Interpolated model of an interference factor table, function of Fn and S/L.
 
-    Linear in Fn (clamped, ``np.interp``), tent-function blend in S/L. Beyond
-    the last S/L value the factor relaxes linearly to ``outside`` (no
-    interference) over one more S/L-grid-length.
+    The table is interpolated by an ``InterpolatedModel``, with one more column
+    at S/L = 2 max(``sl_grid``) holding ``outside``: far from the table the factor
+    tends to "no interference" (assumption, the measurements stop at the last S/L).
+    Outside the grid, Fn and S/L are held at the edges of the grid.
+
+    The CasADi B-spline needs at least 4 nodes on each axis: a shorter axis falls
+    back to ``method="linear"``, which is not smooth at the nodes.
 
     Parameters
     ----------
-    Fn : float, Froude number [-].
-    SL : float, Separation to length ratio S/L [-].
     fn_grid : list of float, Increasing Froude numbers of the table [-].
     sl_grid : list of float, Increasing S/L values of the table [-].
     table : list of list, ``table[i][j]`` is the factor at ``fn_grid[i]``, ``sl_grid[j]`` [-].
     outside : float, Value far from the table in S/L [-].
+    method : str, ``"bspline"`` or ``"linear"``.
 
     Returns
     -------
-    float, Interpolated factor [-].
+    function, ``factor(Fn, SL)`` [-].
     """
-    sl = list(sl_grid)
-    fn = np.array(list(fn_grid))
-    out = 0.
-    for j in range(len(sl)):
-        col = np.interp(Fn, fn, np.array([row[j] for row in table]))
-        lo = sl[j - 1] if j > 0 else sl[j] - 1.
-        hi = sl[j + 1] if j < len(sl) - 1 else sl[j] + 1.
-        hat = np.where(
-            SL < sl[j],
-            np.maximum((SL - lo) / (sl[j] - lo), 0.),
-            np.maximum((hi - SL) / (hi - sl[j]), 0.),
-        )
-        out = out + col * hat
-    tail = np.where(SL > sl[-1], np.minimum((SL - sl[-1]) / sl[-1], 1.), 0.)
-    return out * (1. - tail) + outside * tail
+    fn = onp.asarray(fn_grid, dtype=float)
+    sl = onp.append(onp.asarray(sl_grid, dtype=float), 2. * sl_grid[-1])
+    values = onp.column_stack([onp.asarray(table, dtype=float), onp.full(len(fn), float(outside))])
+    if min(len(fn), len(sl)) < 4:
+        method = "linear"
+    model = InterpolatedModel(
+        x_data_coordinates={"Fn": fn, "SL": sl},
+        y_data_structured=values,
+        method=method,
+        fill_value=None,
+    )
 
-def interp_nodes(
-        x,
-        grid,
-        values,
-        **kwargs,
-    ):
-    r"""Differentiable piecewise linear interpolation with symbolic node values.
+    def factor(Fn, SL):
+        # Held explicitly: with numeric inputs, the linear method would extrapolate.
+        return model({
+            "Fn": np.minimum(np.maximum(Fn, fn[0]), fn[-1]),
+            "SL": np.minimum(np.maximum(SL, sl[0]), sl[-1]),
+        })
 
-    Same as ``np.interp`` but ``values`` may depend on differentiable
-    quantities (``np.interp`` needs numeric node values). Outside the grid the
-    first / last value is held.
-
-    Parameters
-    ----------
-    x : float, Abscissa [-].
-    grid : list of float, Increasing numeric abscissae of the nodes [-].
-    values : list of float, Node values (may be symbolic).
-
-    Returns
-    -------
-    float, Interpolated value.
-    """
-    n = len(grid)
-    out = 0.
-    for j in range(n):
-        wl = 1. if j == 0 else np.maximum((x - grid[j - 1]) / (grid[j] - grid[j - 1]), 0.)
-        wr = 1. if j == n - 1 else np.maximum((grid[j + 1] - x) / (grid[j + 1] - grid[j]), 0.)
-        out = out + values[j] * np.where(x < grid[j], wl, wr)
-    return out
+    return factor
 
 #%% ROBUSTNESS HELPERS (HULLS CLOSE TO OR OUT OF THE WATER)
 

@@ -16,10 +16,13 @@ the primary sources have not been checked: validate before relying on them.
 
 #%% DEPENDENCIES
 
+import numpy as onp
+
 import archibald.numpy as np
+from archibald.modeling.interpolation import InterpolatedModel
 
 from archibald.dynamics.hydro.multihull_common import (
-    EPS, froude_number, separation_to_length, interp_nodes, smooth_clip,
+    EPS, froude_number, separation_to_length, smooth_clip,
 )
 
 #%% COEFFICIENTS
@@ -34,6 +37,18 @@ SL_MIN, SL_MAX = 0.2, 0.4       # fitted S/L range
 FN_MAX = 0.65                   # highest fitted Froude number
 SL_ZERO = 0.6                   # S/L above which the wave interference is assumed to vanish
 FN_ZERO = 0.75                  # Fn above which the wave interference is assumed to vanish
+
+# tau on a grid: the six fitted Froude numbers, and S/L fine enough for the power law
+# (interpolation error below 1e-6). tau is interpolated, not A and B: A (S/L)^B of
+# interpolated coefficients makes humps that are in none of the fits.
+# fill_value=None holds the edge values outside the grid.
+_SL_GRID = onp.linspace(SL_MIN, SL_ZERO, 81)
+_TAU_MODEL = InterpolatedModel(
+    x_data_coordinates={"Fn": onp.array(FN_TAU), "SL": _SL_GRID},
+    y_data_structured=onp.array([[a * sl ** b for sl in _SL_GRID] for a, b in zip(A_TAU, B_TAU)]),
+    method="bspline",
+    fill_value=None,
+)
 
 #%% INDIVIDUAL COEFFICIENTS
 
@@ -50,7 +65,10 @@ def tau_jamaluddin(
     .. math::
         \tau = A(F_n)\,(S/L)^{B(F_n)}
 
-    with the coefficients ``A_TAU`` and ``B_TAU`` linearly interpolated in Fn.
+    with the coefficients ``A_TAU`` and ``B_TAU``. Between the six fitted Froude
+    numbers, tau is interpolated by cubic B-splines (``InterpolatedModel``), which
+    go through the fitted values and hold the end values outside them. This
+    interpolation is an assumption: the source gives the six fits only.
     Outside the fitted range, the interference is assumed to vanish smoothly
     (assumption, the regression power law would not tend to 1 for large S/L):
 
@@ -73,9 +91,7 @@ def tau_jamaluddin(
     -------
     float, Wave interference factor tau [-].
     """
-    SLc = np.maximum(SL, SL_MIN)
-    taus = [A_TAU[k] * SLc ** B_TAU[k] for k in range(len(FN_TAU))]
-    tau = interp_nodes(Fn, FN_TAU, taus)
+    tau = _TAU_MODEL({"Fn": Fn, "SL": SL})  # S/L below 0.2 is held at 0.2
     w_sl = np.minimum(np.maximum((SL_ZERO - SL) / (SL_ZERO - SL_MAX), 0.), 1.)
     w_fn = np.minimum(np.maximum((FN_ZERO - Fn) / (FN_ZERO - FN_MAX), 0.), 1.)
     return 1. + (tau - 1.) * w_sl * w_fn

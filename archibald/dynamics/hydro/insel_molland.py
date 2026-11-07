@@ -12,7 +12,7 @@ shipped: they must be digitised from the literature or from tank tests.
 import archibald.numpy as np
 
 from archibald.dynamics.hydro.multihull_common import (
-    froude_number, separation_to_length, interp_table,
+    froude_number, separation_to_length, table_model,
 )
 
 #%% RESISTANCE COMPONENTS
@@ -39,7 +39,9 @@ def compute_dRw_insel_molland(
         C_T = (1 + \beta k)\,C_F + \tau\,C_W
 
     No table is shipped: they must be digitised from :cite:`insel1992investigation`
-    and :cite:`molland1994resistance` or provided from tank tests. For n > 2 hulls
+    and :cite:`molland1994resistance` or provided from tank tests. The table is
+    interpolated by B-splines, and tends to 1 beyond its last S/L, see
+    :func:`multihull_common.table_model`. For n > 2 hulls
     the factors are superposed pairwise (assumption, the data only covers two hulls):
 
     .. math::
@@ -60,6 +62,7 @@ def compute_dRw_insel_molland(
     list of list, Interference matrix dRw[i][j] [N], zero diagonal (not
     necessarily symmetric if the hulls differ).
     """
+    tau_model = table_model(fn_grid, sl_grid, tau_table)
     n = len(Lwl)
     dRw = [[0. for _ in range(n)] for _ in range(n)]
     for i in range(n):
@@ -67,7 +70,7 @@ def compute_dRw_insel_molland(
         for j in range(n):
             if i != j:
                 SL = separation_to_length(y[i], y[j], Lwl[i], Lwl[j])
-                tau = interp_table(Fn, SL, fn_grid, sl_grid, tau_table)
+                tau = tau_model(Fn, SL)
                 dRw[i][j] = Rw[i] * (tau - 1.)
     return dRw
 
@@ -108,6 +111,7 @@ def compute_dRf_insel_molland(
     -------
     list of float, Viscous interference of each hull dRf[i] [N].
     """
+    visc_model = table_model(fn_grid, sl_grid, visc_table)
     n = len(Lwl)
     dRf = [0. for _ in range(n)]
     for i in range(n):
@@ -115,6 +119,6 @@ def compute_dRf_insel_molland(
         for j in range(n):
             if i != j:
                 SL = separation_to_length(y[i], y[j], Lwl[i], Lwl[j])
-                m = interp_table(Fn, SL, fn_grid, sl_grid, visc_table)
+                m = visc_model(Fn, SL)
                 dRf[i] = dRf[i] + Rf[i] * (m - 1.)
     return dRf

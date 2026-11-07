@@ -206,13 +206,27 @@ def test_miyazawa_factor():
     assert float(dRf[0]) == pytest.approx(100. * (2. / 4.) ** 2)
 
 
-def test_insel_molland_reads_its_table_at_the_nodes():
+@pytest.mark.parametrize("fn_grid, tau_table", [
+    ([0.3, 0.4, 0.5], [[1., 1., 1.], [1., 1.25, 1.], [1., 1., 1.]]),  # 3 Froude numbers: linear
+    ([0.3, 0.4, 0.5, 0.6], [[1., 1., 1.], [1., 1.25, 1.], [1., 1., 1.], [1., 1., 1.]]),  # B-spline
+])
+def test_insel_molland_reads_its_table_at_the_nodes(fn_grid, tau_table):
     L, g = 20., 9.81
     dRw = insel_molland.compute_dRw_insel_molland(
         stw=0.4 * math.sqrt(g * L) / u.kt, Lwl=[L, L], y=[-3., 3.], g=g, Rw=[100., 100.],
-        fn_grid=[0.3, 0.4, 0.5], sl_grid=[0.2, 0.3, 0.4], tau_table=[[1., 1., 1.], [1., 1.25, 1.], [1., 1., 1.]],
+        fn_grid=fn_grid, sl_grid=[0.2, 0.3, 0.4], tau_table=tau_table,
     )
     assert float(dRw[0][1]) == pytest.approx(25.)
+
+
+def test_insel_molland_tends_to_no_interference_far_from_its_table():
+    L, g = 20., 9.81
+    table = dict(fn_grid=[0.3, 0.4, 0.5, 0.6], sl_grid=[0.2, 0.3, 0.4], tau_table=[[1.2] * 3] * 4)
+    for separation in (0.8, 2.):  # 2 S/L max and beyond
+        dRw = insel_molland.compute_dRw_insel_molland(
+            stw=0.9 * math.sqrt(g * L) / u.kt, Lwl=[L, L], y=[0., separation * L], g=g, Rw=[100., 100.], **table,
+        )
+        assert float(dRw[0][1]) == pytest.approx(0., abs=1e-9)
 
 
 #%% ADDED RESISTANCE, KVLCC2 at Fn = 0.142, potential code of Hizir et al. (2019), Table 3

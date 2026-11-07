@@ -123,7 +123,7 @@ for j, SL in enumerate(SL_TABLE):
     ax = axes[j]
     ax.axhline(1., color=GREY, linewidth=1)
     ax.plot(Fn_fine, [michell_tau(Fn, SL) for Fn in Fn_fine], color=ORANGE, linewidth=2, label="Michell (theory)")
-    ax.plot(Fn_fine, [float(jamaluddin.tau_jamaluddin(Fn, SL)) for Fn in Fn_fine], color=BLUE, linewidth=2, label="Jamaluddin, module")
+    ax.plot(Fn_fine, jamaluddin.tau_jamaluddin(Fn_fine, SL), color=BLUE, linewidth=2, label="Jamaluddin, module")
     ax.plot(FN_TABLE, TAU_TABLE[:, j], "o", color="black", markersize=5, label="Iqbal & Trimulyono, Table 6")
     if measured is not None:
         mask = onp.array(measured["SL"]) == SL
