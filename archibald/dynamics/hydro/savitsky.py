@@ -1064,6 +1064,33 @@ def compute_Fz_savitsky(
     return Fz
 
 
+def point_Fz_savitsky(
+        trim,
+        Lwl,
+        Bwl,
+        deadrise,
+        app,
+        cow,
+        **kwargs,
+    ):
+    """
+    Application point of ``compute_Fz_savitsky`` in the hull frame [m], shape (1, 3):
+    the dynamic centre of pressure ``lcp`` forward of the aft end of the waterline
+    ``app`` (taken as the transom), at the height and side of the wetted surface
+    centroid ``cow``. ``lcp`` is measured along the keel and used along x, which
+    neglects 1 - cos(trim) (0.3 % at 4.5 deg).
+
+    With the lift there, ``Sailboat`` sums its pitching moment with the others, so
+    ``compute_My_savitsky`` (about the reduction point) must not be added on top.
+    """
+    lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
+    return np.reshape(np.array([
+        app[0, 0] + lcp(lam=lam, Bwl=Bwl),
+        cow[0, 1],
+        cow[0, 2],
+    ]), (1, -1))
+
+
 def compute_My_savitsky(
         stw,
         rho,

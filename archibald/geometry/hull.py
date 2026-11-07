@@ -14,6 +14,8 @@ import archibald.dynamics.hydro.michell as michell
 import archibald.dynamics.hydro.jones as jones
 import archibald.dynamics.hydro.inoue as inoue
 import archibald.dynamics.hydro.kijima as kijima
+import archibald.dynamics.hydro.savitsky as savitsky
+import archibald.dynamics.hydro.mittendorf as mittendorf
 
 import archibald.dynamics.aero.orc as orc
 import archibald.dynamics.aero.day as day
@@ -26,6 +28,40 @@ from archibald.performance import OperatingPoint
 from archibald.geometry.mesh import ArchibaldMesh
 
 
+def amidships(
+        fpp,
+        app,
+        cow,
+        **kwargs,
+    ):
+    """
+    Point amidships, between the ends of the waterline ``fpp`` and ``app``, at the
+    side and height of the wetted surface centroid ``cow``, in the hull frame [m].
+    """
+    return np.reshape(np.array([
+        (fpp[0, 0] + app[0, 0]) / 2.,
+        cow[0, 1],
+        cow[0, 2],
+    ]), (1, -1))
+
+
+# Hydrodynamic methods of the hull, selected by ``Hull.compute_resistance``.
+#
+# Each method is a dict of components, and the name of a component sets its
+# direction in the boat motion frame (x along the velocity, z up):
+#   "R..." : resistance [N], along -x, applied at the wetted surface centroid,
+#            except "Ri", the resistance induced by the lift, applied with it.
+#   "L"    : lift normal to the flow [N], along +y, applied amidships at the
+#            height of the wetted surface centroid. +leeway gives +L, like a fin.
+#   "Fz"   : vertical force [N], along +z, applied at the wetted surface centroid
+#            unless the method gives its own point.
+#   "N"    : yaw moment [N.m], about z, added as a couple.
+# The points are in the hull frame, then moved with the operating point, so under
+# heel, trim or leeway their x position changes the moment of a force along x.
+# A component can be given as ``(function, point_function)``: the point function
+# takes the same arguments and returns the application point in the hull frame,
+# of shape (1, 3), e.g. ``amidships``. Methods can be combined by passing a list of them, as long as
+# no component is given twice. Sources are in each module.
 DEFAULT_RESISTANCE_METHODS = {
     "dsyhs": {
         "Rf": dsyhs.compute_Rf_dsyhs,
@@ -46,13 +82,29 @@ DEFAULT_RESISTANCE_METHODS = {
         "Rf": holtrop.compute_Rf_holtrop,
         "Rw": michell.compute_Rw_michell,
     },
-}
-
-
-# Lateral force methods. "L" is the lift normal to the flow [N], "Ri" the added
-# resistance along the flow [N], and "N" the yaw moment about amidships [N.m].
-# Sources are in each module. Without "N", the force acts amidships.
-DEFAULT_LATERAL_METHODS = {
+    # Planing hulls: Savitsky (1964) and Savitsky & Brown (1976), dynamic part
+    # only, the hydrostatics carry the rest. Needs trim (keel, bow up [deg]) and
+    # deadrise [deg]. The lift acts at the dynamic centre of pressure. Savitsky's
+    # pitching moment is not used: the lift point already gives it.
+    "savitsky": {
+        "Rf": savitsky.compute_Rf_savitsky,
+        "Rw": savitsky.compute_Rp_savitsky,
+        "Rsp": savitsky.compute_Rsp_savitsky,
+        "Rtr": savitsky.compute_Rtr_savitsky,
+        "Fz": (savitsky.compute_Fz_savitsky, savitsky.point_Fz_savitsky),
+    },
+    # Added resistance in waves, to combine with a calm water method.
+    # Planing hulls in head seas: Savitsky & Brown (1976), needs swh.
+    "savitsky_brown": {
+        "Raw": savitsky.compute_Raw_savitsky,
+    },
+    # Ships in waves of any heading: Mittendorf et al. (2022) on a wave
+    # spectrum, needs swh, tp, Le and Lr.
+    "mittendorf": {
+        "Raw": mittendorf.compute_Raw_mittendorf,
+    },
+    # Lateral force at leeway, to combine with a calm water method. "Ri" is
+    # the resistance added by the leeway.
     # Low aspect ratio wing theory: Jones (1946).
     "jones": {
         "L": jones.compute_L_jones,
@@ -125,7 +177,8 @@ class Hull(ArchibaldObject):
         self.hydrostatics_data = {}
         self.aerostatics_data = {}
         self.resistance_components = {}
-        self.lateral_components = {}
+        self.resistance_points = {}
+        self.resistance_torsors = {}
         self.windage_components = {}
 
     def __repr__(self):
@@ -233,198 +286,202 @@ class Hull(ArchibaldObject):
         return Fb, Mb
     
     
-    def compute_resistance_components(
+    @staticmethod
+    def resolve_resistance_methods(
+            method: Union[str, dict, List[Union[str, dict]]],
+        ):
+        """
+        Merge the methods asked for into one dict of components.
+
+        Parameters
+        ----------
+        method : str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of components,
+            or list of them, e.g. ``["dsyhs", "kijima"]``.
+
+        Returns
+        -------
+        dict, name of the component: (function, point_function or None).
+        """
+        methods = method if isinstance(method, (list, tuple)) else [method]
+        if len(methods) == 0:
+            raise ValueError("No resistance method given.")
+
+        process = {}
+        for m in methods:
+            if isinstance(m, str):
+                if m not in DEFAULT_RESISTANCE_METHODS:
+                    raise NotImplementedError(
+                        f"Unknown method '{m}'. Should be in {list(DEFAULT_RESISTANCE_METHODS.keys())} or a custom dictionary of methods.")
+                m = DEFAULT_RESISTANCE_METHODS[m]
+            elif not isinstance(m, dict):
+                raise TypeError("method argument should be str, dict, or a list of them")
+
+            for name, entry in m.items():
+                if name in process:
+                    raise ValueError(f"Component '{name}' is given by more than one method.")
+                if not (name.startswith("R") or name in ("L", "Fz", "N")):
+                    raise ValueError(
+                        f"Unknown component '{name}'. Names set the direction of the force: "
+                        "'R...' (resistance, -x), 'L' (lift, +y), 'Fz' (vertical, +z) or 'N' (yaw moment). "
+                        "A pitching moment is given by the point of 'Fz'.")
+                if isinstance(entry, tuple):
+                    func, point = entry
+                else:
+                    func, point = entry, None
+                process[name] = (func, point)
+
+        return process
+
+
+    def get_resistance_parameters(
             self,
             op_point: OperatingPoint,
-            method: str = str(),
-            recompute_statics: bool = True,
-            **kwargs,
         ):
-        
-        if recompute_statics:
-            self.compute_hydrostatics_properties(op_point)
-            
+        """
+        Arguments given to every hydrodynamic method: hydrostatics, environment
+        and state. Hydrostatics must have been computed beforehand.
+        """
         V = op_point.stw * u.kt
         rho = op_point.environment.water.density
         nu = op_point.environment.water.kinematic_viscosity
         g = op_point.environment.gravity
-            
+
         Re = V * self.hydrostatics_data["Lwl"] / nu
         Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g + 1e-12)
-        
-        # Additionnal parameters needed to compute DSYHS resistance
+
         env_params = {
             'g': g,         # m/s^2
             'nu': nu,       # m^2/s
             'rho': rho,     # kg/m^3
         }
-        
+
         state_params = {
-            'stw': op_point.stw,
+            'stw': op_point.stw,                    # kt
+            'V': V,                                 # m/s
+            'beta': np.radians(op_point.leeway),    # rad, leeway
             'Re': np.softplus(Re, beta=1e3),
             'Fr': np.softplus(Fr, beta=1e3),
         }
-        
-        if type(method)==str and method in DEFAULT_RESISTANCE_METHODS.keys():
-            process = DEFAULT_RESISTANCE_METHODS[method]
-        elif type(method)==dict:
-            process = method
-        elif type(method)==str:
-            raise NotImplementedError(
-                f"Unknown method '{method}'. Should be in {list(DEFAULT_RESISTANCE_METHODS.keys())} or a custom dictionary of methods.")
-        else:
-            raise TypeError("method argument should be str or dict")
-            
-        r = {}
-        t = 0.
-        for name, func in process.items():
-            r[name] = func(**self.hydrostatics_data, **env_params, **state_params, **kwargs)
-            t += r[name]
-        
-        r["_total"] = t
-        
-        return r
-    
-    
-    def compute_resistance(
+
+        return {**self.hydrostatics_data, **env_params, **state_params}
+
+
+    def compute_resistance_components(
             self,
             op_point: OperatingPoint,
-            method: str = str(),
-            recompute_statics: bool = True,
-            **kwargs,
-        ):
-        
-        self.resistance_components = self.compute_resistance_components(
-            op_point=op_point,
-            method=method,
-            recompute_statics=recompute_statics,
-            **kwargs
-        )
-        
-        center = op_point.apply_transformations(self.hydrostatics_data['cow']) # TODO refine position
-        
-        R = self.resistance_components["_total"]
-        
-        Fh = wide(np.array([
-            -1.,
-            0.,
-            0.,
-        ])) * R
-        
-        Mh = np.cross(center, Fh)
-
-        return Fh, Mh
-
-
-    def compute_lateral_force_components(
-            self,
-            op_point: OperatingPoint,
-            method: Union[str, dict] = "kijima",
+            method: Union[str, dict, List[Union[str, dict]]] = "dsyhs",
             recompute_statics: bool = True,
             **kwargs,
         ):
         """
-        Components of the lateral force of the hull at the leeway of the operating point.
+        Values of the components of the hydrodynamic methods.
 
         Parameters
         ----------
-        op_point : operating point. Positive leeway is to starboard.
-        method : str, a key of ``DEFAULT_LATERAL_METHODS``, or dict of functions
-            named among "L", "Ri" and "N", so that methods can be mixed.
-        recompute_statics : bool, recompute the hydrostatics of the hull.
-        **kwargs : parameters of the method.
+        Same as ``compute_resistance``.
 
         Returns
         -------
-        dict with the lift "L" [N], the added resistance "Ri" [N], and the yaw
-        moment "N" [N.m] when the method gives one.
+        dict, value of each component, plus "_total", the sum of the
+        resistances "R..." [N].
         """
         if recompute_statics:
             self.compute_hydrostatics_properties(op_point)
 
-        if type(method)==str and method in DEFAULT_LATERAL_METHODS.keys():
-            process = DEFAULT_LATERAL_METHODS[method]
-        elif type(method)==dict:
-            process = method
-        elif type(method)==str:
-            raise NotImplementedError(
-                f"Unknown method '{method}'. Should be in {list(DEFAULT_LATERAL_METHODS.keys())} or a custom dictionary of methods.")
-        else:
-            raise TypeError("method argument should be str or dict")
+        process = self.resolve_resistance_methods(method)
+        params = self.get_resistance_parameters(op_point)
 
-        unknown = set(process) - {"L", "Ri", "N"}
-        if unknown:
-            raise ValueError(f"Unknown components {sorted(unknown)}. They should be among 'L', 'Ri' and 'N'.")
+        r = {}
+        t = 0.
+        for name, (func, _) in process.items():
+            r[name] = func(**params, **kwargs)
+            if name.startswith("R"):
+                t = t + r[name]
 
-        env_params = {
-            'g': op_point.environment.gravity,                          # m/s^2
-            'nu': op_point.environment.water.kinematic_viscosity,       # m^2/s
-            'rho': op_point.environment.water.density,                  # kg/m^3
-        }
+        r["_total"] = t
 
-        state_params = {
-            'V': op_point.stw * u.kt,               # m/s
-            'beta': np.radians(op_point.leeway),    # rad
-        }
-
-        return {
-            name: func(**self.hydrostatics_data, **env_params, **state_params, **kwargs)
-            for name, func in process.items()
-        }
+        return r
 
 
-    def compute_lateral_force(
+    def compute_resistance(
             self,
             op_point: OperatingPoint,
-            method: Union[str, dict] = "kijima",
+            method: Union[str, dict, List[Union[str, dict]]] = "dsyhs",
             recompute_statics: bool = True,
             **kwargs,
         ):
         """
-        Lateral force and added resistance of the hull, in the boat motion frame.
+        Hydrodynamic force and moment of the hull, in the boat motion frame.
 
-        The force stays horizontal: the methods are for an upright hull, so heel
-        is only seen through the hydrostatics. It is applied amidships, at the
-        height of the wetted surface centroid.
+        Resistance, lateral force, dynamic lift and added resistance in waves
+        are all chosen here: see ``DEFAULT_RESISTANCE_METHODS`` for the
+        directions and application points of the components. The forces stay
+        in the motion frame: the methods are for an upright hull, so heel is
+        only seen through the hydrostatics.
+
+        The values are stored in ``resistance_components``, the application
+        points (motion frame) in ``resistance_points``, and the force and
+        moment of each component in ``resistance_torsors``.
 
         Parameters
         ----------
-        Same as ``compute_lateral_force_components``, stored in ``lateral_components``.
+        op_point : operating point. Positive leeway is to starboard.
+        method : str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of
+            components, or list of them, e.g. ``["dsyhs", "kijima", "mittendorf"]``.
+        recompute_statics : bool, recompute the hydrostatics of the hull.
+        **kwargs : parameters of the methods, given to all of them.
 
         Returns
         -------
-        Flat, Mlat : force [N] and moment [N.m] about the frame origin, of shape (1, 3).
+        Fh, Mh : force [N] and moment [N.m] about the frame origin, of shape (1, 3).
         """
-        self.lateral_components = self.compute_lateral_force_components(
+        if recompute_statics:
+            self.compute_hydrostatics_properties(op_point)
+
+        process = self.resolve_resistance_methods(method)
+        params = self.get_resistance_parameters(op_point)
+
+        self.resistance_components = self.compute_resistance_components(
             op_point=op_point,
             method=method,
-            recompute_statics=recompute_statics,
+            recompute_statics=False,
             **kwargs
         )
-        components = self.lateral_components
 
-        cow = self.hydrostatics_data['cow']
-        fpp = self.hydrostatics_data['fpp']
-        app = self.hydrostatics_data['app']
-        center = op_point.apply_transformations(wide(np.array([
-            (fpp[0, 0] + app[0, 0]) / 2.,
-            cow[0, 1],
-            cow[0, 2],
-        ])))
+        self.resistance_points = {}
+        self.resistance_torsors = {}
+        Fh = wide(np.zeros(3))
+        Mh = wide(np.zeros(3))
+        for name, (_, point_func) in process.items():
+            value = self.resistance_components[name]
 
-        Flat = wide(np.array([
-            -components.get("Ri", 0.),
-            components.get("L", 0.),
-            0.,
-        ]))
+            if name == "N":
+                F = wide(np.zeros(3))
+                M = wide(np.array([0., 0., 1.])) * value
+            else:
+                if point_func is not None:
+                    point = wide(point_func(**params, **kwargs))
+                elif name in ("L", "Ri"):
+                    point = amidships(**params)
+                else:
+                    point = params['cow']
+                center = op_point.apply_transformations(point)
+                self.resistance_points[name] = center
 
-        Mlat = np.cross(center, Flat) + wide(np.array([
-            0.,
-            0.,
-            components.get("N", 0.),
-        ]))
+                if name.startswith("R"):
+                    direction = [-1., 0., 0.]
+                elif name == "L":
+                    direction = [0., 1., 0.]
+                else:
+                    direction = [0., 0., 1.]
+                F = wide(np.array(direction)) * value
+                M = np.cross(center, F)
 
-        return Flat, Mlat
+            self.resistance_torsors[name] = (F, M)
+            Fh = Fh + F
+            Mh = Mh + M
+
+        return Fh, Mh
 
 
     def compute_windage_components(

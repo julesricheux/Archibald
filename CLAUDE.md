@@ -48,7 +48,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 
 ## Sailboat torsors
 
-Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` resistance, `Fi` hull interaction, `Flat` hull lateral force, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Fprop` propellers, `Ftot` total. `Fh` includes `Fi` when `compute_resistance` computed the interaction; `compute_torsor` sums elements, so it does not count it twice.
+Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>` / `M<x>_<i>` per element, `F<x>` / `M<x>` in total. Keys: `Fw` weight, `Fb` buoyancy, `Fh` hull hydrodynamics (resistance, lateral force, dynamic lift, added resistance in waves), `Fi` hull interaction, `Faa` windage, `Fsail` rigs, `Fapp` appendages, `Fprop` propellers, `Ftot` total. `Fh` includes `Fi` when `compute_resistance` computed the interaction; `compute_torsor` sums elements, so it does not count it twice.
 
 - **Shapes:** results are `(1, 3)` "wide" arrays, built with `wide()`. Moments are `np.cross(center, F)`. Index totals as `Ftot[0, i]`.
 - **CasADi pitfall:** `(1x3) + (3x1)` raises in CasADi but broadcasts in NumPy, so keep everything wide. Prefer `x = x + y` to `+=` in accumulators.
@@ -72,7 +72,7 @@ opti.subject_to(boat.propellers[0].performance["BHP"] <= 500e3)     # other cons
 sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fz", "Mx", "My"])  # what is balanced, then solve
 ```
 
-- `compute_torsor(op_point, components=None, exclude=None)` takes groups (`w`, `b`, `h`, `i`, `lat`, `aa`, `sail`, `app`, `prop`) or elements (`w_1`, `aa_crew`). Default is all that was computed. It lists what it summed in `boat.torsor_elements`. Typos, components asked for but not computed, and included groups computed with another `OperatingPoint` object all raise.
+- `compute_torsor(op_point, components=None, exclude=None)` takes groups (`w`, `b`, `h`, `i`, `aa`, `sail`, `app`, `prop`) or elements (`w_1`, `aa_crew`). Default is all that was computed. It lists what it summed in `boat.torsor_elements`. Typos, components asked for but not computed, and included groups computed with another `OperatingPoint` object all raise.
 - `find_equilibrium` and `equilibrium_residuals` are static and take `Ftot`, `Mtot` explicitly, so external terms go in as `Ftot + Ffoil`. Call `find_equilibrium` once per `Opti`, since each call adds its constraints.
 - Bounds are ordinary constraints that iterates can violate. Pass `detect_simple_bounds=True` when leaving them is catastrophic, such as a negative speed in a resistance polynomial.
 
@@ -87,9 +87,11 @@ Weight:
 - A boat with neither has zero weight, with no warning.
 - `sum(boat.masses)` gives total mass, CoG and inertia.
 
-Lateral force:
-- `compute_lateral_force(op_point, method)` on `Hull` and `Sailboat`, like the resistance, with `DEFAULT_LATERAL_METHODS` in `hull.py` and functions in `dynamics/hydro/` (`jones`, `inoue`, `kijima`). Components are `L` (normal to the flow), `Ri` (along it) and `N` (yaw moment about amidships). The force is horizontal, and +leeway gives +y and -x, like a fin.
-- Added resistance is separate from `compute_resistance`, so it is summed once. Each method's assumptions and sources are in its module. Keep them sourced: coefficients found only from memory stay out.
+Hull hydrodynamics:
+- `compute_resistance(op_point, method)` on `Hull` and `Sailboat` holds every hull force: resistance, lateral force, dynamic lift and added resistance in waves. `method` is a key of `DEFAULT_RESISTANCE_METHODS` in `hull.py`, a dict of components, or a list of them, e.g. `["dsyhs", "kijima", "mittendorf"]`. A component given twice raises. `**kwargs` go to every function, so a name means the same thing everywhere (`trim` is Savitsky's keel trim, bow up).
+- The component name sets the direction, in the motion frame: `R...` along -x at `cow` (`Ri` amidships, with its lift), `L` along +y amidships, `Fz` along +z at `cow` or the method's point, `N` a yaw couple. Other names raise, `My` included: a pitching moment comes from the point of `Fz`. A component can be `(function, point_function)`, the point in the hull frame, e.g. `savitsky.point_Fz_savitsky` (centre of pressure from `app`).
+- Points are hull-frame, then moved with the operating point, so under attitude their x changes the moment of a force along x. The hull stores `resistance_components` (`_total` sums only `R...`), `resistance_points` (motion frame) and `resistance_torsors`. Multihull interaction reads `Rf` and `Rw`.
+- Methods: calm water `dsyhs`, `holtrop`, `michell`, `savitsky` (dynamic part only); waves `savitsky_brown`, `mittendorf` (needs `swh`, `tp`, `Le`, `Lr`, JONSWAP/PM spectrum, `wave_heading` 180 in head seas); leeway `jones`, `inoue`, `kijima`, whose functions take `V` [m/s] and `beta` [rad]. +leeway gives +y and -x, like a fin. Lateral methods alone are allowed. Each method's assumptions and sources are in its module. Keep them sourced: coefficients found only from memory stay out.
 - Inoue and Kijima are fitted on merchant ships. On the Molenez, the Kijima `N'beta` is negative, so the force acts aft of amidships, against the Munk moment expected of a hull: this comes from extrapolating the regression, so do not trust the yaw moment there.
 
 Hydrostatics:
@@ -125,7 +127,7 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 338 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 350 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
@@ -158,7 +160,6 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - `ArchibaldMesh.hydrostatics` smooths with lengths fixed in metres. With one large row of faces touching the waterline from above, the volume error is +10.4 % at L = 1 m, +5.4 % at 10 m, -1.0 % at 100 m. With 12 rows it stays near -0.35 %.
 - `michell.py`: `S_MAX = 1` clips the calibration to 1, so `compute_dRw_michell(calibrate=True)` has no effect unless `s_max` is raised. The truncation at `depth_decay=16` costs 0.1 to 0.5 % (1.2 % at Fn 0.15). The default `n_u=401` aliases at large separations (5 % at S/L 50).
 - `compute_Raw_dsyhs`: 7 table entries are zero, and interpolating towards them gives negative resistance (51 of 9430 points, -784 N at worst). The table's source is not referenced.
-- `mittendorf.mm_raw`: the docstring swaps "lower" and "upper". Output 1 is the upper bound.
 - Windage: the drag areas of one crew member are inverted between models. ORC has head 0.271 and beam 0.540 m², Day has head 0.511 and beam 0.305 m².
 - `holtrop.py`: `m_1` divides by `T + 0.1` (about -6.6 % on `Rw` at T = 1.3 m, -0.13 % on `m1` at T = 10 m), `compute_Rtr_holtrop` does not use the paper's `Fr_T`, friction and correlation use `Aws - Atr`, and `lcb` from a mesh is a fraction where the method expects percent. The 1984 terms are cited as 1982. There is no `t_single`.
 - `miyazawa.py` gives 31 % viscous interference at S/L 0.2, large against the module's own note. Its source has not been read.
@@ -176,3 +177,4 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - `multihull_common.interp_table` was replaced by `table_model`, which returns `factor(Fn, SL)` built on an `InterpolatedModel` and is used by `insel_molland`. It adds a column at 2 max(S/L) holding 1 (no interference), and clamps Fn and S/L to the grid itself, because the numeric linear path (scipy) extrapolates. CasADi's bspline needs at least 4 nodes per axis and raises otherwise, so shorter tables fall back to linear. Below the first S/L the factor is now held, where the old tent functions pulled it toward 0.
 - `test_opti_minimize_absolute_value` used `sum(sqrt((x - target)**2 + 1e-6))`, which has almost no curvature away from the target, and diverged under casadi 3.8.2 in CI. It now uses the epigraph form of the L1 norm, `min sum(t)` with `|x - target| <= t`, which solves in 5 iterations from any start. Write nonsmooth objectives in tests this way rather than with a tiny smoothing.
 - The worked example of Holtrop & Mennen (1982) found four errors in `holtrop.py`: `c_3` (`RW` was 3.8 % too high), `w_single_open_stern` and `w_twin` (both raised `TypeError`), and the sign in `eta_R_twin`.
+- Lateral force and added resistance in waves were merged into `compute_resistance`: `compute_lateral_force`, `DEFAULT_LATERAL_METHODS` and the `lat` group are gone. Results were checked equal to the old `Fh + Flat` (4.6e-16). Before, a custom dict with `Fz` (the 49er examples) summed the lift into the resistance along -x; it is now vertical. `mittendorf.py` was rewritten with `np.where` (equal to the published code to 4.6e-16, CasADi gradients checked) and gained the irregular-sea `compute_Raw_mittendorf`; the `mm_raw` docstring had swapped "lower" and "upper".

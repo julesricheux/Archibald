@@ -134,7 +134,7 @@ The shipped function differs because `smooth_clip(Fr, 0, 0.6, beta=10)` is too s
 ![Added resistance](figures/added_resistance_waves.png)
 
 - Mittendorf et al. on the KVLCC2, against PRECAL as computed by Hizir et al. (2019). This is another method, with no measurement. `Le` and `Lr` come from a commented example in the module.
-- The docstring of `mm_raw` swaps "lower" and "upper": output 1 is the upper bound.
+- `mm_raw` returns the mean, then the upper and lower bounds of the 90 % interval (its docstring had them swapped, now fixed).
 - DSYHS: the 225 nodes of the table are read back within 3e-8 %. 7 entries of the table are zero, and interpolating towards them gives negative resistance between the nodes: 51 of 9430 points, -784 N at worst. The table's origin is not referenced in the code.
 
 ## Windage

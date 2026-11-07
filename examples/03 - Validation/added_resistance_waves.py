@@ -31,8 +31,7 @@ from validation_common import BLUE, GREY, ORANGE, AQUA, YELLOW, comparison_table
 Lpp, Bwl, T, Cb, Le, Lr, kyy, Fn = 320., 58., 20.8, 0.8098, 60., 60., 0.25, 0.142
 
 ratios = onp.linspace(0.3, 2.2, 96)
-# The docstring of mm_raw calls the outputs 1 and 2 "lower" and "upper". They are the other way round:
-# output 1 is the set shifted by +0.19967, and the function itself checks that it stays above output 2.
+# mm_raw returns the mean, the upper bound (set shifted by +0.19967) and the lower bound.
 mean, upper, lower = [
     onp.array(values, dtype=float)
     for values in mittendorf.mm_raw(ratios * Lpp, 180., Lpp, Bwl, T, T, Cb, Le, Lr, kyy, Fn)[:3]

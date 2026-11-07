@@ -43,7 +43,7 @@ def wide(array):
 
 
 # Groups of torsor elements, named after the keys of `Sailboat.forces` and `Sailboat.moments`
-TORSOR_GROUPS = ("w", "b", "h", "i", "lat", "aa", "sail", "app", "prop")
+TORSOR_GROUPS = ("w", "b", "h", "i", "aa", "sail", "app", "prop")
 
 EQUILIBRIUM_DOFS = ("Fx", "Fy", "Fz", "Mx", "My", "Mz")
 
@@ -311,66 +311,36 @@ class Sailboat(ArchibaldObject):
         return self.hull_interaction
 
 
-    def compute_lateral_force(
-            self,
-            op_point: OperatingPoint,
-            method: Union[str, Dict] = "kijima",
-            recompute_statics: bool = True,
-            **kwargs,
-        ):
-        """
-        Lateral force and added resistance of the hulls, computed individually.
-
-        Stored as ``forces["Flat_<i>"]`` and ``moments["Mlat_<i>"]``, with the
-        totals in ``forces["Flat"]`` and ``moments["Mlat"]``. No interaction
-        between the hulls of a multihull is accounted for.
-
-        Parameters
-        ----------
-        method : str or dict, see ``Hull.compute_lateral_force``.
-        **kwargs : parameters of the method.
-
-        Returns
-        -------
-        Flat, Mlat : total force [N] and moment [N.m], of shape (1, 3).
-        """
-        self._start_torsor("lat", op_point)
-
-        for i, hull in enumerate(self.hulls):
-            Flat_i, Mlat_i = hull.compute_lateral_force(
-                op_point=op_point,
-                method=method,
-                recompute_statics=recompute_statics,
-                **kwargs,
-            )
-            self._add_torsor("lat", i, Flat_i, Mlat_i)
-
-        return self.forces["Flat"], self.moments["Mlat"]
-
     def compute_resistance(
             self,
             op_point: OperatingPoint,
-            method: str,
+            method: Union[str, Dict, List[Union[str, Dict]]],
             recompute_statics: bool = True,
             interaction: Optional[Union[str, Dict]] = None,
             interaction_kwargs: Optional[Dict] = None,
             **kwargs,
         ):
         """
-        Resistance of the hulls, computed individually, plus their interaction.
+        Hydrodynamic force of the hulls, computed individually, plus their interaction.
 
-        The individual resistances are stored as ``forces["Fh_<i>"]`` and
+        It holds every hull force chosen in ``method``: resistance, lateral force,
+        dynamic lift and added resistance in waves, e.g.
+        ``method=["dsyhs", "kijima", "mittendorf"]``. The components of each hull,
+        their application points and torsors are in ``hull.resistance_components``,
+        ``hull.resistance_points`` and ``hull.resistance_torsors``.
+
+        The force of each hull is stored as ``forces["Fh_<i>"]`` and
         ``moments["Mh_<i>"]``, the interaction as ``forces["Fi_<i>"]`` and
         ``moments["Mi_<i>"]``. The totals ``forces["Fh"]`` and ``moments["Mh"]``
         include the interaction.
 
         Parameters
         ----------
-        method : str or dict, individual resistance method (see ``Hull.compute_resistance``).
+        method : str, dict or list of them, hull methods (see ``Hull.compute_resistance``).
         interaction : str, dict or None, interaction method between hulls (see
             ``compute_hull_interaction``). None: hulls are independent.
         interaction_kwargs : dict, parameters of the interaction method.
-        **kwargs : parameters of the individual resistance method.
+        **kwargs : parameters of the hull methods, given to all of them.
 
         Returns
         -------

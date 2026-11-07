@@ -2,13 +2,16 @@
 """
 Side force and added resistance of the Molenez hull against leeway.
 
-The hull is alone, at a fixed speed and immersion, and the three methods of
-``archibald.geometry.hull.DEFAULT_LATERAL_METHODS`` are compared. Their sources
-are in ``archibald/dynamics/hydro/``. Inoue and Kijima were fitted on merchant
-ships: the Molenez is outside of their range, so read them as estimates.
+The hull is alone, at a fixed speed and immersion, and the three lateral force
+methods of ``archibald.geometry.hull.DEFAULT_RESISTANCE_METHODS`` are compared.
+Their sources are in ``archibald/dynamics/hydro/``. Inoue and Kijima were fitted
+on merchant ships: the Molenez is outside of their range, so read them as estimates.
 
-Methods can also be mixed, with a dictionary of functions:
-    boat.compute_lateral_force(op_point, method={"L": kijima.compute_L_kijima, "Ri": jones.compute_Ri_jones})
+Lateral force is chosen with the resistance, so a list combines it with a calm
+water method, and a dictionary of functions mixes methods:
+    boat.compute_resistance(op_point, method=["dsyhs", "kijima"])
+    boat.compute_resistance(op_point, method=["dsyhs", {"L": kijima.compute_L_kijima, "Ri": jones.compute_Ri_jones}])
+Only the lateral components are computed here.
 """
 import matplotlib.pyplot as plt
 import numpy as onp
@@ -40,13 +43,13 @@ for leeway in leeways:
     boat.hulls[0].compute_hydrostatics_properties(op_point)
 
     for method in methods:
-        Flat, Mlat = boat.compute_lateral_force(
+        Fh, Mh = boat.compute_resistance(
             op_point,
             method=method,
             recompute_statics=False,
         )
-        side_force[method].append(Flat[0, 1])
-        added_resistance[method].append(-Flat[0, 0])
+        side_force[method].append(Fh[0, 1])
+        added_resistance[method].append(-Fh[0, 0])
 
 
 #%% RESULTS
