@@ -1353,7 +1353,8 @@ class Sailboat(ArchibaldObject):
     ):
         """
         Draws the VLM solution of the rigs and appendages: the panels are coloured
-        by pressure coefficient (``vlm.pressure_coef``) and the flow is shown with
+        by pressure coefficient (``vlm.pressure_coef``, with its sign flipped on the
+        appendages so that it reads like the sails) and the flow is shown with
         streamlines, optionally animated by particles advected along them.
 
         ``compute_aerodynamics`` and/or ``compute_hydrodynamics`` must have been called
@@ -1427,7 +1428,8 @@ class Sailboat(ArchibaldObject):
 
         # --- panel meshes and pressure coefficient -------------------------------
         panels = [self._vlm_panels(v) for v, _ in entries]
-        cps = [onp.asarray(v.pressure_coef, dtype=float).ravel() for v, _ in entries]
+        # The hydro Cp is drawn with its sign flipped, to share the convention of the aero Cp
+        cps = [(-1. if is_hydro else 1.) * onp.asarray(v.pressure_coef, dtype=float).ravel() for v, is_hydro in entries]
 
         if clim is None:
             allcp = onp.concatenate(cps)

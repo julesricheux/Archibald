@@ -40,6 +40,7 @@ from archibald.geometry.planform import Planform, Rig, Appendage
 from typing import Tuple, Union, Dict, List
 
 import archibald.numpy as np
+import numpy as onp
 import math
 
 import neuralfoil as nf
@@ -524,7 +525,17 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_x = self.op_point.apply_transformations(np.concatenate(strips_x), is_vector=True)
         self.strips_y = self.op_point.apply_transformations(np.concatenate(strips_y), is_vector=True)
-        self.strips_z = self.op_point.apply_transformations(np.concatenate(strips_z), is_vector=True)
+        # Orient the strip normals like alpha, which is read in the boat x-y plane (see
+        # viscous_computation): a positive alpha must give a lift along +strips_z, i.e.
+        # along chord x z_boat. The normal of the section frames follows the order of
+        # the sections, so without this a wing listed top to bottom had its NeuralFoil
+        # lift reversed. Done in boat axes, so it does not depend on the attitude.
+        strips_x_boat = np.concatenate(strips_x)
+        strips_z_boat = np.concatenate(strips_z)
+        lift_side = strips_z_boat[:, 0] * strips_x_boat[:, 1] - strips_z_boat[:, 1] * strips_x_boat[:, 0]
+        self.strips_orientation = np.where(lift_side >= 0., 1., -1.)
+        self.strips_z = self.op_point.apply_transformations(
+            strips_z_boat * tall(self.strips_orientation), is_vector=True)
         self.strips_chords = np.concatenate(strips_chords)
         self.strips_areas = np.concatenate(strips_areas)
         self.strips_quarters = self.op_point.apply_transformations(np.concatenate(strips_quarters))
@@ -705,7 +716,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         ### Compute induced angle of attack by strips (= arctan(L/Di))
         # self.alphai = np.rad2deg(np.arctan(strips_forces_strips_freestream[:,0]/strips_forces_strips_freestream[:,2]))
-        self.alphai = np.arctan2d(strips_forces_strips_freestream[:,0], strips_forces_strips_freestream[:,2])
+        # arctan(Di / L), signed with the lift so that it always reduces |alpha|. The
+        # former arctan2(Di, L) jumped to about 180 deg for a negative lift.
+        Di_local = strips_forces_strips_freestream[:,0]
+        L_local = strips_forces_strips_freestream[:,2]
+        self.alphai = np.arctan(Di_local * L_local / (L_local ** 2 + 1e-12)) * 180. / np.pi
         
         ### Freestream angle of attack by strips
         # read in the x-y plane of the boat, so that alpha follows the wing when the boat heels
@@ -735,7 +750,16 @@ class VortexLatticeMethod(ExplicitAnalysis):
                 # Add mean strip airfoil for each strip
                 airfoils += [w.xsecs[i].airfoil.blend_with_another_airfoil(w.xsecs[i+1].airfoil)]*\
                     self.spanwise_resolution*(1+w.symmetric)
-            
+
+        # The panels put the upper side of a cambered airfoil on the side of the section
+        # frame normal. Where that normal was flipped to follow alpha (strips_orientation),
+        # NeuralFoil gets the airfoil upside down, so that both see the same camber.
+        try:
+            orientation = onp.asarray(self.strips_orientation, dtype=float).ravel()
+        except Exception:  # symbolic geometry: the sign cannot be read, airfoils are kept
+            orientation = onp.ones(len(airfoils))
+        airfoils = [af.scale(scale_y=-1.) if o < 0 else af for af, o in zip(airfoils, orientation)]
+
         self.airfoils = np.array(airfoils)
         
         ### Call Neuralfoil for each strip

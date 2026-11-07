@@ -109,6 +109,7 @@ boat_sol.draw()
 
 ## draw_vlm
 
+- Panels are coloured by `vlm.pressure_coef`, with the hydro sign flipped so that appendages read like sails. `pressure_coef` itself is unchanged.
 - `animate` defaults to on with pyvista, and the window stays open until closed or `q`. Plotly is static.
 - Particles follow the local VLM velocity (`Sailboat._streamlines_travel_time`), limited to 0.1-3 x free stream because the wake filaments are singular. They tend to `op_point._stw` in water and `op_point._aws(z)` in air.
 - Default seeds start upstream, one per leading-edge panel, moved along the local freestream: to the upstream edge of the drawn water plane for appendages, and one reference chord ahead of the foremost sail point along the apparent wind for sails. `streamlines_length` then counts from the leading edges, with the upstream distance added and the step count raised to keep the step size (capped at 2000). `seed_fn=Sailboat.trailing_edge_seed_points` gives the old wake-only seeds.
@@ -130,7 +131,7 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 360 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 363 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
@@ -148,9 +149,9 @@ $env:MPLBACKEND = "Agg"
 
 Confirmed and not fixed unless noted otherwise. Check they still exist before relying on this list.
 
-- VLM, section order: a vertical `Fin` at leeway -3 gives Fy = -2458 N with sections listed bottom to top, but +16496 N with the same sections top to bottom. Not investigated.
+- VLM: `spanwise_resolution` > 1 raises `IndexError` in `viscous_computation` (`strips_y` has one row per section pair). Use more sections instead.
 - `ThinAirfoil` with `mc=0` is not symmetric through NeuralFoil: CL is +0.77 at +8 deg and -0.28 at -8 deg. Use a section with thickness, such as `Airfoil("naca0012")`, for appendages.
-- Nacra 15 sailing equilibrium has not converged on any set of dofs tried. Yaw cannot balance at a sensible leeway: the sail centre of effort (x about 2.2 m) is ahead of the fin (1.5 m) and rudders (0 m), with no hull side force. For speed and leeway, Fx and Fy are nearly tangent at TWA 55 (appendage L/D of only 3 to 5). Not tried on a reach.
+- Nacra 15: `examples/02 - Geometry/nacra15_equilibrium.py` balances Fx and Fy only (stw, leeway; heel -8 and rudders fixed, placeholder masses not sourced). IPOPT converges in 5 iterations, about 40 s, to 5.96 kt and -11.5 deg leeway, the same as a numerical Newton: the appendage drag (296 N) is three times the hull resistance, and the hulls carry no side force (no lateral method). The 3-dof balance with Mz has not converged on any set of dofs tried. Yaw cannot balance at a sensible leeway: the sail force acts at x about 2.1 m, ahead of the fin (1.5 m), and the rudders sit at x about 0, so they move Fy (about 280 N/deg at 12 kt) but not Mz. Balance then needs the fin to carry about 1.4 times the sail side force and the rudders to push to leeward. After the VLM orientation fix (TWA 55, TWS 20, heel -8, trims as in `nacra15_resistance.py`), a damped numerical Newton on (stw, leeway, rudder) for (Fx, Fy, Mz) kept Mz above 1.2 kN.m; with Jones hull side force added, Mz only neared zero at about 16 deg leeway and 5 kt. Check the longitudinal positions of the rig and boards first. Rudder angle there: rotation about the leading-edge line, bottom to top, positive pushes to port.
 - `Hull.compute_resistance`: DSYHS `Rw` is noisy with mesh-derived hull parameters (factor 4 for 1.5 cm of immersion on the Nacra), and changes with leeway through the hull dimensions.
 - `compute_propulsion`: the advance speed ignores the angle between flow and shaft, and the torque reaction is not in the moment. Wake, thrust deduction and etaR are inputs, as hulls do not compute them.
 - `Sailboat.__init__`: `name` and `xyz_ref` are not stored, and list arguments use mutable defaults.
@@ -181,3 +182,4 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - `test_opti_minimize_absolute_value` used `sum(sqrt((x - target)**2 + 1e-6))`, which has almost no curvature away from the target, and diverged under casadi 3.8.2 in CI. It now uses the epigraph form of the L1 norm, `min sum(t)` with `|x - target| <= t`, which solves in 5 iterations from any start. Write nonsmooth objectives in tests this way rather than with a tiny smoothing.
 - The worked example of Holtrop & Mennen (1982) found four errors in `holtrop.py`: `c_3` (`RW` was 3.8 % too high), `w_single_open_stern` and `w_twin` (both raised `TypeError`), and the sign in `eta_R_twin`.
 - Lateral force and added resistance in waves were merged into `compute_resistance`: `compute_lateral_force`, `DEFAULT_LATERAL_METHODS` and the `lat` group are gone. Results were checked equal to the old `Fh + Flat` (4.6e-16). Before, a custom dict with `Fz` (the 49er examples) summed the lift into the resistance along -x; it is now vertical. `mittendorf.py` was rewritten with `np.where` (equal to the published code to 4.6e-16, CasADi gradients checked) and gained the irregular-sea `compute_Raw_mittendorf`; the `mm_raw` docstring had swapped "lower" and "upper".
+- VLM section order fixed: NeuralFoil's alpha and CL use a fixed boat-frame sign, but the strip lift went along the section frame normal, which follows the order of the sections, and the induced angle `arctan2(Di, L)` jumped to about 180 deg for a negative lift. A vertical fin then gave Fy of opposite signs depending on the section order (-2458 against +16496 N in an earlier test), and the Nacra fin pushed to leeward at zero leeway (+2975 N, now -67 N). `strips_z` is now oriented along chord x z_boat (`strips_orientation`), `alphai = arctan(Di L / (L^2 + eps))`, and NeuralFoil gets the airfoil flipped where the normal was flipped, so camber follows the panel mesh (upper side on the section frame normal). Sails were unchanged on the Nacra. `test_section_order.py` checks it. With sections listed bottom to top, `Airfoil(...).scale(scale_y=-1)` puts the camber lift of a vertical fin towards -y (starboard).
