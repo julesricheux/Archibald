@@ -84,8 +84,8 @@ for file, af in zip(dxf_files, airfoils):
                 WingXSec(
                     xyz_le=xyz,
                     chord=c,
-                    # airfoil=Airfoil(af).scale(scale_y=-1.0),
-                    airfoil=ThinAirfoil(xc=0.4, mc=0.1),
+                    airfoil=Airfoil(af).scale(scale_y=-1.0),
+                    # airfoil=ThinAirfoil(xc=0.4, mc=0.1),
                     twist=0.,
                 )
             for i, (xyz, c) in enumerate(zip(le, chords))]
@@ -206,4 +206,4 @@ for k, v in nacra.forces.items():
 # print(nacra.forces["Fh"])
 # 
 # nacra.draw(backend="matplotlib")
-nacra.draw_vlm(cmap="fire")
+nacra.draw_vlm(cmap="fire", draw_forces=True)

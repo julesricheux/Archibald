@@ -112,6 +112,7 @@ boat_sol.draw()
 - `animate` defaults to on with pyvista, and the window stays open until closed or `q`. Plotly is static.
 - Particles follow the local VLM velocity (`Sailboat._streamlines_travel_time`), limited to 0.1-3 x free stream because the wake filaments are singular. They tend to `op_point._stw` in water and `op_point._aws(z)` in air.
 - Default seeds start upstream, one per leading-edge panel, moved along the local freestream: to the upstream edge of the drawn water plane for appendages, and one reference chord ahead of the foremost sail point along the apparent wind for sails. `streamlines_length` then counts from the leading edges, with the upstream distance added and the step count raised to keep the step size (capped at 2000). `seed_fn=Sailboat.trailing_edge_seed_points` gives the old wake-only seeds.
+- `draw_forces=True` draws the torsor forces as arrows (pyvista and plotly), tail at the application point, label `name: value unit` at the tip (`force_unit` N, kN, kgf, tf). `force_split=True` or a list of groups (`["b", "sail"]`) gives one arrow per element, otherwise one per group. Elements default to `torsor_elements`, else all computed. `get_force_arrows` gives the arrows: the point is on the exact line of action of (F, M), closest to a reference (CoG, hull `cob`, wing panel centroid, propeller centre; force-weighted mean for a group). The moment along F has no line of action and is returned as `couple` (1.1 kN.m on the Nacra rig). Forces under 1e-6 of the largest are not drawn. Labels are added one call each, because one `add_point_labels` call drops overlapping labels.
 - `particle_speed` is a playback rate in seconds of flow per second of animation (1 is real time, default 0.1), with one clock for air and water.
 - `render_points_as_spheres=False` is deliberate: spheres were reported as not rendering on the author's GPU.
 - `pv.Plotter(off_screen=...)` is passed explicitly, so it overrides `pv.OFF_SCREEN`.
@@ -129,11 +130,11 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 356 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 360 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
-- `Sailboat` and `draw_vlm` have no unit tests. Check them with a script.
+- `Sailboat` and `draw_vlm` have almost no unit tests (only `geometry/test_force_arrows.py`). Check them with a script.
 - `archibald/numpy/test_numpy/test_all_operations_run.py` calls `np.seterr(all="raise")` when collected, and it applies to every later test of the session: underflows in `softplus` become errors. Tests that hit them need `onp.errstate`, as in `test_validation_published.py`.
 - **Validation:** `examples/03 - Validation/` compares literature models with published data and saves figures. Its `README.md` has the status of each model and what is still needed. A CSV of `data/` with a `# TO FILL` header is a blank, and scripts print `[INPUT NEEDED]` until it has rows. Keep sources in each script's docstring. Numbers that must not move go in `test_validation_published.py` and `test_windage_published.py`.
 - Examples use relative data paths, so run them from their own folder.

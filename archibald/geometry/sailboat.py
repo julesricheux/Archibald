@@ -1131,6 +1131,180 @@ class Sailboat(ArchibaldObject):
         dt = ds / (0.5 * (speed[:, 1:] + speed[:, :-1]))
         return onp.hstack([onp.zeros((n, 1)), onp.cumsum(dt, axis=1)])
 
+    # ------------------------------ force arrows ------------------------------
+
+    # Units of the force labels, in N
+    FORCE_UNITS = {"N": 1., "kN": 1e3, "kgf": 9.80665, "tf": 9806.65}
+
+    _FORCE_LABELS = {
+        "w": "Weight",
+        "b": "Buoyancy",
+        "h": "Hull",
+        "i": "Interaction",
+        "aa": "Windage",
+        "sail": "Sail",
+        "app": "Appendage",
+        "prop": "Propeller",
+    }
+
+    _FORCE_COLORS = {
+        "w": "#e5484d",
+        "b": "#3e9bff",
+        "h": "#f5a524",
+        "i": "#c9a227",
+        "aa": "#a1a1aa",
+        "sail": "#30c48d",
+        "app": "#b06cff",
+        "prop": "#f0e14a",
+    }
+
+    @staticmethod
+    def _line_of_action_point(F, M, reference):
+        """
+        Point of the line of action of the torsor (F, M about the origin) closest to
+        ``reference``. The part of M parallel to F is a couple with no line of action:
+        it is left out. Returns ``reference`` for a zero force.
+        """
+        F2 = float(F @ F)
+        if F2 < 1e-12:
+            return onp.asarray(reference, dtype=float)
+        foot = onp.cross(F, M) / F2  # point of the line closest to the origin
+        return foot + ((reference - foot) @ F) / F2 * F
+
+    def _force_reference_point(self, element):
+        """
+        Where an element of the torsor acts, roughly, in the boat motion frame: the
+        centre of gravity of a mass, the centre of buoyancy of a hull, the centroid of
+        the panels of a wing, the centre of a propeller. The arrow is then placed on
+        the exact line of action, at the point closest to it.
+        """
+        group, _, index = element.partition("_")
+        op_point = self._torsor_op_points.get(group)
+
+        def moved(point):
+            return onp.asarray(op_point.apply_transformations(wide(point)), dtype=float).reshape(3)
+
+        try:
+            i = int(index)
+        except ValueError:
+            i = 0  # e.g. "aa_crew": next to the first hull
+
+        try:
+            if group == "w":
+                if self.masses:
+                    m = self.masses[i]
+                    return moved(onp.array([m.x_cg, m.y_cg, m.z_cg], dtype=float))
+                return moved(onp.asarray(self.cog, dtype=float).reshape(3))
+            if group in ("b", "h", "i", "aa"):
+                hull = self.hulls[i]
+                if "cob" in hull.hydrostatics_data:
+                    return moved(onp.asarray(hull.hydrostatics_data["cob"], dtype=float).reshape(3))
+                return moved(onp.asarray(hull.mesh.vertices, dtype=float).mean(axis=0))
+            if group in ("sail", "app"):
+                vlm = (self.aero_vlms if group == "sail" else self.hydro_vlms)[i]
+                return onp.asarray(vlm.vortex_centers, dtype=float).mean(axis=0)
+            if group == "prop":
+                return moved(onp.asarray(self.propellers[i].center, dtype=float).reshape(3))
+        except (IndexError, AttributeError, TypeError):
+            pass
+        return onp.zeros(3)
+
+    def _force_element_label(self, element):
+        group, _, index = element.partition("_")
+        label = self._FORCE_LABELS.get(group, group)
+        try:
+            i = int(index)
+            owners = {
+                "b": self.hulls, "h": self.hulls, "i": self.hulls, "aa": self.hulls,
+                "sail": self.rigs, "app": self.appendages, "prop": self.propellers,
+                "w": self.masses,
+            }.get(group, [])
+            name = getattr(owners[i], "name", None) if i < len(owners) else None
+            return f"{label} {name if name else i}"
+        except ValueError:
+            return f"{label} {index}"
+
+    def get_force_arrows(
+            self,
+            split: Union[bool, List[str]] = False,
+            elements: Optional[List[str]] = None,
+        ):
+        """
+        Forces of the torsor as arrows: one per group (weight, buoyancy, sails, ...),
+        or one per element (mass, hull, rig, ...) for the groups that are split.
+
+        Each force is placed on its line of action, from its force and its moment
+        about the origin, at the point closest to where the element is (centre of
+        gravity, centre of buoyancy, panels of the wing, ...). For a group summed
+        over several elements, that point is their mean weighted by force. Moments
+        that are not the moment of the force (couples along it, e.g. a yaw moment
+        of a hull method) cannot be drawn as an arrow, and are reported as ``couple``.
+
+        Parameters
+        ----------
+        split : bool or list of str, groups drawn per element (``True`` for all), e.g.
+            ``["b", "sail"]`` for one buoyancy arrow per hull and one per rig.
+        elements : list of str, elements to draw, e.g. ``["w_0", "b_0", "sail_0"]``.
+            Default: those of the last ``compute_torsor``, or all that was computed.
+
+        Returns
+        -------
+        list of dict with "name", "group", "label", "point" (3,) [m], "force" (3,) [N]
+        and "couple" (3,) [N.m], in the boat motion frame.
+        """
+        if elements is None:
+            elements = list(self.torsor_elements) or [
+                k[1:] for k in self.forces
+                if "_" in k and k.split("_")[0][1:] in self._torsor_op_points
+            ]
+        split_groups = set(TORSOR_GROUPS) if split is True else set(split or [])
+
+        def value(key, store):
+            return onp.asarray(store[key], dtype=float).reshape(3)
+
+        items = {}  # name -> list of (element, F, M)
+        for element in elements:
+            group = element.split("_")[0]
+            name = element if group in split_groups else group
+            items.setdefault(name, []).append(
+                (element, value(f"F{element}", self.forces), value(f"M{element}", self.moments))
+            )
+
+        arrows = []
+        for group in TORSOR_GROUPS:
+            for name, members in items.items():
+                if name.split("_")[0] != group:
+                    continue
+                F = sum(m[1] for m in members)
+                M = sum(m[2] for m in members)
+                refs = onp.array([self._force_reference_point(m[0]) for m in members])
+                weights = onp.array([onp.linalg.norm(m[1]) for m in members])
+                ref = (weights @ refs / weights.sum()) if weights.sum() > 0 else refs.mean(axis=0)
+                point = self._line_of_action_point(F, M, ref)
+                F2 = float(F @ F)
+                couple = (M @ F) / F2 * F if F2 > 1e-12 else M
+                label = self._force_element_label(name) if "_" in name else self._FORCE_LABELS.get(group, group)
+                arrows.append(dict(name=name, group=group, label=label, point=point, force=F, couple=couple))
+        return arrows
+
+    def _force_arrow_geometry(self, arrows, diag, force_scale, force_unit):
+        """Tails, vectors [m], label positions and texts of the force arrows."""
+        if force_unit not in self.FORCE_UNITS:
+            raise ValueError(f"Unknown force unit '{force_unit}'. Available: {list(self.FORCE_UNITS)}")
+        norms = onp.array([onp.linalg.norm(a["force"]) for a in arrows])
+        if force_scale is None:
+            force_scale = 0.25 * diag / norms.max() if len(norms) and norms.max() > 0 else 1.
+        unit = self.FORCE_UNITS[force_unit]
+        out = []
+        for a, norm in zip(arrows, norms):
+            if norm <= 1e-6 * norms.max():  # e.g. a hull out of the water: nothing to draw
+                continue
+            vector = a["force"] * force_scale
+            text = f"{a['label']}: {norm / unit:.3g} {force_unit}"
+            out.append(dict(a, tail=a["point"], vector=vector, tip=a["point"] + vector, text=text,
+                            color=self._FORCE_COLORS.get(a["group"], "white")))
+        return out
+
     def draw_vlm(
         self,
         backend: str = "pyvista",
@@ -1157,6 +1331,13 @@ class Sailboat(ArchibaldObject):
         gif_path: Optional[str] = None,
         n_frames: int = 150,
         fps: int = 30,
+        # --- forces ---
+        draw_forces: bool = False,
+        force_unit: str = "kN",
+        force_split: Union[bool, List[str]] = False,
+        force_elements: Optional[List[str]] = None,
+        force_scale: Optional[float] = None,
+        force_label_size: int = 12,
         # --- scene ---
         theme: str = "dark",
         draw_hulls: bool = True,
@@ -1202,6 +1383,14 @@ class Sailboat(ArchibaldObject):
             real time. Particles move at the local flow speed, with the same clock in air and water.
         gif_path : if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
             (implies ``animate``).
+        draw_forces : draw the forces of the torsor as arrows at their application point,
+            with a label at the tip giving their magnitude. See ``get_force_arrows``.
+        force_unit : unit of the labels, "N", "kN", "kgf" or "tf".
+        force_split : groups drawn with one arrow per element, ``True`` for all, e.g. ``["b", "sail"]``
+            for one buoyancy arrow per hull and one force per rig. Others are summed per group.
+        force_elements : elements drawn. Default: those of the last ``compute_torsor``, or all computed.
+        force_scale : arrow length per force [m/N]. Default: the largest arrow is 25 % of the scene size.
+        force_label_size : font size of the labels.
         theme : "dark" or "light".
         draw_hulls : draw the hulls and fittings at the operating point of the VLM, with ``hull_kwargs``.
         draw_water, water_origin, water_normal, water_margin : waterplane, see ``draw``.
@@ -1278,6 +1467,13 @@ class Sailboat(ArchibaldObject):
         if draw_water:
             water = self._water_plane(water_origin, water_normal, water_margin)
 
+        force_arrows = []
+        if draw_forces:
+            force_arrows = self._force_arrow_geometry(
+                self.get_force_arrows(split=force_split, elements=force_elements),
+                diag, force_scale, force_unit,
+            )
+
         # The panels and the flow are in the boat motion frame: move copies of the hulls there
         moved_meshes = []
         if draw_hulls:
@@ -1327,6 +1523,31 @@ class Sailboat(ArchibaldObject):
 
             if water is not None:
                 self._add_water_plotly(fig, water, th["water"], 0.25)
+
+            for a in force_arrows:
+                tail, tip, vector = a["tail"], a["tip"], a["vector"]
+                length = float(onp.linalg.norm(vector))
+                if length == 0.:
+                    continue
+                head = 0.15 * length
+                fig.add_trace(go.Scatter3d(
+                    x=[tail[0], tip[0]], y=[tail[1], tip[1]], z=[tail[2], tip[2]],
+                    mode="lines", line=dict(color=a["color"], width=6),
+                    hoverinfo="text", hovertext=a["text"], name=a["label"],
+                ))
+                fig.add_trace(go.Cone(
+                    x=[tip[0]], y=[tip[1]], z=[tip[2]],
+                    u=[vector[0] / length * head], v=[vector[1] / length * head], w=[vector[2] / length * head],
+                    anchor="tip", sizemode="absolute", sizeref=head,
+                    colorscale=[[0, a["color"]], [1, a["color"]]], showscale=False,
+                    hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter3d(
+                    x=[tip[0]], y=[tip[1]], z=[tip[2]],
+                    mode="text", text=[a["text"]], textposition="top center",
+                    textfont=dict(color=a["color"], size=force_label_size),
+                    hoverinfo="skip",
+                ))
 
             axis = dict(visible=False)
             fig.update_layout(
@@ -1401,6 +1622,28 @@ class Sailboat(ArchibaldObject):
 
             if water is not None:
                 self._add_water_pyvista(pl, water, th["water"], 0.25)
+
+            # Forces of the torsor, at their application points
+            for a in force_arrows:
+                length = float(onp.linalg.norm(a["vector"]))
+                if length == 0.:
+                    continue
+                arrow = pv.Arrow(
+                    start=a["tail"], direction=a["vector"], scale=length,
+                    tip_length=0.2, tip_radius=0.06, shaft_radius=0.02,
+                )
+                pl.add_mesh(arrow, color=a["color"], lighting=True, show_scalar_bar=False)
+            # One call per label: within one call, overlapping labels are dropped
+            for a in force_arrows:
+                pl.add_point_labels(
+                    onp.reshape(a["tip"], (1, 3)),
+                    [a["text"]],
+                    font_size=force_label_size,
+                    text_color=th["foreground"],
+                    shape=None,
+                    show_points=False,
+                    always_visible=True,
+                )
 
             if plot_axes:
                 pl.add_axes(color=th["foreground"])
