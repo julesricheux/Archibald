@@ -125,7 +125,7 @@ $env:MPLBACKEND = "Agg"
 ```
 
 - `pytest` is not installed in `py313`. `pip install -e ".[test]"` or appending the base conda `site-packages` to `sys.path` both work.
-- **Test baseline: 337 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
+- **Test baseline: 338 passed, 16 failed, 4 errors.** Compare against this rather than expecting green:
   - 16 failures and errors use the removed old API (`arb.Airplane`, `LiftingSet`, `VortexLatticeMethod`).
   - 3 are Kulfan similarity tests (NaN in `airfoil_families.py`).
   - 1 is the black box nonsmooth solver test.
@@ -133,7 +133,7 @@ $env:MPLBACKEND = "Agg"
 - `archibald/numpy/test_numpy/test_all_operations_run.py` calls `np.seterr(all="raise")` when collected, and it applies to every later test of the session: underflows in `softplus` become errors. Tests that hit them need `onp.errstate`, as in `test_validation_published.py`.
 - **Validation:** `examples/03 - Validation/` compares literature models with published data and saves figures. Its `README.md` has the status of each model and what is still needed. A CSV of `data/` with a `# TO FILL` header is a blank, and scripts print `[INPUT NEEDED]` until it has rows. Keep sources in each script's docstring. Numbers that must not move go in `test_validation_published.py` and `test_windage_published.py`.
 - Examples use relative data paths, so run them from their own folder.
-- **CI:** `.github/workflows/run-pytest.yml` runs on `main` and `develop` with Python 3.11-3.13. It excludes the known-broken tests above by name, so when you fix one, remove its entry. A new top-level import of an undeclared package breaks `import archibald` for pip users, so declare it in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
+- **CI:** `.github/workflows/run-pytest.yml` runs on `main` and `develop` with Python 3.11-3.13. It excludes the known-broken tests above by name, so when you fix one, remove its entry. CI installs the latest casadi (3.8.2 in November 2026), while `py313` has 3.7.2. IPOPT behaves differently between them, so test a solver test under both: `pip install --no-deps --target <dir> casadi` and put that folder first on `PYTHONPATH`. A new top-level import of an undeclared package breaks `import archibald` for pip users, so declare it in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
 - **Publishing:** `publish.yml` runs on `v*` tags and only exists on `main` for now, so tag from `main`. The tag must match the `pyproject.toml` version.
 - Optional packages are in the `viz` extra (`pyvista`, `plotly`, `seaborn`, `imageio`). `imageio` is needed for `draw_vlm(gif_path=...)` and is not installed in `py313`. `tqdm`, `cadquery` and non-test `shapely` uses are not declared anywhere.
 - For headless rendering, force `off_screen=True` and use `plotter.screenshot`.
@@ -174,4 +174,5 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - The VLM used to ignore heel, trim, leeway and immersion entirely. Non-zero attitude results changed when this was fixed.
 - `multihull_common.interp_nodes` was removed. `jamaluddin.tau_jamaluddin` now uses a 2D bspline `InterpolatedModel` of tau on (Fn, S/L), with `fill_value=None` to hold the edge values. Interpolate tau itself: interpolating A and B of `A (S/L)^B` made a hump of 1.55 at Fn 0.235, S/L 0.2, above every fit. Between the fitted Froude numbers tau changed by up to 0.32 against the old linear interpolation, so `michell_jamaluddin` results move (not rerun on the Nacra).
 - `multihull_common.interp_table` was replaced by `table_model`, which returns `factor(Fn, SL)` built on an `InterpolatedModel` and is used by `insel_molland`. It adds a column at 2 max(S/L) holding 1 (no interference), and clamps Fn and S/L to the grid itself, because the numeric linear path (scipy) extrapolates. CasADi's bspline needs at least 4 nodes per axis and raises otherwise, so shorter tables fall back to linear. Below the first S/L the factor is now held, where the old tent functions pulled it toward 0.
+- `test_opti_minimize_absolute_value` used `sum(sqrt((x - target)**2 + 1e-6))`, which has almost no curvature away from the target, and diverged under casadi 3.8.2 in CI. It now uses the epigraph form of the L1 norm, `min sum(t)` with `|x - target| <= t`, which solves in 5 iterations from any start. Write nonsmooth objectives in tests this way rather than with a tiny smoothing.
 - The worked example of Holtrop & Mennen (1982) found four errors in `holtrop.py`: `c_3` (`RW` was 3.8 % too high), `w_single_open_stern` and `w_twin` (both raised `TypeError`), and the sign in `eta_R_twin`.

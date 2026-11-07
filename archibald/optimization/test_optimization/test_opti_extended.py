@@ -269,19 +269,29 @@ def test_opti_nonlinear_constraint():
     assert np.isclose(sol.value(x) ** 2 + sol.value(y) ** 2, 4, atol=0.1)
 
 
-def test_opti_minimize_absolute_value():
+@pytest.mark.parametrize("init_guess", [np.zeros(3), np.array([-50., 40., -30.])])
+def test_opti_minimize_absolute_value(init_guess):
     """Test minimizing sum of absolute values (L1 norm)."""
     opti = arb.Opti()
 
-    x = opti.variable(init_guess=np.zeros(3))
+    x = opti.variable(init_guess=init_guess)
     target = np.array([1, -2, 3])
 
-    ### Use smooth approximation for absolute value
-    opti.minimize(np.sum(np.sqrt((x - target) ** 2 + 1e-6)))
+    ### Epigraph form of the L1 norm: minimize sum(t) with |x - target| <= t.
+    ### The smooth form sum(sqrt((x - target)**2 + 1e-6)) has almost no curvature away from
+    ### the target (1e-6 / |x - target|**3), so IPOPT takes huge Newton steps: it diverged
+    ### with casadi 3.8.2 from zero, and with 3.7.2 from other starting points.
+    t = opti.variable(init_guess=np.ones(3), lower_bound=0)
+    opti.subject_to([
+        x - target <= t,
+        target - x <= t,
+    ])
+    opti.minimize(np.sum(t))
 
     sol = opti.solve(verbose=False)
 
-    assert np.allclose(sol.value(x), target, atol=0.01)
+    assert np.allclose(sol.value(x), target, atol=1e-4)
+    assert sol.value(np.sum(t)) == pytest.approx(0., abs=1e-4)
 
 
 def test_opti_matrix_variable():
