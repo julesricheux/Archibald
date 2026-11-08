@@ -1,0 +1,3 @@
+# TO FILL. Published hull derivatives of the KVLCC2, sign converted so that force is positive for +beta like in lateral_force.py. For example Yasukawa & Yoshimura (2015), J. Mar. Sci. Technol. 20, or SIMMAN.
+# method: Jones, Inoue or Kijima (the entry in the table this row is compared with), or Yaw for N'. value: the derivative. source: the reference.
+method,value,source

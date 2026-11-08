@@ -1,0 +1,1973 @@
+# -*- coding: utf-8 -*-
+"""
+VORTEX LATTICE METHOD DESCRIPTION.
+
+Created 21/12/2023
+Last update: 18/10/2024
+
+@author: Jules Richeux
+@contributors: -
+
+Citation:
+    Adapted from:         aerodynamics.vortex_lattice_method in AeroSandbox
+    Author:               Peter D Sharpe
+    Date of Retrieval:    18/10/2024
+
+"""
+import os
+import sys
+
+__root_dir = os.path.dirname(os.path.abspath(__file__))
+if __root_dir not in sys.path:
+    sys.path.append(os.path.dirname(__root_dir))
+
+from archibald import ExplicitAnalysis
+from archibald.geometry import *
+from archibald.performance.operating_point import OperatingPoint
+from archibald.environment.environment import Fluid
+from archibald.dynamics.aero_3D.singularities.uniform_strength_horseshoe_singularities import \
+    calculate_induced_velocity_horseshoe
+from typing import Dict, Any, List, Callable
+import copy
+from abc import abstractmethod
+
+from archibald.toolbox import mesh_utils
+
+from archibald.toolbox.geom_utils import *
+from archibald.toolbox.math_utils import rotation_matrix, ramp, ReLU
+from archibald.geometry.planform import Planform, Rig, Appendage
+
+from typing import Tuple, Union, Dict, List
+
+import archibald.numpy as np
+import numpy as onp
+import math
+
+import neuralfoil as nf
+
+### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
+# Useful for broadcasting with matrices later.
+def tall(array):
+    """Reshapes an array into a column (n, 1)."""
+    return np.reshape(array, (-1, 1))
+
+
+def wide(array):
+    """Reshapes an array into a row (1, n)."""
+    return np.reshape(array, (1, -1))
+
+
+def normalize(array):
+    """Normalizes each row of an (N, 3) array to a unit vector."""
+    magnitude = tall(np.linalg.norm(array, axis=1))
+    
+    return array / magnitude
+    # return array / np.tile(np.linalg.norm(array, axis=1), (array.shape[1],1)).T
+    
+    
+def change_basis(x: Union[float, np.ndarray],
+                 y: Union[float, np.ndarray],
+                 z: Union[float, np.ndarray],
+                 from_axes: np.ndarray = np.diag(np.ones(3)),
+                 to_axes: np.ndarray = np.diag(np.ones(3)),
+                 ) -> Tuple[float, float, float]:
+    """
+    Converts a vector [x_from, y_from, z_from] to an equivalent vector [x_to, y_to, z_to].
+
+    The result is as given in the `to_axes` frame.
+
+    """
+    m0 = from_axes
+    m1 = to_axes
+
+    x0 = m0[0,0] * x + m0[1,0] * y + m0[2,0] * z
+    y0 = m0[0,1] * x + m0[1,1] * y + m0[2,1] * z
+    z0 = m0[0,2] * x + m0[1,2] * y + m0[2,2] * z
+    
+    x_to = m1[0,0] * x0 + m1[0,1] * y0 + m1[0,2] * z0
+    y_to = m1[1,0] * x0 + m1[1,1] * y0 + m1[1,2] * z0
+    z_to = m1[2,0] * x0 + m1[2,1] * y0 + m1[2,2] * z0
+
+    return x_to, y_to, z_to
+
+
+# def stall_factor(alpha: Union[float, np.ndarray],
+#                  alpha_i: Union[float, np.ndarray],
+#                  alpha_stall: Union[float, np.ndarray],
+#                  ):
+    
+#     alpha_corr = np.abs(alpha)
+#     alpha_i_corr = ReLU(alpha_i * np.sign(alpha)) + 1e-3
+    
+#     raw_fac = 1. + (alpha_stall - alpha_corr)/alpha_i_corr
+    
+#     return np.fmin(1.,
+#                    np.fmax(raw_fac,
+#                            0.)
+#                    )
+
+# Free surface between air and water, at z = 0 in the boat motion frame, where the
+# panels are. The density of each panel and strip is blended between air and water
+# with a tanh sigmoid of its height: 99 % of the density of the fluid on either side
+# is reached FREE_SURFACE_TRANSITION away from the surface.
+FREE_SURFACE_TRANSITION = 0.01                                      # [m]
+FREE_SURFACE_BETA = math.atanh(2. * 0.99 - 1.) / FREE_SURFACE_TRANSITION  # [1/m]
+
+
+def stall_factor(
+    alpha: Union[float, np.ndarray],
+    alpha_i: Union[float, np.ndarray],
+    alpha_stall: Union[float, np.ndarray],
+):
+    """Smooth factor going from 1 to 0 as the angle of attack exceeds the stall angle."""
+    return np.sigmoid(
+        0.5*alpha_i + (alpha_stall - np.abs(alpha))
+    )
+
+def soft_stall_factor(    
+    alpha: Union[float, np.ndarray],
+    alpha_e: Union[float, np.ndarray],
+    is_soft: Union[float, bool, np.ndarray],
+):
+    """Smooth factor reducing the force of soft sections at large angles of attack."""
+    return 1. - is_soft * np.sigmoid(
+        alpha_e / 2. - np.abs(alpha)
+        # 4. - np.abs(alpha)
+    )
+
+
+class VortexLatticeMethod(ExplicitAnalysis):
+    """
+    An asbtract explicit (linear) vortex-lattice-method aerodynamics analysis.
+
+    Citation:
+        Adapted from:         aerodynamics.VortexLatticeMethod in AeroSandbox
+        Author:               Peter D Sharpe
+        Date of Retrieval:    18/10/2024
+
+    Usage example:
+        >>> analysis = arb.VortexLatticeMethod(
+        >>>     planform=my_planform,
+        >>>     op_point=arb.OperatingPoint(
+        >>>         velocity=100, # m/s
+        >>>         alpha=5, # deg
+        >>>         beta=4, # deg
+        >>>         p=0.01, # rad/sec
+        >>>         q=0.02, # rad/sec
+        >>>         r=0.03, # rad/sec
+        >>>     )
+        >>> )
+        >>> aero_data = analysis.run()
+        >>> analysis.draw()
+    """
+    
+    @abstractmethod
+    def __init__(self,
+                 planform: Planform,
+                 op_point: OperatingPoint,
+                 xyz_ref: List[float] = None,
+                 IZsym: bool = False,
+                 to_sym: List[bool] = None,
+                 Zsym: float = 0.0,
+                 verbose: bool = False,
+                 spanwise_resolution: int = 10,
+                 spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 chordwise_resolution: int = 10,
+                 chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 vortex_core_radius: float = 1e-8,
+                 align_trailing_vortices_with_wind: bool = False,
+                 ):
+        super().__init__()
+        
+        ### Set defaults
+        if xyz_ref is None:
+            xyz_ref = planform.xyz_ref
+
+        ### Initialize
+        self.planform = planform
+        self.op_point = op_point
+        self.xyz_ref = xyz_ref
+        self.verbose = verbose
+        self.spanwise_resolution = spanwise_resolution
+        self.spanwise_spacing_function = spanwise_spacing_function
+        self.chordwise_resolution = chordwise_resolution
+        self.chordwise_spacing_function = chordwise_spacing_function
+        self.vortex_core_radius = vortex_core_radius
+        self.align_trailing_vortices_with_wind = align_trailing_vortices_with_wind
+        
+        self.Zsym = Zsym
+        self.IZsym = IZsym
+        
+        if to_sym is None:
+            to_sym = [IZsym] * len(self.planform.wings)
+        self.to_sym = to_sym
+        
+        self.fluid = Fluid()
+        
+        self.visc_corr = 0.
+        
+        self.wing_spanwise_resolution = [(len(w.xsecs)-1)*self.spanwise_resolution*(1+w.symmetric) for w in self.planform.wings]
+        # Total number of spanwise cells for all wings
+        self.total_spanwise_resolution = np.sum(self.wing_spanwise_resolution)
+        
+        
+    def __repr__(self):
+        return self.__class__.__name__ + "(\n\t" + "\n\t".join([
+            f"planform={self.planform}",
+            f"op_point={self.op_point}",
+            f"xyz_ref={self.xyz_ref}",
+        ]) + "\n)"
+    
+    def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
+        return 1.
+
+    def water_fraction(self, z):
+        """
+        Smooth indicator of the water side of the free surface.
+
+        1 under water, 0 in air, 0.5 at z = 0, 0.99 at z = -FREE_SURFACE_TRANSITION.
+
+        Args:
+            z: heights in the boat motion frame [m].
+        """
+        return np.sigmoid(-FREE_SURFACE_BETA * z)
+
+    def local_density(self, points):
+        """
+        Density [kg/m^3] at points (N, 3) of the boat motion frame.
+
+        Water below the free surface, air above, whatever the analysis (sails or appendages).
+        """
+        rho_air = self.op_point.environment.air.density
+        rho_water = self.op_point.environment.water.density
+        return rho_air + (rho_water - rho_air) * self.water_fraction(points[:, 2])
+    
+    def reference_speed(self,
+                        z: float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
+        return 1.
+    
+    def draw_horseshoes(self):
+        """Draws the induced velocity field of a single horseshoe vortex, as a check."""
+        ##### Check single vortex
+        u, v, w = calculate_induced_velocity_horseshoe(
+            x_field=0,
+            y_field=0,
+            z_field=0,
+            x_left=-1,
+            y_left=-1,
+            z_left=0,
+            x_right=-1,
+            y_right=1,
+            z_right=0,
+            gamma=1,
+            flow_direction="-x",
+        )
+        print(u, v, w)
+
+        ##### Plot grid of single vortex
+        args = (-2, 2, 30)
+        x = np.linspace(*args)
+        y = np.linspace(*args)
+        z = np.linspace(*args)
+        X, Y, Z = np.meshgrid(x, y, z)
+
+        Xf = X.flatten()
+        Yf = Y.flatten()
+        Zf = Z.flatten()
+
+        left = [0, -1, 0]
+        right = [0, 1, 0]
+
+        Uf, Vf, Wf = calculate_induced_velocity_horseshoe(
+            x_field=Xf,
+            y_field=Yf,
+            z_field=Zf,
+            x_left=left[0],
+            y_left=left[1],
+            z_left=left[2],
+            x_right=right[0],
+            y_right=right[1],
+            z_right=right[2],
+            gamma=1,
+            flow_direction="-x",
+        )
+
+        pos = np.stack((Xf, Yf, Zf)).T
+        dir = np.stack((Uf, Vf, Wf)).T
+
+        dir_norm = np.reshape(np.linalg.norm(dir, axis=1), (-1, 1))
+
+        dir = dir / dir_norm * dir_norm**0.2
+
+        import pyvista as pv
+
+        pv.set_plot_theme("dark")
+        plotter = pv.Plotter()
+        plotter.add_arrows(cent=pos, direction=dir, mag=0.15)
+        plotter.add_lines(
+            lines=np.array(
+                [[Xf.max(), left[1], left[2]], left, right, [Xf.max(), right[1], right[2]]]
+            )
+        )
+        plotter.show_grid()
+        plotter.show()
+
+        ##### Check multiple vortices
+        args = (-2, 2, 10)
+        x = np.linspace(*args)
+        y = np.linspace(*args)
+        z = np.linspace(*args)
+        X, Y, Z = np.meshgrid(x, y, z)
+
+        Xf = X.flatten()
+        Yf = Y.flatten()
+        Zf = Z.flatten()
+
+        left = self.left_vortex_vertices
+        center = self.collocation_points
+        right = self.right_vortex_vertices
+
+        lefts = np.array([left, center])
+        rights = np.array([center, right])
+        # strengths = np.array([2, 1])
+
+        Uf_each, Vf_each, Wf_each = calculate_induced_velocity_horseshoe(
+            x_field=wide(Xf),
+            y_field=wide(Yf),
+            z_field=wide(Zf),
+            x_left=tall(lefts[:, 0]),
+            y_left=tall(lefts[:, 1]),
+            z_left=tall(lefts[:, 2]),
+            x_right=tall(rights[:, 0]),
+            y_right=tall(rights[:, 1]),
+            z_right=tall(rights[:, 2]),
+            gamma=1.,
+            flow_direction="-x",
+            # gamma=tall(strengths),
+        )
+
+        Uf = np.sum(Uf_each, axis=0)
+        Vf = np.sum(Vf_each, axis=0)
+        Wf = np.sum(Wf_each, axis=0)
+
+        pos = np.stack((Xf, Yf, Zf)).T
+        dir = np.stack((Uf, Vf, Wf)).T
+
+        dir_norm = np.reshape(np.linalg.norm(dir, axis=1), (-1, 1))
+
+        dir = dir / dir_norm * dir_norm**0.2
+
+        import pyvista as pv
+
+        pv.set_plot_theme("dark")
+        plotter = pv.Plotter()
+        plotter.add_arrows(cent=pos, direction=dir, mag=0.15)
+        plotter.add_lines(
+            lines=np.array(
+                [
+                    [Xf.max(), left[1], left[2]],
+                    left,
+                    center,
+                    # [Xf.max(), center[1], center[2]],
+                    center,
+                    right,
+                    [Xf.max(), right[1], right[2]],
+                ]
+            )
+        )
+        plotter.show_grid()
+        plotter.show()
+    
+    def mesh_geometry(self):
+        """Builds the panels and strips of the wings, moved by the operating point."""
+        ##### Make Panels
+        front_left_vertices = []
+        back_left_vertices = []
+        back_right_vertices = []
+        front_right_vertices = []
+        is_trailing_edge = []
+        is_leading_edge = []
+        # is_trailing_edge_idx = []
+        # is_leading_edge_idx = []
+        # strips = []
+        is_symmetric = []
+        
+        # strips_vertices = []
+        
+        is_soft = []
+
+        strips_x = []
+        strips_y = []
+        strips_z = []
+        strips_chords = []
+        strips_areas = []
+        strips_quarters = []
+        
+        for i, wing in enumerate(self.planform.wings):
+            all_frames = [wing._compute_frame_of_section(i) for i in range(len(wing.xsecs) - 1)]
+            strips_x += [wide(frame[0]) for frame in all_frames]
+            strips_y += [wide(frame[1]) for frame in all_frames]
+            strips_z += [wide(frame[2]) for frame in all_frames]
+            
+            strips_chords += [wide(c) for c in wing.sectional_chords(type="planform")]
+            strips_areas += [wide(a) for a in wing.area(type="planform", _sectional=True)]
+            strips_quarters += [wide(c) for c in wing.aerodynamic_center(0.25, _sectional=True)]
+
+            if wing.symmetric:
+                # mesh_thin_surface adds the left panels after the right ones, root to tip, with their left
+                # and right vertices swapped. So strips_y keeps its sign across the XZ plane, the others mirror.
+                mirror = np.array([[1., -1., 1.]])
+                strips_x += [wide(frame[0]) * mirror for frame in all_frames]
+                strips_y += [-wide(frame[1]) * mirror for frame in all_frames]
+                strips_z += [wide(frame[2]) * mirror for frame in all_frames]
+                strips_chords += [wide(c) for c in wing.sectional_chords(type="planform")]
+                strips_areas += [wide(a) for a in wing.area(type="planform", _sectional=True)]
+                strips_quarters += [wide(c) * mirror for c in wing.aerodynamic_center(0.25, _sectional=True)]
+
+            if self.spanwise_resolution > 1:
+                wing = wing.subdivide_sections(
+                    ratio=self.spanwise_resolution,
+                    spacing_function=self.spanwise_spacing_function
+                    )
+                    
+            points, faces = wing.mesh_thin_surface(
+                method="quad",
+                chordwise_resolution=self.chordwise_resolution,
+                chordwise_spacing_function=self.chordwise_spacing_function,
+                add_camber=True
+            )
+
+            # The wings are defined in boat axes and solved in the boat motion
+            # frame, where the flow comes along -x and the water is at z=0.
+            points = self.op_point.apply_transformations(points)
+
+            front_left_vertices.append(points[faces[:, 0], :])
+            back_left_vertices.append(points[faces[:, 1], :])
+            back_right_vertices.append(points[faces[:, 2], :])
+            front_right_vertices.append(points[faces[:, 3], :])
+            is_trailing_edge.append(
+                (np.arange(len(faces)) + 1) % self.chordwise_resolution == 0
+                )
+            # is_trailing_edge_idx.append(
+            #     np.arange((self.chordwise_resolution-1)+len(faces)*i,
+            #               len(faces)*(i+1),
+            #               self.chordwise_resolution)
+            #     )
+            is_leading_edge.append(
+                (np.arange(len(faces)) + 1) % self.chordwise_resolution == 1
+            )
+            # is_leading_edge_idx.append(
+            #     np.arange((self.chordwise_resolution-1)+len(faces)*i,
+            #               len(faces)*(i+1),
+            #               self.chordwise_resolution)
+            #     )
+            
+            # wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+            
+            # for k in range(wing_spanwise_resolution):
+            #     strip_k_vertices = [
+            #         points[k::wing_spanwise_resolution+1, :], # left vertices
+            #         points[k+1::wing_spanwise_resolution+1, :], # right vertices
+            #     ]
+                
+            #     strips_vertices.append(strip_k_vertices)
+            
+            # split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
+            #          for i in range(self.total_spanwise_resolution)]
+            # strips_vertices.append()
+            
+            is_symmetric.append([float(self.to_sym[i])] * points[faces[:, 0], :].shape[0])
+            
+            is_soft.append([wing.soft for k in range(len(faces))])
+
+        front_left_vertices = np.concatenate(front_left_vertices)
+        back_left_vertices = np.concatenate(back_left_vertices)
+        back_right_vertices = np.concatenate(back_right_vertices)
+        front_right_vertices = np.concatenate(front_right_vertices)
+        is_trailing_edge = np.concatenate(is_trailing_edge)
+        is_leading_edge = np.concatenate(is_leading_edge)
+        # is_trailing_edge_idx = np.concatenate(is_trailing_edge_idx)
+        # is_leading_edge_idx = np.concatenate(is_leading_edge_idx)
+        is_symmetric = np.concatenate(is_symmetric)
+        is_soft = np.concatenate(is_soft)
+
+        ### Compute panel statistics
+        diag1 = front_right_vertices - back_left_vertices
+        diag2 = front_left_vertices - back_right_vertices
+        cross = np.cross(diag1, diag2)
+        cross_norm = np.linalg.norm(cross, axis=1)
+        normal_directions = cross / tall(cross_norm)
+        areas = cross_norm / 2
+
+        # Compute the location of points of interest on each panel
+        left_vortex_vertices = 0.75 * front_left_vertices + 0.25 * back_left_vertices
+        right_vortex_vertices = 0.75 * front_right_vertices + 0.25 * back_right_vertices
+        vortex_centers = (left_vortex_vertices + right_vortex_vertices) / 2
+        vortex_bound_leg = right_vortex_vertices - left_vortex_vertices
+        collocation_points = (
+                0.5 * (0.25 * front_left_vertices + 0.75 * back_left_vertices) +
+                0.5 * (0.25 * front_right_vertices + 0.75 * back_right_vertices)
+        )
+        
+        ### Save things to the instance for later access
+        self.front_left_vertices = front_left_vertices
+        self.back_left_vertices = back_left_vertices
+        self.back_right_vertices = back_right_vertices
+        self.front_right_vertices = front_right_vertices
+        self.is_trailing_edge = is_trailing_edge
+        self.is_leading_edge = is_leading_edge
+        # self.is_trailing_edge_idx = is_trailing_edge_idx
+        # self.is_leading_edge_idx = is_leading_edge_idx
+        self.is_symmetric = is_symmetric
+        self.normal_directions = normal_directions
+        self.areas = areas
+        self.left_vortex_vertices = left_vortex_vertices
+        self.right_vortex_vertices = right_vortex_vertices
+        self.vortex_centers = vortex_centers
+        self.vortex_bound_leg = vortex_bound_leg
+        self.collocation_points = collocation_points
+        
+        # self.strips_vertices = strips_vertices
+        
+        self.is_soft = is_soft
+        
+        # print("x")
+        # for x in strips_x:
+        #     print(x.shape)
+            
+        # print("q")
+        # for q in strips_quarters:
+        #     print(q)
+        #     print(q.shape)
+        
+        # print("quarters")
+        # for c in strips_quarters:
+        #     print(c.shape)
+        
+        self.strips_x = self.op_point.apply_transformations(np.concatenate(strips_x), is_vector=True)
+        self.strips_y = self.op_point.apply_transformations(np.concatenate(strips_y), is_vector=True)
+        # Orient the strip normals like alpha, which is read in the boat x-y plane (see
+        # viscous_computation): a positive alpha must give a lift along +strips_z, i.e.
+        # along chord x z_boat. The normal of the section frames follows the order of
+        # the sections, so without this a wing listed top to bottom had its NeuralFoil
+        # lift reversed. Done in boat axes, so it does not depend on the attitude.
+        strips_x_boat = np.concatenate(strips_x)
+        strips_z_boat = np.concatenate(strips_z)
+        lift_side = strips_z_boat[:, 0] * strips_x_boat[:, 1] - strips_z_boat[:, 1] * strips_x_boat[:, 0]
+        self.strips_orientation = np.where(lift_side >= 0., 1., -1.)
+        self.strips_z = self.op_point.apply_transformations(
+            strips_z_boat * tall(self.strips_orientation), is_vector=True)
+        self.strips_chords = np.concatenate(strips_chords)
+        self.strips_areas = np.concatenate(strips_areas)
+        self.strips_quarters = self.op_point.apply_transformations(np.concatenate(strips_quarters))
+        # self.strips_quarters = np.concatenate([wide(q) for q in strips_quarters])
+
+        
+    def get_freestream_velocity_at_points(self,
+                                          points: np.ndarray,
+                                          ) -> np.ndarray:
+        """
+        Computes the freestream velocity at a set of points in the flowfield.
+
+        Args:
+            points: A Nx3 array of points that you would like to know the induced velocities at. Given in geometry axes.
+
+        Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
+
+        """ 
+        
+        freestream_velocities = np.ones(points.shape) * np.array([-1.,0.,0.])
+        # freestream_velocities = np.ones(points.shape) * np.array([1.,0.,0.])
+        
+        return freestream_velocities
+        
+
+    def calculate_freestream_influences(self):
+        """Normal component of the freestream velocity at each collocation point."""
+        
+        freestream_velocities = self.get_freestream_velocity_at_points(self.collocation_points)
+        freestream_direction = normalize(freestream_velocities)
+        
+        # Nx3, represents the normal freestream velocity at each panel collocation point
+        freestream_influences = np.sum(freestream_velocities * self.normal_directions, axis=1)
+        
+        self.freestream_direction = freestream_direction
+        self.freestream_velocities = freestream_velocities
+        
+        return freestream_influences
+    
+    
+    def calculate_vortices_influences(self):
+        """Normal velocities induced at the collocation points by unit-strength vortices."""
+        u_collocations_unit, v_collocations_unit, w_collocations_unit = calculate_induced_velocity_horseshoe(
+            x_field=tall(self.collocation_points[:, 0]),
+            y_field=tall(self.collocation_points[:, 1]),
+            z_field=tall(self.collocation_points[:, 2]),
+            x_left=wide(self.left_vortex_vertices[:, 0]),
+            y_left=wide(self.left_vortex_vertices[:, 1]),
+            z_left=wide(self.left_vortex_vertices[:, 2]),
+            x_right=wide(self.right_vortex_vertices[:, 0]),
+            y_right=wide(self.right_vortex_vertices[:, 1]),
+            z_right=wide(self.right_vortex_vertices[:, 2]),
+            trailing_vortex_direction=(
+                self.freestream_direction if self.align_trailing_vortices_with_wind
+                else None
+            ),
+            gamma=1.,
+            vortex_core_radius=self.vortex_core_radius,
+            flow_direction="-x",
+        )
+        
+        if self.IZsym: # If the run is symmetric
+            # Mirror the vortex vertices across the Z symmetry plane
+            left_vortex_vertices_mirrored = copy.copy(self.left_vortex_vertices)
+            left_vortex_vertices_mirrored[:, 2] = 2 * self.Zsym - self.left_vortex_vertices[:, 2]
+            
+            right_vortex_vertices_mirrored = copy.copy(self.right_vortex_vertices)
+            right_vortex_vertices_mirrored[:, 2] = 2 * self.Zsym - self.right_vortex_vertices[:, 2]
+            
+            # Compute the influence of mirrored panel (with opposite strength)
+            u_collocations_unit_mirrored, v_collocations_unit_mirrored, w_collocations_unit_mirrored = calculate_induced_velocity_horseshoe(
+                x_field=tall(self.collocation_points[:, 0]),
+                y_field=tall(self.collocation_points[:, 1]),
+                z_field=tall(self.collocation_points[:, 2]),
+                x_left=wide(left_vortex_vertices_mirrored[:, 0]),
+                y_left=wide(left_vortex_vertices_mirrored[:, 1]),
+                z_left=wide(left_vortex_vertices_mirrored[:, 2]),
+                x_right=wide(right_vortex_vertices_mirrored[:, 0]),
+                y_right=wide(right_vortex_vertices_mirrored[:, 1]),
+                z_right=wide(right_vortex_vertices_mirrored[:, 2]),
+                trailing_vortex_direction=(
+                    self.freestream_direction if self.align_trailing_vortices_with_wind
+                    else None
+                ),
+                gamma=wide(-1. * self.is_symmetric),
+                vortex_core_radius=self.vortex_core_radius,
+                flow_direction="-x",
+            )
+            
+            # Add mirror vortices influences
+            u_collocations_unit = u_collocations_unit + u_collocations_unit_mirrored
+            v_collocations_unit = v_collocations_unit + v_collocations_unit_mirrored
+            w_collocations_unit = w_collocations_unit + w_collocations_unit_mirrored
+            
+        AIC = (
+                u_collocations_unit * tall(self.normal_directions[:, 0]) +
+                v_collocations_unit * tall(self.normal_directions[:, 1]) +
+                w_collocations_unit * tall(self.normal_directions[:, 2])
+              )
+        
+        return AIC
+    
+    def sum_by_strips(self, array):
+        """Sums a panel array over the panels of each spanwise strip."""
+        split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
+                 for i in range(self.total_spanwise_resolution)]
+            
+        return np.stack(split)
+    
+    def mul_by_strips(self, array):
+        """Multiplies a panel array over the panels of each spanwise strip."""
+        split = [np.prod(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
+                 for i in range(self.total_spanwise_resolution)]
+            
+        return np.stack(split)
+    
+   
+    def viscous_computation(self, alpha_stall, model_size):
+        """Corrects the strip forces with the viscous section data of NeuralFoil."""
+        
+        # Aerodynamic forces by strips in geometry axes
+
+        self.strips_forces = self.sum_by_strips(self.panels_forces)
+        
+        self.strips_dynamic_pressure = self.dynamic_pressure.reshape(
+            (self.total_spanwise_resolution, self.chordwise_resolution)
+            )
+        
+        self.strips_pressure_coef = self.pressure_coef.reshape(
+            (self.total_spanwise_resolution, self.chordwise_resolution)
+            )
+        
+        # Aerodynamic moments by strips in geometry axes
+
+        self.strips_moments = self.sum_by_strips(self.panels_moments)
+            
+        # Mean freestream by strips in geometry axes
+
+        self.strips_freestream = self.sum_by_strips(tall(self.areas) * self.freestream_velocities) / tall(self.strips_areas)
+        
+        # Compute viscous forces by strip using Neuralfoil
+        
+        ### Project strips forces in strips local planes
+        strips_forces_transverse = tall(np.sum(self.strips_forces * self.strips_y, axis=1)) * self.strips_y
+        strips_freestream_transverse = tall(np.sum(self.strips_freestream * self.strips_y, axis=1)) * self.strips_y
+        
+        self.strips_forces_in_strips_planes = self.strips_forces - strips_forces_transverse # strips forces in strips planes
+        self.strips_freestream_in_strips_planes = self.strips_freestream - strips_freestream_transverse # strips freestream in strips planes
+        
+        self.strips_freestream_x = normalize(self.strips_freestream_in_strips_planes) # strips Y from spanwise local vectors
+        
+        ### Compute strips lift axis
+        # Perpendicular to the local freestream, on the side of the section normal
+        # strips_z. strips_z itself is perpendicular to the chord: used as the lift
+        # axis, it made the basis oblique by alpha, tilted the lift backwards and
+        # added a drag of about L sin(alpha) (309 N of 496 N on the 49er boards).
+        lift_axis = normalize(np.cross(self.strips_freestream_x, self.strips_y))
+        lift_side = np.where(np.sum(lift_axis * self.strips_z, axis=1) >= 0., 1., -1.)
+        self.strips_lift_axis = lift_axis * tall(lift_side)
+
+        ### Join strips X, Y and lift axis
+
+        self.strips_freestream_axes = [
+                np.array([[1.,0.,0.],]*3)*tall(self.strips_freestream_x[i,:]) +\
+                np.array([[0.,1.,0.],]*3)*tall(self.strips_y[i,:]) +\
+                np.array([[0.,0.,1.],]*3)*tall(self.strips_lift_axis[i,:]) \
+            for i in range(self.total_spanwise_resolution)
+        ]
+        
+        strips_freestream_axes_inv = [np.linalg.inv(ax) for ax in self.strips_freestream_axes]
+        self.strips_freestream_axes_inv = strips_freestream_axes_inv
+        
+        ### Compute aerodynamic forces by freestream axes by strips
+
+        strips_forces_strips_freestream = np.array([
+            change_basis(x=self.strips_forces_in_strips_planes[i,0],
+                         y=self.strips_forces_in_strips_planes[i,1],
+                         z=self.strips_forces_in_strips_planes[i,2],
+                         from_axes = self.strips_freestream_axes[i],
+                         # to_axes = self.strips_freestream_axes[i],
+                         # to_axes = self.strips_freestream_axes_inv[i],
+                         )
+            for i in range(self.total_spanwise_resolution)
+        ])
+        
+        # strips_forces_strips_freestream = self.strips_forces_in_strips_planes * self.strips_freestream_axes[0][2,2]
+            
+        self.strips_forces_strips_freestream = strips_forces_strips_freestream
+        
+        ### Compute induced angle of attack by strips (= arctan(L/Di))
+        # self.alphai = np.rad2deg(np.arctan(strips_forces_strips_freestream[:,0]/strips_forces_strips_freestream[:,2]))
+        # arctan(Di / L), signed with the lift so that it always reduces |alpha|. The
+        # former arctan2(Di, L) jumped to about 180 deg for a negative lift.
+        Di_local = strips_forces_strips_freestream[:,0]
+        L_local = strips_forces_strips_freestream[:,2]
+        self.alphai = np.arctan(Di_local * L_local / (L_local ** 2 + 1e-12)) * 180. / np.pi
+        
+        ### Freestream angle of attack by strips
+        # Read in the section plane of each strip, from the chord towards the oriented
+        # normal strips_z: a positive alpha gives a lift along +strips_z. For a vertical
+        # strip this equals the former angle read in the boat x-y plane, which was ~0
+        # whatever the flow for a horizontal strip (foils, stabilisers).
+        stream_x = np.sum(self.strips_freestream_x * self.strips_x, axis=1)
+        stream_z = np.sum(self.strips_freestream_x * self.strips_z, axis=1)
+        self.alpha = np.arctan2(stream_z, stream_x) * 180. / np.pi
+        
+        ### Separate strips freestream velocities
+        strips_U = np.linalg.norm(self.strips_freestream_in_strips_planes, axis=1) # Z,X plane
+        strips_V = np.linalg.norm(strips_freestream_transverse, axis=1) # Z,X plane
+        # NOW NEED TO HANDLE TRANSVERSE FRICTION
+        # FLAT PLATE COEFFICIENT WITH PROJECTION IN STRIP SPANWISE ORIENTATION?
+        
+        self.strips_U = strips_U
+        self.strips_V = strips_V
+        self.strips_reynolds = np.ravel(self.strips_chords) * strips_U / self.fluid.kinematic_viscosity
+        
+        ### Get airfoils by strips
+        airfoils = []
+        for w in self.planform.wings:
+            side_airfoils = []
+            for i in range(len(w.xsecs)-1):
+                # Add mean strip airfoil for each strip
+                side_airfoils += [w.xsecs[i].airfoil.blend_with_another_airfoil(w.xsecs[i+1].airfoil)]*\
+                    self.spanwise_resolution
+            # The strips of a symmetric wing are its right side, then its left side, both root to tip
+            airfoils += side_airfoils*(1+w.symmetric)
+
+        # The panels put the upper side of a cambered airfoil on the side of the section
+        # frame normal. Where that normal was flipped to follow alpha (strips_orientation),
+        # NeuralFoil gets the airfoil upside down, so that both see the same camber.
+        try:
+            orientation = onp.asarray(self.strips_orientation, dtype=float).ravel()
+        except Exception:  # symbolic geometry: the sign cannot be read, airfoils are kept
+            orientation = onp.ones(len(airfoils))
+        airfoils = [af.scale(scale_y=-1.) if o < 0 else af for af, o in zip(airfoils, orientation)]
+
+        self.airfoils = np.array(airfoils)
+        
+        ### Call Neuralfoil for each strip
+        self.stall_fac = stall_factor(
+            self.alpha,
+            self.alphai,
+            alpha_stall,
+        ) # 0 when stalled, 1 when attached
+        
+        # when using soft wings, a negative vortex strength at the l.e. means stall
+        
+        # mean_z = np.mean(self.vortex_centers[:,2])
+        
+        self.le_idx = np.arange(self.is_leading_edge.shape[0])[self.is_leading_edge]
+        self.te_idx = np.arange(self.is_trailing_edge.shape[0])[self.is_trailing_edge]
+        
+        # # These values are set relatively high because NeuralFoil extrapolates quite well past stall
+        # alpha_stall_positive = alpha_stall
+        # alpha_stall_negative = -alpha_stall
+
+        # # This will be an input to a tanh() sigmoid blend via arb.numpy.blend(), so a value of 1 means the flow is
+        # # ~90% separated, and a value of -1 means the flow is ~90% attached.
+        # is_separated = (
+        #     np.softmax(alpha - alpha_stall_positive, alpha_stall_negative - alpha)
+        #     / 3
+        # )
+
+        # CL = np.blend(is_separated, CL_if_separated, CL)
+        # CD = np.exp(
+        #     np.blend(
+        #         is_separated,
+        #         np.log(
+        #             CD_if_separated
+        #             + lib_aero.Cf_flat_plate(Re_L=Re, method="turbulent")
+        #         ),
+        #         np.log(CD),
+        #     )
+        # )
+        # CM = np.blend(is_separated, CM_if_separated, CM)
+     
+        # TODO: find a better low-aoa / soft-wing stall criterion
+        # for the moment, funcitonnal because z_mean > 0 for sails and < 0 for appendages
+        
+        # def kC(alpha_eff, xc, mc):
+        #     k = 2.
+        #     # D = leading_edge_camber(xc, mc)
+        #     D = mc/xc
+        #     C = np.sign(D) * (alpha_eff - 0.5*180/np.pi * np.arctan(D))
+            
+        #     return k*C
+        
+        # self.alphaeff0 = self.alpha - self.alphai * self.stall_fac
+        
+        # xc = 0.4
+        
+        # self.cambers = np.array([af.max_camber() for i, af in enumerate(self.airfoils)])
+        
+        # self.insight0 = [af.max_camber() for i, af in enumerate(self.airfoils)]
+        # self.insight1 = [leading_edge_camber(xc, af.max_camber()) for i, af in enumerate(self.airfoils)]
+        # self.insight2 = [kC(self.alphaeff0[i], xc, af.max_camber()) for i, af in enumerate(self.airfoils)]
+        # self.insight3 = smooth_ramp(self.vortex_strengths[le_idx] * self.vortex_strengths[te_idx])
+        # self.insight4 = smooth_ramp(self.alphaeff0 * self.cambers)
+        
+        # self.soft_stall_fac = np.concatenate([
+        #     (np.tanh(kC(self.alphaeff0[i], xc, af.max_camber()) + 1.) + 1.)/2.
+        #     for i, af in enumerate(self.airfoils)
+        # ])
+        # self.soft_stall_fac = np.fmax(1 - self.is_soft, (
+        #     smooth_ramp(self.vortex_strengths[le_idx] * self.vortex_strengths[te_idx]) *\
+        #     smooth_ramp(self.alphaeff0 * 100*self.cambers)  # < 0 when stalled, >= 0 when laminar
+        # )) # 0 when stalled, 1 when laminar
+        
+        # self.soft_stall_fac = ramp(
+        # # self.soft_stall_fac = smooth_ramp(
+        #     self.vortex_strengths[self.le_idx] *\
+        #     mean_z *\
+        #     self.is_soft[self.le_idx], # < 0 when stalled, >= 0 when laminar
+        # )# 0 when stalled, 1 when laminar
+            
+        le_normal = self.normal_directions[self.le_idx, :]
+        
+        magnitude_A = np.linalg.norm(le_normal, axis=1)
+        magnitude_B = np.linalg.norm(self.strips_x, axis=1)
+        
+        self.entrance_angle = (np.arccosd(
+            np.sum(le_normal * self.strips_x, axis=1) / (magnitude_A * magnitude_B)
+        ) - 90.) / 2.
+        
+        # # self.vertices_soft_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
+        # # self.vertices_stall_fac = tall(np.zeros(self.total_spanwise_resolution + len(self.planform.wings)))
+        # self.vertices_soft_stall_fac = []
+        # self.vertices_stall_fac = []
+        
+        # # extend the stall factors to the borders of strips (useful for 3D animated display)
+        # for i, wing in enumerate(self.planform.wings):
+        #     wing_spanwise_resolution = self.wing_spanwise_resolution[i]
+            
+        #     start = i*(wing_spanwise_resolution)
+        #     end = (i+1)*(wing_spanwise_resolution)
+            
+        #     self.vertices_soft_stall_fac.append(self.soft_stall_fac[start])
+        #     self.vertices_stall_fac.append(self.stall_fac[start])
+            
+        #     for k in range(start, end-1):
+        #         self.vertices_soft_stall_fac.append((self.soft_stall_fac[k] + self.soft_stall_fac[k+1]) / 2)
+        #         self.vertices_stall_fac.append((self.stall_fac[k] + self.stall_fac[k+1]) / 2)
+        #         # self.vertices_soft_stall_fac.append((self.soft_stall_fac[k, 0] + self.soft_stall_fac[k+1, 0]) / 2)
+        #         # self.vertices_stall_fac.append((self.stall_fac[k, 0] + self.stall_fac[k+1, 0]) / 2)
+                
+        #     self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1])
+        #     self.vertices_stall_fac.append(self.stall_fac[end-1])
+        #     # self.vertices_soft_stall_fac.append(self.soft_stall_fac[end-1, 0])
+        #     # self.vertices_stall_fac.append(self.stall_fac[end-1, 0])
+        
+        self.alphaeff = self.alpha - self.alphai * self.stall_fac
+        
+        # TODO find a better alternative
+        self.soft_stall_fac = soft_stall_factor(
+            # alpha=self.alphaeff,
+            alpha=self.alpha,
+            alpha_e=self.entrance_angle,
+            is_soft=self.is_soft[self.le_idx],
+        ) # 0 when stalled, 1 when attached
+        
+        # Not stored: substituting a solution in these symbolic graphs would take minutes
+        nf_results = [
+                af.get_aero_from_neuralfoil(
+                    alpha=self.alphaeff[i],
+                    Re=self.strips_reynolds[i],
+                    # model_size="xxlarge",
+                    # model_size="xlarge",
+                    # model_size="large",
+                    # model_size="medium",
+                    # model_size="small",
+                    # model_size="xsmall",
+                    # model_size="xxsmall",
+                    model_size=model_size,
+                    n_crit = 9.0,
+                    xtr_upper = 0.1,
+                    xtr_lower = 0.1,
+                ) for i, af in enumerate(self.airfoils)
+            ]
+        
+        self.strips_CL = np.array([res['CL'][0] for res in nf_results])
+        self.strips_CD = np.array([res['CD'][0] for res in nf_results])
+        self.strips_CF = np.sqrt(self.strips_CL**2 + self.strips_CD**2)
+        self.strips_CM = np.array([res['CM'][0] for res in nf_results])
+        
+        # Density of each strip from the height of its quarter-chord point
+        self.strips_density = self.local_density(self.strips_quarters)
+
+        self.strips_L = tall(self.strips_CL) * 1/2 * tall(self.strips_density) * tall(self.strips_areas) * tall(self.strips_U)**2 *\
+            tall(self.soft_stall_fac) # lift force crumbles when the angle of attack of the soft wing becomes too small
+            
+        self.strips_D = tall(self.strips_CD) * 1/2 * tall(self.strips_density) * tall(self.strips_areas) * tall(self.strips_U)**2
+        
+        self.strips_Li = tall(self.strips_forces_strips_freestream[:, 2])
+        
+        self.strips_Di = tall(self.strips_forces_strips_freestream[:, 0]) *\
+            tall(self.soft_stall_fac + 1e-8) *\
+            tall(ReLU(self.strips_L / (self.strips_Li + 1e-8)))
+
+        self.strips_F = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.]))) +\
+                       np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
+        
+        self.strips_M = tall(self.strips_CM) * 1/2 * tall(self.strips_density) * self.strips_areas * tall(self.strips_U)**2 * tall(self.strips_chords)
+
+
+        self.strips_coe = self.strips_quarters - self.strips_x*tall(self.strips_CM/self.strips_CF)
+        
+        
+        ### Reproject strips viscous drag forces from strips freestream axes to geometry axes
+        
+        self.L_vec = np.multiply(tall(self.strips_L), wide(np.array([0., 0., 1.])))
+                       
+        self.D_vec = np.multiply(tall(self.strips_D), wide(np.array([1., 0., 0.])))
+        
+        self.Di_vec = np.multiply(tall(self.strips_Di), wide(np.array([1., 0., 0.])))
+        
+        self.M_vec = np.multiply(tall(self.strips_M), wide(np.array([0., 0., 1.])))
+                    
+        visc_forces_geometry = np.array([
+            change_basis(
+                x=self.D_vec[i,0],
+                y=self.D_vec[i,1],
+                z=self.D_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
+            for i in range(self.total_spanwise_resolution)
+        ])
+        
+        induced_forces_geometry = np.array([
+            change_basis(
+                x=self.Di_vec[i,0],
+                y=self.Di_vec[i,1],
+                z=self.Di_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
+            for i in range(self.total_spanwise_resolution)
+        ])
+        
+        lift_forces_geometry = np.array([
+            change_basis(
+                x=self.L_vec[i,0],
+                y=self.L_vec[i,1],
+                z=self.L_vec[i,2],
+                to_axes = self.strips_freestream_axes[i],
+            )
+            for i in range(self.total_spanwise_resolution)
+        ])
+        
+        visc_moments_geometry = np.cross(
+            np.add(self.strips_coe, -wide(np.array(self.xyz_ref))),
+            visc_forces_geometry
+        )
+        
+        induced_moments_geometry = 0. # TODO: need to separate VLM lift moment from VLM induced drag moment
+        
+        lift_moments_geometry = np.cross(
+            np.add(self.strips_coe, -wide(np.array(self.xyz_ref))),
+            lift_forces_geometry
+        )
+        
+        visc_force_geometry = np.sum(visc_forces_geometry, axis=0) # NF viscous drag total force in the global geometry axes
+        visc_moment_geometry = np.sum(visc_moments_geometry, axis=0) # NF viscous drag total force in the global geometry axes
+        
+        induced_force_geometry = np.sum(induced_forces_geometry, axis=0) # VLM induced drag total force in the global geometry axes
+        induced_moment_geometry = np.sum(induced_moments_geometry, axis=0) # VLM induced drag total force in the global geometry axes
+        
+        lift_force_geometry = np.sum(lift_forces_geometry, axis=0) # NF lift total force in the global geometry axes
+        lift_moment_geometry = np.sum(lift_moments_geometry, axis=0) # NF lift total force in the global geometry axes
+        
+        self.visc_forces_geometry = visc_forces_geometry
+        self.visc_force_geometry = visc_force_geometry
+        
+        self.visc_moments_geometry = visc_moments_geometry
+        self.visc_moment_geometry = visc_moment_geometry
+        
+        self.induced_forces_geometry = induced_forces_geometry
+        self.induced_force_geometry = induced_force_geometry
+        
+        self.induced_moments_geometry = induced_moments_geometry
+        self.induced_moment_geometry = induced_moment_geometry
+        
+        self.lift_forces_geometry = lift_forces_geometry
+        self.lift_force_geometry = lift_force_geometry
+        
+        self.lift_moments_geometry = lift_moments_geometry
+        self.lift_moment_geometry = lift_moment_geometry
+        
+
+    def run(
+        self,
+        alpha_stall: float = 15.,
+        model_size: str = "medium",
+    ) -> Dict[str, Any]:
+        """
+        Computes the aerodynamic forces and moments.
+
+        Totals are the near-field (lift) contribution + viscous + induced.
+
+        Returns a dictionary with keys:
+
+            - 'F_g'  : [x, y, z] force in geometry axes [N]
+            - 'F_w'  : [x, y, z] force in flow axes [N]
+            - 'F_ab' : [x, y, z] force in underway axes [N]
+            - 'M_g'  : [x, y, z] moment in geometry axes [Nm]
+            - 'M_w'  : [x, y, z] moment in flow axes [Nm]
+            - 'M_ab' : [x, y, z] moment in underway axes [Nm]
+            - 'L'    : lift force [N] (flow axes)
+            - 'D'    : total drag force, Di + Dv [N] (flow axes)
+            - 'Di'   : induced drag [N] (flow axes)
+            - 'Dv'   : viscous drag [N] (flow axes)
+            - 'Z'    : side force [N] (flow axes)
+            - 'CL', 'CD', 'CDi', 'CDv', 'CZ' : the corresponding coefficients [-]
+            - 'Cx', 'Cy' : force coefficients along underway-axes x and y [-]
+
+        Nondimensional values use the reference values of the
+        VortexLatticeMethod.planform object and the freestream dynamic pressure.
+
+        Args:
+            alpha_stall: Stall angle of attack passed to the viscous model [deg].
+                TODO: find a more specific way to compute this.
+            model_size: Size preset passed to the viscous model.
+        """
+        log = print if self.verbose else (lambda *args, **kwargs: None)
+
+        # --- Mesh and solve ---
+        log("Meshing...")
+        self.mesh_geometry()
+
+        log("Calculating the freestream influence...")
+        freestream_influences = self.calculate_freestream_influences()
+
+        log("Calculating the collocation influence matrix...")
+        AIC = self.calculate_vortices_influences()
+
+        log("Calculating vortex strengths...")
+        self.vortex_strengths = np.linalg.solve(AIC, -freestream_influences)
+
+        # --- Near-field forces and moments ---
+        # Force on a straight vortex filament: F = rho * cross(V, l) * gamma
+        # (rho: density, V: velocity, l: filament vector, gamma: circulation).
+        # Everything here is in GEOMETRY axes.
+        log("Calculating forces on each panel...")
+
+        V_centers = self.get_velocity_at_points(self.vortex_centers)
+        V_inf_centers = np.linalg.norm(
+            self.get_freestream_velocity_at_points(self.vortex_centers), axis=1
+        )
+
+        # FIXME: this squares V component by component, then dots with n.
+        # Probably intended: (V . n / |V_inf|) ** 2, or the signed V . n / |V_inf|.
+        Vi2_dot_ni = np.sum(
+            (V_centers / tall(V_inf_centers)) ** 2. * self.normal_directions,
+            axis=1
+        )
+        self.insight = np.sigmoid(self.sum_by_strips(tall(Vi2_dot_ni * self.areas)))
+
+        Vi_cross_li = np.cross(V_centers, self.vortex_bound_leg, axis=1)
+        # Density of each panel from the height of its bound vortex, water or air
+        self.panels_density = self.local_density(self.vortex_centers)
+        forces_geometry = tall(self.panels_density) * Vi_cross_li * tall(self.vortex_strengths)
+        moments_geometry = np.cross(
+            np.add(self.vortex_centers, - wide(np.array(self.xyz_ref))),
+            forces_geometry
+        )
+
+        self.panels_forces = forces_geometry
+        self.panels_moments = moments_geometry
+
+        # Signed normal component of each panel force (avoids the 0/0 of normalising)
+        normal_force = np.sum(forces_geometry * self.normal_directions, axis=1)
+        self.panels_normal_forces = tall(normal_force) * self.normal_directions
+
+        # NB: despite the name, this is the pressure difference across the panel,
+        # not a dynamic pressure. Kept for compatibility; consider renaming.
+        self.dynamic_pressure = normal_force / self.areas
+        # Cp on the local fluid: the same as before for panels in the analysis's own fluid
+        self.pressure_coef = self.dynamic_pressure / (
+            self.fluid_dynamic_pressure() * self.panels_density / self.fluid.density
+        )
+
+        # --- Viscous / strip-based forces ---
+        # Must set: visc_*, induced_force_*, lift_force_*, lift_moment_*, visc_moment_*
+        log("Calculating viscous forces on each strip...")
+        self.viscous_computation(alpha_stall, model_size)
+
+        # --- Total VLM forces and moments in geometry axes ---
+        force_geometry = np.sum(forces_geometry, axis=0)
+        moment_geometry = np.sum(moments_geometry, axis=0)
+        induced_moment_geometry = np.zeros(3)  # no induced moment contribution
+
+        def convert(vec, axes):
+            """Convert a geometry-axes vector into `axes` and return an array."""
+            return np.array(self.op_point.convert_axes(
+                vec[0], vec[1], vec[2],
+                from_axes="geometry",
+                to_axes=axes,
+            ))
+
+        # --- flow axes ---
+        self.force_wind          = convert(force_geometry, "flow")
+        self.visc_force_wind     = convert(self.visc_force_geometry, "flow")
+        self.induced_force_wind  = convert(self.induced_force_geometry, "flow")
+        self.lift_force_wind     = convert(self.lift_force_geometry, "flow")
+        self.moment_wind         = convert(moment_geometry, "flow")
+        self.visc_moment_wind    = convert(self.visc_moment_geometry, "flow")
+        self.induced_moment_wind = np.zeros(3)
+        self.lift_moment_wind    = convert(self.lift_moment_geometry, "flow")
+
+        # --- Underway axes ---
+        self.force_underway          = convert(force_geometry, "underway")
+        self.visc_force_underway     = convert(self.visc_force_geometry, "underway")
+        self.induced_force_underway  = convert(self.induced_force_geometry, "underway")
+        self.lift_force_underway     = convert(self.lift_force_geometry, "underway")
+        self.moment_underway         = convert(moment_geometry, "underway")
+        self.visc_moment_underway    = convert(self.visc_moment_geometry, "underway")
+        self.induced_moment_underway = np.zeros(3)
+        self.lift_moment_underway    = convert(self.lift_moment_geometry, "underway")
+
+        # --- Save to the instance for later access ---
+        self.forces_geometry = forces_geometry
+        self.moments_geometry = moments_geometry
+        self.force_geometry = force_geometry
+        self.moment_geometry = moment_geometry
+        self.induced_moment_geometry = induced_moment_geometry
+
+        # --- Dimensional forces (flow axes: x = drag, y = lift, z = side) ---
+        # --- Total force/moment vectors (single source of truth) ---
+        F_w  = self.lift_force_wind     + self.visc_force_wind     + self.induced_force_wind
+        F_g  = self.lift_force_geometry + self.visc_force_geometry + self.induced_force_geometry
+        F_ab = self.lift_force_underway + self.visc_force_underway + self.induced_force_underway
+
+        M_w  = self.lift_moment_wind     + self.visc_moment_wind     + self.induced_moment_wind
+        M_g  = self.lift_moment_geometry + self.visc_moment_geometry + induced_moment_geometry
+        M_ab = self.lift_moment_underway + self.visc_moment_underway + self.induced_moment_underway
+
+        # --- Scalars derived from the vectors (flow axes: x = drag, y = lift, z = side) ---
+        D, L, Z = F_w[0], F_w[1], F_w[2]
+        Dv = self.visc_force_wind[0]
+        Di = D - Dv                      # everything that isn't viscous
+        # Or, if lift_force_wind[0] is NOT drag you want counted as induced:
+        # Di = self.induced_force_wind[0]
+        Fx, Fy = F_ab[0], F_ab[1]
+
+        q_s = self.fluid_dynamic_pressure() * self.planform.s_ref
+        CL, CD, CDi, CDv, CZ, Cx, Cy = (v / q_s for v in (L, D, Di, Dv, Z, Fx, Fy))
+
+        # Pure-VLM (linear, no stall model) values, kept for comparison
+        F_vlm_w = self.force_wind
+
+        return {
+            "F_ab": F_ab, "F_g": F_g, "F_w": F_w,
+            "M_ab": M_ab, "M_g": M_g, "M_w": M_w,
+            "F_vlm_w": F_vlm_w, "F_vlm_g": self.force_geometry,
+            "L": L, "D": D, "Di": Di, "Dv": Dv, "Z": Z,
+            "CL": CL, "CD": CD, "CDi": CDi, "CDv": CDv, "CZ": CZ, "Cx": Cx, "Cy": Cy,
+        }
+
+    def run_with_stability_derivatives(self,
+                                       alpha=True,
+                                       beta=True,
+                                       p=True,
+                                       q=True,
+                                       r=True,
+                                       ):
+        """
+                Computes the aerodynamic forces and moments on the planform, and the stability derivatives.
+
+                Arguments essentially determine which stability derivatives are computed. If a stability derivative is not
+                needed, leaving it False will speed up the computation.
+
+                Args:
+
+                    - alpha (bool): If True, compute the stability derivatives with respect to the angle of attack (alpha).
+                    - beta (bool): If True, compute the stability derivatives with respect to the sideslip angle (beta).
+                    - p (bool): If True, compute the stability derivatives with respect to the body-axis roll rate (p).
+                    - q (bool): If True, compute the stability derivatives with respect to the body-axis pitch rate (q).
+                    - r (bool): If True, compute the stability derivatives with respect to the body-axis yaw rate (r).
+
+                Returns: a dictionary with keys:
+
+                    - 'F_g' : an [x, y, z] list of forces in geometry axes [N]
+                    - 'F_b' : an [x, y, z] list of forces in body axes [N]
+                    - 'F_w' : an [x, y, z] list of forces in flow axes [N]
+                    - 'M_g' : an [x, y, z] list of moments about geometry axes [Nm]
+                    - 'M_b' : an [x, y, z] list of moments about body axes [Nm]
+                    - 'M_w' : an [x, y, z] list of moments about flow axes [Nm]
+                    - 'L' : the lift force [N]. Definitionally, this is in flow axes.
+                    - 'Y' : the side force [N]. This is in flow axes.
+                    - 'D' : the drag force [N]. Definitionally, this is in flow axes.
+                    - 'l_b', the rolling moment, in body axes [Nm]. Positive is roll-right.
+                    - 'm_b', the pitching moment, in body axes [Nm]. Positive is pitch-up.
+                    - 'n_b', the yawing moment, in body axes [Nm]. Positive is nose-right.
+                    - 'CL', the lift coefficient [-]. Definitionally, this is in flow axes.
+                    - 'CY', the sideforce coefficient [-]. This is in flow axes.
+                    - 'CD', the drag coefficient [-]. Definitionally, this is in flow axes.
+                    - 'Cl', the rolling coefficient [-], in body axes
+                    - 'Cm', the pitching coefficient [-], in body axes
+                    - 'Cn', the yawing coefficient [-], in body axes
+
+                    Along with additional keys, depending on the value of the `alpha`, `beta`, `p`, `q`, and `r` arguments. For
+                    example, if `alpha=True`, then the following additional keys will be present:
+
+                        - 'CLa', the lift coefficient derivative with respect to alpha [1/rad]
+                        - 'CDa', the drag coefficient derivative with respect to alpha [1/rad]
+                        - 'CYa', the sideforce coefficient derivative with respect to alpha [1/rad]
+                        - 'Cla', the rolling moment coefficient derivative with respect to alpha [1/rad]
+                        - 'Cma', the pitching moment coefficient derivative with respect to alpha [1/rad]
+                        - 'Cna', the yawing moment coefficient derivative with respect to alpha [1/rad]
+                        - 'x_np', the neutral point location in the x direction [m]
+
+                    Nondimensional values are nondimensionalized using reference values in the
+                    VortexLatticeMethod.planform object.
+
+                    Data types:
+                        - The "L", "Y", "D", "l_b", "m_b", "n_b", "CL", "CY", "CD", "Cl", "Cm", and "Cn" keys are:
+
+                            - floats if the OperatingPoint object is not vectorized (i.e., if all attributes of OperatingPoint
+                            are floats, not arrays).
+
+                            - arrays if the OperatingPoint object is vectorized (i.e., if any attribute of OperatingPoint is an
+                            array).
+
+                        - The "F_g", "F_b", "F_w", "M_g", "M_b", and "M_w" keys are always lists, which will contain either
+                        floats or arrays, again depending on whether the OperatingPoint object is vectorized or not.
+
+        """
+        abbreviations = {
+            "alpha": "a",
+            "beta" : "b",
+            "p"    : "p",
+            "q"    : "q",
+            "r"    : "r",
+        }
+        finite_difference_amounts = {
+            "alpha": 0.001,
+            "beta" : 0.001,
+            "p"    : 0.001 * (2 * self.op_point.velocity) / self.planform.b_ref,
+            "q"    : 0.001 * (2 * self.op_point.velocity) / self.planform.c_ref,
+            "r"    : 0.001 * (2 * self.op_point.velocity) / self.planform.b_ref,
+        }
+        scaling_factors = {
+            "alpha": np.degrees(1),
+            "beta" : np.degrees(1),
+            "p"    : (2 * self.op_point.velocity) / self.planform.b_ref,
+            "q"    : (2 * self.op_point.velocity) / self.planform.c_ref,
+            "r"    : (2 * self.op_point.velocity) / self.planform.b_ref,
+        }
+
+        original_op_point = self.op_point
+
+        # Compute the point analysis, which returns a dictionary that we will later add key:value pairs to.
+        run_base = self.run()
+
+        # Note for the loops below: here, "derivative numerator" and "... denominator" refer to the quantity being
+        # differentiated and the variable of differentiation, respectively. In other words, in the expression df/dx,
+        # the "numerator" is f, and the "denominator" is x. I realize that this would make a mathematician cry (as a
+        # partial derivative is not a fraction), but the reality is that there seems to be no commonly-accepted name
+        # for these terms. (Curiously, this contrasts with integration, where there is an "integrand" and a "variable
+        # of integration".)
+
+        for derivative_denominator in abbreviations.keys():
+            if not locals()[derivative_denominator]:  # Basically, if the parameter from the function input is not True,
+                continue  # Skip this run.
+                # This way, you can (optionally) speed up this routine if you only need static derivatives,
+                # or longitudinal derivatives, etc.
+
+            # These lines make a copy of the original operating point, incremented by the finite difference amount
+            # along the variable defined by derivative_denominator.
+            incremented_op_point = copy.copy(original_op_point)
+            incremented_op_point.__setattr__(
+                derivative_denominator,
+                original_op_point.__getattribute__(derivative_denominator) + finite_difference_amounts[
+                    derivative_denominator]
+            )
+
+            vlm_incremented = copy.copy(self)
+            vlm_incremented.op_point = incremented_op_point
+            run_incremented = vlm_incremented.run()
+
+            for derivative_numerator in [
+                "CL",
+                "CD",
+                "CY",
+                "Cl",
+                "Cm",
+                "Cn",
+            ]:
+                derivative_name = derivative_numerator + abbreviations[derivative_denominator]  # Gives "CLa"
+                run_base[derivative_name] = (
+                        (  # Finite-difference out the derivatives
+                                run_incremented[derivative_numerator] - run_base[
+                            derivative_numerator]
+                        ) / finite_difference_amounts[derivative_denominator]
+                        * scaling_factors[derivative_denominator]
+                )
+
+            ### Try to compute and append neutral point, if possible
+            if derivative_denominator == "alpha":
+                run_base["x_np"] = self.xyz_ref[0] - (
+                        run_base["Cma"] * (self.planform.c_ref / run_base["CLa"])
+                )
+            if derivative_denominator == "beta":
+                run_base["x_np_lateral"] = self.xyz_ref[0] - (
+                        run_base["Cnb"] * (self.planform.b_ref / run_base["CYb"])
+                )
+
+        return run_base
+
+    def get_induced_velocity_at_points(self,
+                                       points: np.ndarray,
+                                       ) -> np.ndarray:
+        """
+        Computes the induced velocity at a set of points in the flowfield.
+
+        Args:
+            points: A Nx3 array of points that you would like to know the induced velocities at. Given in geometry axes.
+
+        Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
+
+        """ 
+        u_induced, v_induced, w_induced = calculate_induced_velocity_horseshoe(
+            x_field=tall(points[:, 0]),
+            y_field=tall(points[:, 1]),
+            z_field=tall(points[:, 2]),
+            x_left=wide(self.left_vortex_vertices[:, 0]),
+            y_left=wide(self.left_vortex_vertices[:, 1]),
+            z_left=wide(self.left_vortex_vertices[:, 2]),
+            x_right=wide(self.right_vortex_vertices[:, 0]),
+            y_right=wide(self.right_vortex_vertices[:, 1]),
+            z_right=wide(self.right_vortex_vertices[:, 2]),
+            trailing_vortex_direction=self.freestream_direction if self.align_trailing_vortices_with_wind else None,
+            gamma=wide(self.vortex_strengths),
+            vortex_core_radius=self.vortex_core_radius,
+            flow_direction="-x",
+        )
+            
+        if self.IZsym: # If the run is symmetric
+            # Mirror the vortex vertices across the Z symmetry plane
+            left_vortex_vertices_mirrored = copy.copy(self.left_vortex_vertices)
+            left_vortex_vertices_mirrored[:, 2] = 2 * self.Zsym - self.left_vortex_vertices[:, 2]
+            
+            right_vortex_vertices_mirrored = copy.copy(self.right_vortex_vertices)
+            right_vortex_vertices_mirrored[:, 2] = 2 * self.Zsym - self.right_vortex_vertices[:, 2]
+            
+            # Compute the influence of mirrored panel (with opposite strength)
+            u_induced_mirrored, v_induced_mirrored, w_induced_mirrored = calculate_induced_velocity_horseshoe(
+                x_field=tall(points[:, 0]),
+                y_field=tall(points[:, 1]),
+                z_field=tall(points[:, 2]),
+                x_left=wide(left_vortex_vertices_mirrored[:, 0]),
+                y_left=wide(left_vortex_vertices_mirrored[:, 1]),
+                z_left=wide(left_vortex_vertices_mirrored[:, 2]),
+                x_right=wide(right_vortex_vertices_mirrored[:, 0]),
+                y_right=wide(right_vortex_vertices_mirrored[:, 1]),
+                z_right=wide(right_vortex_vertices_mirrored[:, 2]),
+                trailing_vortex_direction=self.freestream_direction if self.align_trailing_vortices_with_wind else None,
+                gamma=wide(-self.vortex_strengths * self.is_symmetric,),
+                vortex_core_radius=self.vortex_core_radius,
+                flow_direction="-x",
+            )
+                    
+            u_induced += u_induced_mirrored
+            v_induced += v_induced_mirrored
+            w_induced += w_induced_mirrored
+            
+        u_induced = np.sum(u_induced, axis=1)
+        v_induced = np.sum(v_induced, axis=1)
+        w_induced = np.sum(w_induced, axis=1)
+
+        V_induced = np.stack([
+            u_induced, v_induced, w_induced
+        ], axis=1)
+
+        return V_induced
+
+    def get_velocity_at_points(self,
+                               points: np.ndarray
+                               ) -> np.ndarray:
+        """
+        Computes the velocity at a set of points in the flowfield.
+
+        Args:
+            points: A Nx3 array of points that you would like to know the velocities at. Given in geometry axes.
+
+        Returns: A Nx3 of the velocity at those points. Given in geometry axes.
+
+        """
+        V_induced = self.get_induced_velocity_at_points(points)
+
+        V_freestream = self.get_freestream_velocity_at_points(points)
+
+        V = V_induced + V_freestream
+        return V
+
+    def calculate_streamlines(self,
+                              seed_points: np.ndarray = None,
+                              n_steps: int = 300,
+                              length: float = None,
+                              ) -> np.ndarray:
+        """
+        Computes streamlines, starting at specific seed points.
+
+        After running this function, a new instance variable `VortexLatticeFilaments.streamlines` is computed
+
+        Uses simple forward-Euler integration with a fixed spatial stepsize (i.e., velocity vectors are normalized
+        before ODE integration). After investigation, it's not worth doing fancier ODE integration methods (adaptive
+        schemes, RK substepping, etc.), due to the near-singular conditions near vortex filaments.
+
+        Args:
+
+            seed_points: A Nx3 ndarray that contains a list of points where streamlines are started. Will be
+            auto-calculated if not specified.
+
+            n_steps: The number of individual streamline steps to trace. Minimum of 2.
+
+            length: The approximate total length of the streamlines desired, in meters. Will be auto-calculated if
+            not specified.
+
+        Returns:
+            streamlines: a 3D array with dimensions: (n_seed_points) x (3) x (n_steps).
+            Consists of streamlines data.
+
+            Result is also saved as an instance variable, VortexLatticeMethod.streamlines.
+
+        """
+        if self.verbose:
+            print("Calculating streamlines...")
+        if length is None:
+            length = self.planform.c_ref * 5
+        if seed_points is None:
+            left_TE_vertices = self.back_left_vertices[self.is_trailing_edge.astype(bool)]
+            right_TE_vertices = self.back_right_vertices[self.is_trailing_edge.astype(bool)]
+            N_streamlines_target = 200
+            seed_points_per_panel = np.maximum(1, N_streamlines_target // len(left_TE_vertices))
+
+            nondim_node_locations = np.linspace(0, 1, seed_points_per_panel + 1)
+            nondim_seed_locations = (nondim_node_locations[1:] + nondim_node_locations[:-1]) / 2
+
+            seed_points = np.concatenate([
+                x * left_TE_vertices + (1 - x) * right_TE_vertices
+                for x in nondim_seed_locations
+            ])
+
+        streamlines = np.empty((len(seed_points), 3, n_steps))
+        streamlines[:, :, 0] = seed_points
+        for i in range(1, n_steps):
+            V = self.get_velocity_at_points(streamlines[:, :, i - 1])
+            streamlines[:, :, i] = (
+                    streamlines[:, :, i - 1] +
+                    length / n_steps * V / tall(np.linalg.norm(V, axis=1))
+            )
+
+        self.streamlines = streamlines
+
+        if self.verbose:
+            print("Streamlines calculated.")
+
+        return streamlines
+
+    def draw(self,
+             c: np.ndarray = None,
+             cmap: str = None,
+             colorbar_label: str = None,
+             show: bool = True,
+             show_kwargs: Dict = None,
+             draw_streamlines=True,
+             recalculate_streamlines=False,
+             plot_axes=True,
+             backend: str = "pyvista"
+             ):
+        """
+        Draws the solution.
+
+        Note: Must be called on a SOLVED AeroProblem object. To solve an AeroProblem, use
+        opti.solve(). To substitute a solved solution, use ap = sol(ap).
+        """
+        if show_kwargs is None:
+            show_kwargs = {}
+
+        if c is None:
+            c = self.vortex_strengths
+            colorbar_label = "Vortex Strengths"
+
+        if draw_streamlines:
+            if (not hasattr(self, 'streamlines')) or recalculate_streamlines:
+                self.calculate_streamlines()
+
+        if backend == "plotly":
+            from archibald.toolbox.visualization.plotly_Figure3D import Figure3D
+            fig = Figure3D()
+
+            for i in range(len(self.front_left_vertices)):
+                fig.add_quad(
+                    points=[
+                        self.front_left_vertices[i, :],
+                        self.back_left_vertices[i, :],
+                        self.back_right_vertices[i, :],
+                        self.front_right_vertices[i, :],
+                    ],
+                    intensity=c[i],
+                    outline=True,
+                )
+
+            if draw_streamlines:
+                for i in range(self.streamlines.shape[0]):
+                    fig.add_streamline(self.streamlines[i, :, :].T)
+
+            return fig.draw(
+                show=show,
+                colorbar_title=colorbar_label,
+                **show_kwargs,
+            )
+
+        elif backend == "pyvista":
+            import pyvista as pv
+            plotter = pv.Plotter()
+            plotter.title = "Archibald VortexLatticeMethod"
+            if plot_axes:
+                plotter.add_axes()
+                plotter.show_grid(color='gray')
+
+            ### Draw the planform mesh
+            points = np.concatenate([
+                self.front_left_vertices,
+                self.back_left_vertices,
+                self.back_right_vertices,
+                self.front_right_vertices
+            ])
+            N = len(self.front_left_vertices)
+            range_N = np.arange(N)
+            faces = tall(range_N) + wide(np.array([0, 1, 2, 3]) * N)
+
+            mesh = pv.PolyData(
+                *mesh_utils.convert_mesh_to_polydata_format(points, faces)
+            )
+            scalar_bar_args = {}
+            if colorbar_label is not None:
+                scalar_bar_args["title"] = colorbar_label
+            plotter.add_mesh(
+                mesh=mesh,
+                scalars=c,
+                show_edges=True,
+                show_scalar_bar=c is not None,
+                scalar_bar_args=scalar_bar_args,
+                cmap=cmap,
+            )
+
+            ### Draw the streamlines
+            if draw_streamlines:
+                import archibald.toolbox.pretty_plots as p
+                for i in range(self.streamlines.shape[0]):
+                    plotter.add_mesh(
+                        pv.Spline(self.streamlines[i, :, :].T),
+                        color=p.adjust_lightness("#7700FF", 1.5),
+                        # color=p.adjust_lightness("red", 1.5),
+                        # color=p.adjust_lightness("#00d0c5", 1.5),
+                        opacity=0.7,
+                        line_width=1
+                    )
+
+            if show:
+                plotter.show(**show_kwargs)
+            return plotter
+
+        else:
+            raise ValueError("Bad value of `backend`!")
+            
+    def draw_flow(self,
+                  z: float = None,
+                  x_bounds: np.ndarray = (None, None),
+                  y_bounds: np.ndarray = (None, None),
+                  margin: float = 1.,
+                  n_cells: int = 50,
+                  draw_streamlines: bool = True,
+                  color: str = 'black',
+                  draw_contour: bool = True,
+                  cmap: str = 'viridis',
+                  speed_bounds: np.ndarray = (None, None),
+                  ):
+        """Draws the velocity field in a horizontal plane at height z."""
+        
+        import matplotlib.pyplot as plt
+        
+        geometry_center = np.mean(self.collocation_points, axis=0)
+        geometry_dims = np.array([
+            np.max(self.collocation_points[:,i]) - np.min(self.collocation_points[:,i]) for i in range(3)
+            ])
+        
+        geometry_dims *= (1 + margin)
+        
+        geometry_box = np.hstack(
+            (tall(geometry_center - geometry_dims/2),
+             tall(geometry_center + geometry_dims/2)))
+        
+        geometry_cube = np.hstack(
+            (tall(geometry_center - np.max(geometry_dims[:-1])/2),
+             tall(geometry_center + np.max(geometry_dims[:-1])/2))
+            )
+        
+        xmin, xmax = x_bounds
+        ymin, ymax = y_bounds
+        
+        if xmin is None:
+            xmin = geometry_cube[0, 0]
+        if xmax is None:
+            xmax = geometry_cube[0, 1]
+        if ymin is None:
+            ymin = geometry_cube[1, 0]
+        if ymax is None:
+            ymax = geometry_cube[1, 1]
+            
+        if z is None:
+            z = geometry_center[2]
+        
+        nx = n_cells
+        ny = int(nx * (ymax-ymin)/(xmax-xmin))
+        
+        x = np.linspace(xmin, xmax, nx)
+        y = np.linspace(ymin, ymax, ny)
+        
+        X, Y = np.meshgrid(x, y)
+        
+        # Convert meshgrid to (n*m, 2) array
+        gridXYZ = np.column_stack([X.ravel(), Y.ravel(), z*np.ones(nx*ny)])
+        
+        field = self.get_velocity_at_points(gridXYZ)
+        
+        # Define vector field
+        U = field[:,0]
+        V = field[:,1]
+        
+        U = U.reshape(X.shape)
+        V = V.reshape(X.shape)
+        
+        W = np.linalg.norm(field, axis=1)
+        
+        W = W.reshape(X.shape)
+        
+        wmin, wmax = speed_bounds
+        
+        if wmin is None:
+            wmin = self.reference_speed(z) * 0.75
+        if wmax is None:
+            wmax = self.reference_speed(z) * 1.25
+            
+        # Thresholding the speed magnitude
+        W[W > wmax] = wmax
+        W[W < wmin] = wmin
+        
+        lw = W**2 / 1e2
+        
+        # Create quiver plot
+        plt.figure(figsize=(10, 10*(ymax-ymin)/(xmax-xmin)))
+        if draw_contour:
+            plt.contourf(X, Y, W, cmap=cmap, levels=10)
+            plt.colorbar(label='Speed (m/s)')
+        if draw_streamlines:
+            plt.streamplot(X, Y, U, V, color=color, linewidth=lw)
+
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title('Flow at z='+str(round(z,3))+' m')
+        # plt.grid()
+        plt.axis('equal')
+        plt.show()
+
+
+class AeroVortexLatticeMethod(VortexLatticeMethod):
+    """
+    An explicit (linear) vortex-lattice-method aerodynamics analysis.
+
+    Usage example:
+        >>> analysis = arb.VortexLatticeMethod(
+        >>>     planform=my_planform,
+        >>>     op_point=arb.OperatingPoint(
+        >>>         velocity=100, # m/s
+        >>>         alpha=5, # deg
+        >>>         beta=4, # deg
+        >>>         p=0.01, # rad/sec
+        >>>         q=0.02, # rad/sec
+        >>>         r=0.03, # rad/sec
+        >>>     )
+        >>> )
+        >>> aero_data = analysis.run()
+        >>> analysis.draw()
+    """
+
+    def __init__(self,
+                 planform: Rig,
+                 op_point: OperatingPoint,
+                 xyz_ref: List[float] = None,
+                 IZsym: int = 0,
+                 to_sym: List[bool] = None,
+                 Zsym: float = 0.0,
+                 verbose: bool = False,
+                 spanwise_resolution: int = 10,
+                 spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 chordwise_resolution: int = 10,
+                 chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 vortex_core_radius: float = 1e-8,
+                 align_trailing_vortices_with_wind: bool = True,
+                 ):
+        
+        super().__init__(planform,
+                         op_point,
+                         xyz_ref,
+                         IZsym,
+                         to_sym,
+                         Zsym,
+                         verbose,
+                         spanwise_resolution,
+                         spanwise_spacing_function,
+                         chordwise_resolution,
+                         chordwise_spacing_function,
+                         vortex_core_radius,
+                         align_trailing_vortices_with_wind,
+                         )
+        
+        self.fluid = self.op_point.environment.air
+        
+        self.visc_corr = 0.
+        
+    def get_freestream_velocity_at_points(self,
+                                          points: np.ndarray,
+                                          ) -> np.ndarray:
+        """
+        Computes the freestream velocity at a set of points in the flowfield.
+
+        Args:
+            points: A Nx3 array of points that you would like to know the induced velocities at. Given in geometry axes.
+
+        Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
+
+        """
+        
+        # TRUE flow SPEED
+        twa = self.op_point.twa
+        rot_mat = np.rotation_matrix_3D(twa*np.pi/180., np.array([0.,0.,1.]))
+        
+        true_wind_velocities = np.multiply(tall(self.op_point._tws(points[:,2])), wide(np.array([-1., 0., 0.])))
+        # true_wind_velocities = np.dot(true_wind_velocities, rot_mat)
+        
+        # true_wind_velocities = np.array([[self.op_point._tws(points[i,2]) * np.cosd(twa),
+        #                                   -self.op_point._tws(points[i,2]) * np.sind(twa),
+        #                                   0.] for i in range(points.shape[0])
+        #     ])
+        true_wind_velocities = true_wind_velocities @ rot_mat
+        
+        self.true_wind = true_wind_velocities
+        
+        # FAIR flow SPEED
+        ship_speed_velocities = np.ones(points.shape) * np.array([-1., 0., 0.]) * self.op_point._stw
+        
+        # SUM
+        freestream_velocities = true_wind_velocities + ship_speed_velocities
+        
+        return freestream_velocities
+    
+    def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
+        return self.op_point.air_dynamic_pressure()
+    
+    def reference_speed(self,
+                        z:float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
+        return self.op_point._aws(z)
+    
+
+#IGNORE    
+# class RotorVortexLatticeMethod(AeroVortexLatticeMethod):
+#     """
+#     An explicit (linear) vortex-lattice-method aerodynamics analysis to handle rotor sails
+
+#     """
+#     def __init__(self,
+#                  planform: Appendage,
+#                  op_point: OperatingPoint,
+#                  xyz_ref: List[float] = None,
+#                  IZsym: int = 0,
+#                  to_sym: List[bool] = None,
+#                  Zsym: float = 0.0,
+#                  verbose: bool = False,
+#                  spanwise_resolution: int = 10,
+#                  spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+#                  chordwise_resolution: int = 10,
+#                  chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+#                  vortex_core_radius: float = 1e-8,
+#                  align_trailing_vortices_with_wind: bool = True,
+#                  R: float = 1.,
+#                  SR: float = 1.
+#                  ):
+        
+#         super().__init__(planform,
+#                          op_point,
+#                          xyz_ref,
+#                          IZsym,
+#                          to_sym,
+#                          Zsym,
+#                          verbose,
+#                          spanwise_resolution,
+#                          spanwise_spacing_function,
+#                          chordwise_resolution,
+#                          chordwise_spacing_function,
+#                          vortex_core_radius,
+#                          align_trailing_vortices_with_wind,
+#                          )
+
+
+class HydroVortexLatticeMethod(VortexLatticeMethod):
+    """
+    An explicit (linear) vortex-lattice-method aerodynamics analysis.
+
+    Usage example:
+        >>> analysis = arb.VortexLatticeMethod(
+        >>>     planform=my_planform,
+        >>>     op_point=arb.OperatingPoint(
+        >>>         velocity=100, # m/s
+        >>>         alpha=5, # deg
+        >>>         beta=4, # deg
+        >>>         p=0.01, # rad/sec
+        >>>         q=0.02, # rad/sec
+        >>>         r=0.03, # rad/sec
+        >>>     )
+        >>> )
+        >>> aero_data = analysis.run()
+        >>> analysis.draw()
+    """
+
+    def __init__(self,
+                 planform: Appendage,
+                 op_point: OperatingPoint,
+                 xyz_ref: List[float] = None,
+                 IZsym: int = 0,
+                 to_sym: List[bool] = None,
+                 Zsym: float = 0.0,
+                 verbose: bool = False,
+                 spanwise_resolution: int = 10,
+                 spanwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 chordwise_resolution: int = 10,
+                 chordwise_spacing_function: Callable[[float, float, float], np.ndarray] = np.cosspace,
+                 vortex_core_radius: float = 1e-8,
+                 align_trailing_vortices_with_wind: bool = True,
+                 ):
+        
+        super().__init__(planform,
+                         op_point,
+                         xyz_ref,
+                         IZsym,
+                         to_sym,
+                         Zsym,
+                         verbose,
+                         spanwise_resolution,
+                         spanwise_spacing_function,
+                         chordwise_resolution,
+                         chordwise_spacing_function,
+                         vortex_core_radius,
+                         align_trailing_vortices_with_wind,
+                         )
+        
+        self.fluid = self.op_point.environment.water
+    
+    def get_freestream_velocity_at_points(self,
+                                          points: np.ndarray,
+                                          ) -> np.ndarray:
+        """
+        Computes the freestream velocity at a set of points in the flowfield.
+
+        Args:
+            points: A Nx3 array of points that you would like to know the induced velocities at. Given in geometry axes.
+
+        Returns: A Nx3 of the induced velocity at those points. Given in geometry axes.
+
+        """
+        
+        freestream_velocities = np.ones(points.shape) * np.array([-1., 0., 0.]) * self.op_point._stw
+        
+        return freestream_velocities
+    
+    def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
+        return self.op_point.water_dynamic_pressure()
+    
+    def reference_speed(self,
+                        z: float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
+        return self.op_point._stw
+    
+
+if __name__ == '__main__':
+    ### Import Vanilla Geometry
+    
+    pass
+
+#     from archibald.dynamics.aero_3D.test_aero_3D.geometries.vanilla import planform as vanilla
+
+#     ### Do the AVL run
+#     vlm = HydroVortexLatticeMethod(
+#         planform=vanilla,
+#         op_point=OperatingPoint(
+#             stw=10.,
+#             tws0=10.,
+#             twa=45.,
+#         ),
+#         spanwise_resolution=10,
+#         chordwise_resolution=12,
+#     )
+
+#     res = vlm.run()
+
+# #     for k, v in res.items():
+# #         print(f"{str(k).rjust(10)} : {v}")
+
+

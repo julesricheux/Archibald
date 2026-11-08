@@ -3,9 +3,9 @@ requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "archibald-design"  # PyPI name; the import name stays `archibald`
-version = "1.0.0"       # must match the release tag: v2.1.0
-description = "Core computational and geometry processing library for Archibald."
+name = "archibald-design"
+version = "2.1.0"       # must match the release tag: v2.1.0
+description = "An open-source differentiable performance prediction program (PPP) for sailboats and ships in the preliminary design stage."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Jules Richeux", email = "j.richeux@neoline.eu" }
 ]
-keywords = ["vpp", "geometry", "mesh"]
+keywords = ["ship", "design", "naval", "architecture", "vpp", "ppp", "velocity", "power", "prediction", "program", "python", "optimization", "performance", "sailing", "motor", "hybrid", "skiff", "sailboat", "boat", "cargo", "vessel"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -36,6 +36,13 @@ dependencies = [
     "sortedcontainers",
     "dill",
     "neuralfoil",
+	  "xarray",
+	  "shapely",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
 ]
 
 [project.urls]

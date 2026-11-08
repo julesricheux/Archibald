@@ -1,0 +1,4 @@
+# TO FILL. Chambliss & Boyd (1953), "The planing characteristics of two V-shaped prismatic surfaces having angles of dead rise of 20 and 40 degrees", NACA TN 2876.
+# https://ntrs.nasa.gov/citations/19930083757. The PDF exceeds the size that could be read here (over 10 MB).
+# One line per test point. b in m, deadrise and trim in deg, V in m/s, lambda the mean wetted length ratio, lift and drag in N.
+deadrise,b,trim,V,lambda,lift,drag

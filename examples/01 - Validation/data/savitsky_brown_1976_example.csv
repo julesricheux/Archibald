@@ -1,0 +1,4 @@
+# TO FILL. Worked example of Savitsky & Brown (1976), "Procedures for hydrodynamic evaluation of planing hulls in smooth and rough water", Marine Technology 13(4), 381-400.
+# The paper could not be read online. Printed values go here, and savitsky_planing.py announces when they are present.
+# quantity: tau_deg, lambda, L_K_m, L_C_m, V_m_ms, R_N, R_AW_N ...   value: as printed, in the unit of the quantity name
+quantity,value

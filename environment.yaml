@@ -1,0 +1,24 @@
+name: py313-archibald
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - spyder
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - sympy
+  - cython
+  - pip
+  - pip:
+      - casadi
+      - trimesh
+      - ezdxf
+      - mapbox_earcut
+      - polars
+      - sortedcontainers
+      - dill
+      - neuralfoil
+      - xarray
+      - shapely
