@@ -38,6 +38,11 @@ dependencies = [
     "neuralfoil",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
 [project.urls]
 Homepage = "https://github.com/julesricheux/Archibald"
 Repository = "https://github.com/julesricheux/Archibald"

@@ -32,7 +32,9 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install the package and its test dependencies
-        run: python -m pip install -e ".[test]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
 
       # The tests of test_aero_buildup are ignored by the conftest.py of that folder.
       - name: Run tests
