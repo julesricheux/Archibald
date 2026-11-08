@@ -22,7 +22,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 | `archibald/environment/` | Air, water, gravity |
 | `archibald/modeling/` | Fitting, interpolation, surrogate models |
 | `archibald/toolbox/` | `units`, `mesh_utils`, `statistics/`, `visualization/` (`plotly_Figure3D`, `plotly_utils`, `carpet_plot_utils`) |
-| `examples/` | `01 - Modeling`, `02 - Geometry`, `03 - Validation` (literature models against published data, with its own `README.md`) |
+| `examples/` | `01 - Modeling`, `02 - Geometry`, `03 - Validation` (literature models against published data, with its own `README.md`), `04 - Templates` (fill-in equilibrium templates for new users: motor ship, monohull, multihull, planing, foiling motorboat, foiling racing monohull; not runnable as shipped, each builds its model when given a real mesh) |
 
 `archibald2` and the in-repo `legacy/` are gone. Do not reintroduce them. The sibling folders `../legacy` and `../Experimental` are outside the repo; only read them when asked.
 
