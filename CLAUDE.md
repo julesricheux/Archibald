@@ -44,7 +44,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 - Force and moment results are expressed in the boat motion frame, with moments about its origin.
 - Immersion: hull meshes such as Molenez have the keel near z=0, so immersion `T` means `dz=-T`. Water is at z=0 in the motion frame.
 - `OperatingPoint` stores `_stw`, `_tws0` and `_aws(z)` in m/s. The public `stw`, `tws0`, `aws(z)` are in knots. Apparent wind varies with height through the wind gradient.
-- The default environment is fresh water (about 999.13 kg/m³).
+- The default environment is fresh water in practice (about 999.13 kg/m³), though `Environment` defaults to 35 g/kg of salinity: `Water.density` divides the salinity by 1000 before a formula that expects g/kg (UNESCO form, about 1026 kg/m³ at 35 g/kg and 15 °C), so salinity adds only 0.03 kg/m³. Not fixed: fixing it moves every hydrostatic and hydrodynamic result by about 2.7 %.
 
 ## Sailboat torsors
 
