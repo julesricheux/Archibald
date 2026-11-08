@@ -37,6 +37,7 @@ dependencies = [
     "dill",
     "neuralfoil",
 	"xarray",
+	"shapely",
 ]
 
 [project.optional-dependencies]

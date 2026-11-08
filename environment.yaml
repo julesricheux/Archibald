@@ -21,3 +21,4 @@ dependencies:
       - dill
       - neuralfoil
       - xarray
+      - shapely
