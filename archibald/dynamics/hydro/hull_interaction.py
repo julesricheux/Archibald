@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme()
 
-stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
+stl = os.path.abspath(r"..\..\examples\03 - Geometry\data\molenez2_data\hull.stl")
 
 T0 = 1.3
 env = {'rho': 1025., 'g': 9.81, 'nu': 1.189e-6}

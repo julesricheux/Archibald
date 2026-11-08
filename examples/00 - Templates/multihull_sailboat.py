@@ -19,7 +19,7 @@ small heel to leeward.
 How to use it: replace every line marked TODO with your own data, then run the
 file from this folder. Same structure as monohull_sailboat.py.
 
-Complete working example: ``examples/02 - Geometry/nacra15_equilibrium.py`` (a
+Complete working example: ``examples/03 - Geometry/nacra15_equilibrium.py`` (a
 racing catamaran).
 """
 import archibald.numpy as np

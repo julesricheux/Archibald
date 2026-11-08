@@ -12,7 +12,7 @@ How to use it: replace every line marked TODO with your own data, then run the
 file from this folder. Everything else can stay as it is to start with.
 
 A complete working version of this problem, with a real hull, is
-``examples/02 - Geometry/molenez_propulsion.py``.
+``examples/03 - Geometry/molenez_propulsion.py``.
 """
 import archibald.numpy as np
 

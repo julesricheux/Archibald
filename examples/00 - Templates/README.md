@@ -11,7 +11,7 @@ These files are starting points for your own project, not ready-to-run examples.
 | [`foiling_motorboat.py`](foiling_motorboat.py) | Motorboat on foils (RIB with U-foils) | Thrust, ride height and trim at a given speed |
 | [`foiling_racing_sailboat.py`](foiling_racing_sailboat.py) | Racing monohull with foils and canting keel (IMOCA, Mini 6.50) | Speed, leeway, heel and ride height, for a given cant angle |
 
-For working examples with real geometry and checked results, see [`../02 - Geometry`](../02%20-%20Geometry/). The Molenez files there show a cargo sailboat, the 49er files a skiff, and `49er_foiling.py` a foiler taking off.
+For working examples with real geometry and checked results, see [`../03 - Geometry`](../03%20-%20Geometry/). The Molenez files there show a cargo sailboat, the 49er files a skiff, and `49er_foiling.py` a foiler taking off.
 
 ## How every template is organised
 
@@ -55,6 +55,6 @@ Archibald writes every force as a formula of the unknowns, then asks an optimize
 
 ## Before trusting the numbers
 
-Every method in Archibald comes from a published source, given in its module, and has a range of validity: hull type, Froude number, proportions. [`../03 - Validation/README.md`](../03%20-%20Validation/README.md) says which ones have been compared with published data. Results outside a method's range, or from a model not yet validated, are a first estimate, not a prediction.
+Every method in Archibald comes from a published source, given in its module, and has a range of validity: hull type, Froude number, proportions. [`../01 - Validation/README.md`](../01%20-%20Validation/README.md) says which ones have been compared with published data. Results outside a method's range, or from a model not yet validated, are a first estimate, not a prediction.
 
 If something looks wrong, please say so: see [`CONTRIBUTING.md`](../../CONTRIBUTING.md). Reports from naval architects are what make the package better.

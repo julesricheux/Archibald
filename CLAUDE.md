@@ -22,7 +22,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 | `archibald/environment/` | Air, water, gravity |
 | `archibald/modeling/` | Fitting, interpolation, surrogate models |
 | `archibald/toolbox/` | `units`, `mesh_utils`, `statistics/`, `visualization/` (`plotly_Figure3D`, `plotly_utils`, `carpet_plot_utils`) |
-| `examples/` | `01 - Modeling`, `02 - Geometry`, `03 - Validation` (literature models against published data, with its own `README.md`), `04 - Templates` (fill-in equilibrium templates for new users: motor ship, monohull, multihull, planing, foiling motorboat, foiling racing monohull; not runnable as shipped, each builds its model when given a real mesh) |
+| `examples/` | `00 - Templates` (fill-in equilibrium templates for new users: motor ship, monohull, multihull, planing, foiling motorboat, foiling racing monohull; not runnable as shipped, each builds its model when given a real mesh), `01 - Validation` (literature models against published data, with its own `README.md`), `02 - Modeling`, `03 - Geometry` |
 
 `archibald2` and the in-repo `legacy/` are gone. Do not reintroduce them. The sibling folders `../legacy` and `../Experimental` are outside the repo; only read them when asked.
 
@@ -54,7 +54,7 @@ Every `compute_*` stores results in `boat.forces` and `boat.moments`: `F<x>_<i>`
 - **CasADi pitfall:** `(1x3) + (3x1)` raises in CasADi but broadcasts in NumPy, so keep everything wide. Prefer `x = x + y` to `+=` in accumulators.
 - **New components:** use `_start_torsor(group, op_point)` and `_add_torsor(group, element, F, M)`. They clear stale keys, and record the operating point checked by `compute_torsor`.
 
-Equilibrium, with `Opti` only and no registry of what varies (`examples/02 - Geometry/molenez_propulsion.py`):
+Equilibrium, with `Opti` only and no registry of what varies (`examples/03 - Geometry/molenez_propulsion.py`):
 
 ```python
 opti = Opti()
@@ -100,7 +100,7 @@ Hull hydrodynamics:
 
 Hydrostatics:
 - `Hull.compute_buoyancy` never moves the mesh. It brings the water plane into the hull frame instead.
-- To draw a solved position, move a copy, as in `examples/02 - Geometry/molenez_equilibrium.py`:
+- To draw a solved position, move a copy, as in `examples/03 - Geometry/molenez_equilibrium.py`:
 
 ```python
 boat_sol = sol(boat)
@@ -140,7 +140,7 @@ $env:MPLBACKEND = "Agg"
   - 1 is the black box nonsmooth solver test.
 - `Sailboat` and `draw_vlm` have almost no unit tests (only `geometry/test_force_arrows.py`). Check them with a script.
 - `archibald/numpy/test_numpy/test_all_operations_run.py` calls `np.seterr(all="raise")` when collected, and it applies to every later test of the session: underflows in `softplus` become errors. Tests that hit them need `onp.errstate`, as in `test_validation_published.py`.
-- **Validation:** `examples/03 - Validation/` compares literature models with published data and saves figures. Its `README.md` has the status of each model and what is still needed. A CSV of `data/` with a `# TO FILL` header is a blank, and scripts print `[INPUT NEEDED]` until it has rows. Keep sources in each script's docstring. Numbers that must not move go in `test_validation_published.py` and `test_windage_published.py`.
+- **Validation:** `examples/01 - Validation/` compares literature models with published data and saves figures. Its `README.md` has the status of each model and what is still needed. A CSV of `data/` with a `# TO FILL` header is a blank, and scripts print `[INPUT NEEDED]` until it has rows. Keep sources in each script's docstring. Numbers that must not move go in `test_validation_published.py` and `test_windage_published.py`.
 - Examples use relative data paths, so run them from their own folder.
 - **CI:** `.github/workflows/run-pytest.yml` runs on `main` and `develop` with Python 3.11-3.13. It excludes the known-broken tests above by name, so when you fix one, remove its entry. CI installs the latest casadi (3.8.2 in November 2026), while `py313` has 3.7.2. IPOPT behaves differently between them, so test a solver test under both: `pip install --no-deps --target <dir> casadi` and put that folder first on `PYTHONPATH`. A new top-level import of an undeclared package breaks `import archibald` for pip users, so declare it in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
 - **Publishing:** `publish.yml` runs on `v*` tags and only exists on `main` for now, so tag from `main`. The tag must match the `pyproject.toml` version.
@@ -154,13 +154,13 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 
 - VLM: `spanwise_resolution` > 1 raises `IndexError` in `viscous_computation` (`strips_y` has one row per section pair). Use more sections instead.
 - `ThinAirfoil` with `mc=0` is not symmetric through NeuralFoil: CL is +0.77 at +8 deg and -0.28 at -8 deg. Use a section with thickness, such as `Airfoil("naca0012")`, for appendages.
-- 49er: `examples/02 - Geometry/49er_sailboat_object.py` balances Fx and Fy (stw, leeway) at heel 0 and dz 0, with one placeholder mass of 200.5 kg: 18.6 kt and -2.24 deg at TWA 50, TWS 20, in 5 IPOPT iterations from (18 kt, -2.5 deg). From (12 kt, -5 deg) it does not converge in 50. The rig heeling moment (-11.5 kN.m) is not balanced, so the speed is that of an upright boat.
+- 49er: `examples/03 - Geometry/49er_sailboat_object.py` balances Fx and Fy (stw, leeway) at heel 0 and dz 0, with one placeholder mass of 200.5 kg: 18.6 kt and -2.24 deg at TWA 50, TWS 20, in 5 IPOPT iterations from (18 kt, -2.5 deg). From (12 kt, -5 deg) it does not converge in 50. The rig heeling moment (-11.5 kN.m) is not balanced, so the speed is that of an upright boat.
 - Molenez load cases: `molenez_hybrid.py` and `molenez_gz_curve.py` read the columns of the load case table the user provided as displacement [t], LCG, TCG, VCG [m] in mesh axes. This is not confirmed.
 - `molenez_hybrid.py` (sails, fins, rudder, propeller; 5 dofs, Mz free) converges in 6 iterations at STW 8, TWA 60, TWS 8, containers case: T 1.319 m, heel -6.0 deg, leeway -1.7 deg, 172 rpm, 1.03 kN of thrust. At TWS 15 the wings overdrive the boat and there is no solution with rpm > 0. The propeller, wake fraction and thrust deduction are placeholders. Its fins and rudder are planform outlines, read with `geom_utils.outline_to_le_chords`.
 - `molenez_gz_curve.py`: heel sweep 0-90 deg with T and trim solved (Fz, My), all converged. For the containers case, GZ max is 0.89 m at 32 deg and stability vanishes at 82 deg. The hull is taken as watertight, with no deck edge or downflooding.
 - `49er_foiling.py`: a placeholder T-foil at the daggerboard tip, Fx and Fz (stw, dz) under fixed thrust. With a fixed incidence the dry hull makes the problem singular, because nothing depends on dz, so the foil incidence falls with dz like a wand. The thrust sweep (50-450 N) jumps from 12.6 to 21.7 kt between 275 and 300 N, at the take-off hump (297 N at 15 kt, 255 N at 17 kt). A fixed-speed sweep follows the curve continuously through lift-off. Every solve converges, but only with 25 sections on the strut and rudder. With 10, the strips leaving the water one by one through the 1 cm density blend made the drag non-monotonic, and 2 thrusts failed.
 - Every Nacra 15 figure below predates the VLM lift axis fix (sail drive about doubled on the 49er), so rerun before trusting them.
-- Nacra 15: `examples/02 - Geometry/nacra15_equilibrium.py` balances Fx and Fy (stw, leeway) at fixed heel, with dz an `opti.parameter`. Its DRAFT section, commented out, solves dz from Fz instead (-0.011 m for the 250 kg of placeholder, unsourced masses at heel -8, windward hull just wet). The 3-dof balance with Mz has not converged on any set of dofs tried. Yaw cannot balance at a sensible leeway: the sail force acts at x about 2.1 m, ahead of the fin (1.5 m), and the rudders sit at x about 0, so they move Fy (about 280 N/deg at 12 kt) but not Mz. Balance then needs the fin to carry about 1.4 times the sail side force and the rudders to push to leeward. After the VLM orientation fix (TWA 55, TWS 20, heel -8, trims as in `nacra15_resistance.py`), a damped numerical Newton on (stw, leeway, rudder) for (Fx, Fy, Mz) kept Mz above 1.2 kN.m; with Jones hull side force added, Mz only neared zero at about 16 deg leeway and 5 kt. Check the longitudinal positions of the rig and boards first. Rudder angle there: rotation about the leading-edge line, bottom to top, positive pushes to port.
+- Nacra 15: `examples/03 - Geometry/nacra15_equilibrium.py` balances Fx and Fy (stw, leeway) at fixed heel, with dz an `opti.parameter`. Its DRAFT section, commented out, solves dz from Fz instead (-0.011 m for the 250 kg of placeholder, unsourced masses at heel -8, windward hull just wet). The 3-dof balance with Mz has not converged on any set of dofs tried. Yaw cannot balance at a sensible leeway: the sail force acts at x about 2.1 m, ahead of the fin (1.5 m), and the rudders sit at x about 0, so they move Fy (about 280 N/deg at 12 kt) but not Mz. Balance then needs the fin to carry about 1.4 times the sail side force and the rudders to push to leeward. After the VLM orientation fix (TWA 55, TWS 20, heel -8, trims as in `nacra15_resistance.py`), a damped numerical Newton on (stw, leeway, rudder) for (Fx, Fy, Mz) kept Mz above 1.2 kN.m; with Jones hull side force added, Mz only neared zero at about 16 deg leeway and 5 kt. Check the longitudinal positions of the rig and boards first. Rudder angle there: rotation about the leading-edge line, bottom to top, positive pushes to port.
 - `Hull.compute_resistance`: DSYHS `Rw` is noisy with mesh-derived hull parameters (factor 4 for 1.5 cm of immersion on the Nacra), and changes with leeway through the hull dimensions.
 - `compute_propulsion`: the advance speed ignores the angle between flow and shaft, and the torque reaction is not in the moment. Wake, thrust deduction and etaR are inputs, as hulls do not compute them.
 - `Sailboat.__init__`: `name` and `xyz_ref` are not stored, and list arguments use mutable defaults.
@@ -176,7 +176,7 @@ Confirmed and not fixed unless noted otherwise. Check they still exist before re
 - Windage: the drag areas of one crew member are inverted between models. ORC has head 0.271 and beam 0.540 m², Day has head 0.511 and beam 0.305 m².
 - `holtrop.py`: `m_1` divides by `T + 0.1` (about -6.6 % on `Rw` at T = 1.3 m, -0.13 % on `m1` at T = 10 m), `compute_Rtr_holtrop` does not use the paper's `Fr_T`, friction and correlation use `Aws - Atr`, and `lcb` from a mesh is a fraction where the method expects percent. The 1984 terms are cited as 1982. There is no `t_single`.
 - `miyazawa.py` gives 31 % viscous interference at S/L 0.2, large against the module's own note. Its source has not been read.
-- `dynamics/hydro/validation_planing.py` has stale imports and does not run. `savitsky_planing.py` in `03 - Validation` supersedes it.
+- `dynamics/hydro/validation_planing.py` has stale imports and does not run. `savitsky_planing.py` in `01 - Validation` supersedes it.
 
 ## History worth knowing
 

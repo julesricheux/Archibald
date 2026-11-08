@@ -44,7 +44,7 @@ op_point = OperatingPoint(
 )
 
 hull = Hull(
-    mesh=os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
+    mesh=os.path.abspath(r"..\..\examples\03 - Geometry\data\molenez2_data\hull.stl")
 )
 
 sailboat = Sailboat(

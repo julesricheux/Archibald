@@ -46,7 +46,7 @@ Issues are public, so please read [Confidential designs and data](#confidential-
 A few minutes here saves a round of questions.
 
 1. **Check what is already known.**
-   - [`examples/03 - Validation/README.md`](examples/03%20-%20Validation/README.md) says which models have been compared with published data, and which have not.
+   - [`examples/01 - Validation/README.md`](examples/01%20-%20Validation/README.md) says which models have been compared with published data, and which have not.
    - The "Known issues" section of [`CLAUDE.md`](CLAUDE.md) lists confirmed problems. This file is written for AI coding assistants, but it is plain text and readable.
    - Search the [open and closed issues](https://github.com/julesricheux/Archibald/issues?q=is%3Aissue).
 
@@ -135,7 +135,7 @@ For a typo or an unclear sentence in a docstring, an example or this page, edit 
 
 ### Providing validation data
 
-[`examples/03 - Validation`](examples/03%20-%20Validation/) compares the literature models with published data. Some comparisons are waiting for numbers. In its `data/` folder, a CSV file whose header starts with `# TO FILL` is a blank template, and the matching script prints `[INPUT NEEDED]` until it has rows. The README of that folder lists what is missing.
+[`examples/01 - Validation`](examples/01%20-%20Validation/) compares the literature models with published data. Some comparisons are waiting for numbers. In its `data/` folder, a CSV file whose header starts with `# TO FILL` is a blank template, and the matching script prints `[INPUT NEEDED]` until it has rows. The README of that folder lists what is missing.
 
 To fill one, you do not need to run anything:
 

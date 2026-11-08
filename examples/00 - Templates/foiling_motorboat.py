@@ -15,7 +15,7 @@ once the hull is dry nothing sets the ride height and the problem has no
 unique answer. Real foilers control the foil angle (a wand, a sensor and a
 flap). Here the angle of the front foil decreases linearly as the boat rises:
 choose ``RIDE_GAIN`` from your control system. See
-``examples/02 - Geometry/49er_foiling.py`` for a working take-off.
+``examples/03 - Geometry/49er_foiling.py`` for a working take-off.
 
 The foils are lifting surfaces computed with a vortex lattice method. Where a
 foil crosses the water surface, its strips blend from water to air density over
@@ -165,7 +165,7 @@ print(f"Weight on hull   : {100 * hull_share:.0f} % (0 % = flying)")
 
 # To follow the take-off, make the speed an opti.parameter and solve at
 # increasing speeds, each solve starting from the previous one: see
-# examples/02 - Geometry/49er_foiling.py.
+# examples/03 - Geometry/49er_foiling.py.
 
 boat_solved = sol(boat)
 boat_solved.draw_vlm(draw_forces=True)

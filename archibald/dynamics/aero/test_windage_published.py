@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Windage formulas against their sources, see ``examples/03 - Validation/windage.py``."""
+"""Windage formulas against their sources, see ``examples/01 - Validation/windage.py``."""
 import math
 
 import numpy as onp

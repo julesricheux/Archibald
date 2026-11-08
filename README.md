@@ -7,16 +7,19 @@
 [![PyPI](https://img.shields.io/pypi/v/archibald-design.svg)](https://pypi.org/project/archibald-design/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Archibald is a performance prediction and design library for sailboats, motor boats and ships.** Give it a hull mesh, sail and foil outlines and a list of masses: it finds how the boat floats, heels, trims and sails.
+**Archibald is a Python 3 library for performance prediction and preliminary design of sailboats, motor boats and ships.** From a hull mesh, sail and foil outlines and a list of masses, it computes how the boat floats, heels, trims and sails.
+
+- 🎓 Built for naval architects and engineers use cases in mind. Still under development, though its modules can already be used on their own.
+- ✏️ Imports [Rhino](https://www.rhino3d.com) and [AutoCAD](https://www.autodesk.com/products/autocad/overview) drawings directly, so you can quickly test design choices and see how they affect performance.
 
 <table>
     <tr>
         <td width="50%" valign="top">
-            <a href="examples/02%20-%20Geometry/49er_sailboat_object.py"><img src="media/49er_equilibrium.png" alt="3D view of a 49er skiff on the water plane, sails coloured by pressure coefficient, with streamlines around the sails and the appendages"></a>
+            <a href="examples/03%20-%20Geometry/49er_sailboat_object.py"><img src="media/49er_equilibrium.png" alt="3D view of a 49er skiff on the water plane, sails coloured by pressure coefficient, with streamlines around the sails and the appendages"></a>
             <p align="center"><b>A skiff in 20 kt of wind.</b> Boat speed and leeway of a 49er, held upright, with placeholder masses.</p>
         </td>
         <td width="50%" valign="top">
-            <a href="examples/02%20-%20Geometry/molenez_hybrid.py"><img src="media/molenez_hybrid_equilibrium.png" alt="3D view of the Molenez cargo sailboat with two wing sails coloured by pressure coefficient, streamlines, and arrows for weight, buoyancy, sail, hull, appendage and propeller forces"></a>
+            <a href="examples/03%20-%20Geometry/molenez_hybrid.py"><img src="media/molenez_hybrid_equilibrium.png" alt="3D view of the Molenez cargo sailboat with two wing sails coloured by pressure coefficient, streamlines, and arrows for weight, buoyancy, sail, hull, appendage and propeller forces"></a>
             <p align="center"><b>A cargo ship under wings and propeller.</b> Draft, heel, trim, leeway and rpm of the Molenez, with the forces in balance. Yaw is not balanced and the propeller is a placeholder.</p>
         </td>
     </tr>
@@ -33,7 +36,7 @@ pip install archibald-design
 
 **[What it does](#what-can-you-do-with-it)** · **[Projects](#projects-built-with-archibald)** · **[Methods](#whats-inside)** · **[A first equilibrium](#a-first-equilibrium)** · **[Getting started](#getting-started)** · **[Validation](#how-far-can-you-trust-it)**
 
-## Projects built with Archibald
+## ✍️ Projects built with Archibald
 
 Archibald 1.0.0 was widely used in the following student projects:
 
@@ -77,68 +80,68 @@ Archibald 1.0.0 was widely used in the following student projects:
 
 Used Archibald on a boat of yours? [Tell us about it](https://github.com/julesricheux/Archibald/issues).
 
-## What can you do with it?
+## ⚡ What can you do with it?
 
 Click an image to open the script that produced it.
-
+<!-- 
 ### Stability
-<!-- PLACEHOLDER: rename to "Stability and foiling" when the foiling figure below is added. -->
+PLACEHOLDER: rename to "Stability and foiling" when the foiling figure below is added. -->
 <!--
 <table>
     <tr>
         <td width="50%" valign="top">
-            <a href="examples/02%20-%20Geometry/molenez_gz_curve.py"><img src="media/molenez_gz_curve.png" alt="Righting arm GZ against heel from 0 to 90 degrees for the Molenez in its containers load case"></a>
+            <a href="examples/03%20-%20Geometry/molenez_gz_curve.py"><img src="media/molenez_gz_curve.png" alt="Righting arm GZ against heel from 0 to 90 degrees for the Molenez in its containers load case"></a>
             <p align="center"><b>Righting arm curves from the mesh.</b> Heel sweep with immersion and trim solved at every point. The hull is taken as watertight, with no downflooding.</p>
         </td>
         PLACEHOLDER: foiling figure. Set the image path and uncomment this cell.
         <td width="50%" valign="top">
-            <a href="examples/02%20-%20Geometry/49er_foiling.py"><img src="YOUR IMAGE PATH" alt="Three plots against boat speed for a 49er with a T-foil: thrust, ride height, and the share of the weight carried by the hull"></a>
+            <a href="examples/03%20-%20Geometry/49er_foiling.py"><img src="YOUR IMAGE PATH" alt="Three plots against boat speed for a 49er with a T-foil: thrust, ride height, and the share of the weight carried by the hull"></a>
             <p align="center"><b>Foil take-off.</b> The thrust hump, ride height and weight carried by the hull, on a 49er with a placeholder T-foil.</p>
         </td>
     </tr>
 </table>
 -->
-### Hull resistance
+### 🚢 Hull resistance
 
 <table>
     <tr>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/dsyhs_towing_tank.py"><img src="examples/03%20-%20Validation/figures/dsyhs_towing_tank.png" alt="Residuary resistance of the Delft series against Froude number and predicted against measured for 44 hulls"></a>
-            <p align="center"><b>Delft Systematic Yacht Hull Series</b> against the tank data of 44 hulls. The published polynomial follows the data; the function as shipped reads low at high Froude numbers (<a href="examples/03%20-%20Validation/README.md#delft-systematic-yacht-hull-series">details</a>).</p>
+            <a href="examples/01%20-%20Validation/dsyhs_towing_tank.py"><img src="examples/01%20-%20Validation/figures/dsyhs_towing_tank.png" alt="Residuary resistance of the Delft series against Froude number and predicted against measured for 44 hulls"></a>
+            <p align="center"><b>Delft Systematic Yacht Hull Series</b> against the tank data of 44 hulls. The published polynomial follows the data; the function as shipped reads low at high Froude numbers (<a href="examples/01%20-%20Validation/README.md#delft-systematic-yacht-hull-series">details</a>).</p>
         </td>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/michell_wigley.py"><img src="examples/03%20-%20Validation/figures/michell_wigley.png" alt="Michell wave resistance of the Wigley hull against an independent integral and measurements, and mesh volume error against hull length"></a>
+            <a href="examples/01%20-%20Validation/michell_wigley.py"><img src="examples/01%20-%20Validation/figures/michell_wigley.png" alt="Michell wave resistance of the Wigley hull against an independent integral and measurements, and mesh volume error against hull length"></a>
             <p align="center"><b>Michell thin ship theory</b> on the Wigley hull, against an independent integration and measurements. The right magnitude, with the exaggerated humps and hollows the theory is known for.</p>
         </td>
     </tr>
     <tr>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/holtrop_1982_example.py"><img src="examples/03%20-%20Validation/figures/holtrop_1982_example.png" alt="Bar chart of resistance components at 25 knots, Holtrop and Mennen 1982 against Archibald"></a>
+            <a href="examples/01%20-%20Validation/holtrop_1982_example.py"><img src="examples/01%20-%20Validation/figures/holtrop_1982_example.png" alt="Bar chart of resistance components at 25 knots, Holtrop and Mennen 1982 against Archibald"></a>
             <p align="center"><b>Holtrop &amp; Mennen</b> against the worked example of the 1982 paper. The differences come from the later formulas used by the module.</p>
         </td>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/added_resistance_waves.py"><img src="examples/03%20-%20Validation/figures/added_resistance_waves.png" alt="Added resistance of the KVLCC2 in head seas against wavelength, with a prediction interval, and the DSYHS added resistance table"></a>
+            <a href="examples/01%20-%20Validation/added_resistance_waves.py"><img src="examples/01%20-%20Validation/figures/added_resistance_waves.png" alt="Added resistance of the KVLCC2 in head seas against wavelength, with a prediction interval, and the DSYHS added resistance table"></a>
             <p align="center"><b>Added resistance in waves.</b> Mittendorf et al. on the KVLCC2 against another code (PRECAL), and the DSYHS table.</p>
         </td>
     </tr>
 </table>
 
-### Multihulls
+### ⛵ Multihulls
 
-<a href="examples/03%20-%20Validation/multihull_interaction.py"><img src="examples/03%20-%20Validation/figures/multihull_interaction.png" alt="Wave interference factor against Froude number at three hull separations, and viscous interference against separation"></a>
+<a href="examples/01%20-%20Validation/multihull_interaction.py"><img src="examples/01%20-%20Validation/figures/multihull_interaction.png" alt="Wave interference factor against Froude number at three hull separations, and viscous interference against separation"></a>
 
 <p align="center"><b>Interference between hulls</b> from thin ship theory and from regressions, at three separations. These models disagree with one another above Fn 0.37, and tank data is still needed to judge them.</p>
 
-### Propellers and windage
+### 🌀 Propellers and windage
 
 <table>
     <tr>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/propeller_b_series.py"><img src="examples/03%20-%20Validation/figures/propeller_b_series.png" alt="KT, KQ and open water efficiency of a B5-75 propeller against advance coefficient for four pitch ratios"></a>
+            <a href="examples/01%20-%20Validation/propeller_b_series.py"><img src="examples/01%20-%20Validation/figures/propeller_b_series.png" alt="KT, KQ and open water efficiency of a B5-75 propeller against advance coefficient for four pitch ratios"></a>
             <p align="center"><b>Wageningen B-series.</b> Open water curves against published design points. Rpm and pitch ratio can be unknowns of the equilibrium.</p>
         </td>
         <td width="50%" valign="top">
-            <a href="examples/03%20-%20Validation/windage.py"><img src="examples/03%20-%20Validation/figures/windage.png" alt="Wind coefficients of a loaded container ship and drag area of one crew member against apparent wind angle"></a>
+            <a href="examples/01%20-%20Validation/windage.py"><img src="examples/01%20-%20Validation/figures/windage.png" alt="Wind coefficients of a loaded container ship and drag area of one crew member against apparent wind angle"></a>
             <p align="center"><b>Windage</b> of superstructures and crew. The two crew models are inverted between head and beam wind, an open point against the ORC document.</p>
         </td>
     </tr>
@@ -149,7 +152,7 @@ Click an image to open the script that produced it.
 <p align="center"><img src="media/flow.gif" alt="Particles following the flow around the sails and appendages"></p>
 -->
 
-## What's inside
+## 🔎 What's inside
 
 | On the boat | Methods |
 |---|---|
@@ -166,9 +169,9 @@ Click an image to open the script that produced it.
 
 Geometry comes in from your CAD tool: hulls as STL meshes, sails and foils as DXF outlines.
 
-## A first equilibrium
+## 🐍 A first equilibrium
 
-What draft, trim and rpm does a ship need at 8 kt? Three steps: what is free, what acts on the boat, what must balance. Run it from [`examples/02 - Geometry`](examples/02%20-%20Geometry/), where the hull mesh is. The mass is only illustrative.
+What draft, trim and rpm does a ship need at 8 kt? Three steps: what is free, what acts on the boat, what must balance. Run it from [`examples/03 - Geometry`](examples/03%20-%20Geometry/), where the hull mesh is. The mass is only illustrative.
 
 ```python
 from archibald.dynamics.hydro import dsyhs
@@ -235,9 +238,9 @@ Draft 1.27 m, trim +0.34 deg, 86 rpm
 Brake power 29 kW
 ```
 
-Add `opti.minimize(...)` and the same script becomes a design optimization: [`molenez_propulsion.py`](examples/02%20-%20Geometry/molenez_propulsion.py) also moves cargo to stay upright and picks the pitch ratio for the least power.
+Add `opti.minimize(...)` and the same script becomes a design optimization: [`molenez_propulsion.py`](examples/03%20-%20Geometry/molenez_propulsion.py) also moves cargo to stay upright and picks the pitch ratio for the least power.
 
-## Getting started
+## 🏁 Getting started
 
 ```bash
 pip install archibald-design
@@ -249,29 +252,29 @@ Then pick the folder that fits:
 
 | Folder | What you get |
 |---|---|
-| [`00 - Templates`](examples/04%20-%20Templates/README.md) | **Start here for your own boat.** Fill-in templates for a motor ship, a cruising monohull, a multihull, a planing boat, a foiling motorboat and a foiling racing monohull |
-| [`01 - Validation`](examples/03%20-%20Validation/README.md) | Each model against published data, with its figures |
-| [`02 - Modeling`](examples/01%20-%20Modeling/) | Fitting and interpolation tools for your own data |
-| [`03 - Geometry`](examples/02%20-%20Geometry/) | Examples on real geometry: the Molenez cargo sailboat, the 49er skiff, the Nacra 15 catamaran |
+| [`00 - Templates`](examples/00%20-%20Templates/README.md) | **Start here for your own boat.** Fill-in templates for a motor ship, a cruising monohull, a multihull, a planing boat, a foiling motorboat and a foiling racing monohull |
+| [`01 - Validation`](examples/01%20-%20Validation/README.md) | Each model against published data, with its figures |
+| [`02 - Modeling`](examples/02%20-%20Modeling/) | Fitting and interpolation tools for your own data |
+| [`03 - Geometry`](examples/03%20-%20Geometry/) | Examples on real geometry: the Molenez cargo sailboat, the 49er skiff, the Nacra 15 catamaran |
 
 An operating point takes speeds in knots and angles in degrees. Axes are x forward, y to port, z up, with the water at z = 0.
 
-## How far can you trust it?
+## ✅ How far can you trust it?
 
-Archibald is an engineering-level tool for preliminary design, and its methods hold only within their range of validity. The [validation page](examples/03%20-%20Validation/README.md) states for each model what it was compared with, what agrees, what does not, and which data is still missing. Few of these comparisons are against measurements so far, and some methods are not validated at all.
+Archibald is an engineering-level tool for preliminary design, and its methods hold only within their range of validity. The [validation page](examples/01%20-%20Validation/README.md) states for each model what it was compared with, what agrees, what does not, and which data is still missing. Few of these comparisons are against measurements so far, and some methods are not validated at all.
 
 Tank results, published tables and a number that looks wrong are all welcome, and you do not need to write code to help: see [how to contribute](CONTRIBUTING.md).
 
-## Credits
+## 🙏 Credits
 
-Archibald is forked from [AeroSandbox](https://github.com/peterdsharpe/AeroSandbox) by Peter Sharpe, the source of its optimization framework and vortex lattice core. Section polars come from [NeuralFoil](https://github.com/peterdsharpe/NeuralFoil), also by Peter Sharpe, and the equations are solved with [CasADi](https://github.com/casadi/casadi) and IPOPT. Archibald 2.0 was developed during the author's time at NEOLINE.
+Archibald is forked from the amazing [AeroSandbox](https://github.com/peterdsharpe/AeroSandbox) by [Peter Sharpe](https://peterdsharpe.github.io/), the source of its optimization framework and vortex lattice core. Section polars come from [NeuralFoil](https://github.com/peterdsharpe/NeuralFoil), also by [Peter Sharpe](https://peterdsharpe.github.io/), and the equations are solved with [CasADi](https://github.com/casadi/casadi) and IPOPT. Archibald 2.0 was developed during the author's time at [NEOLINE](https://www.neoline.eu/).
 
 The papers behind each method are cited in the docstring of its module.
 
-## Contributing
+## 🤝 Contributing
 
 See how you can [help Archibald evolve](CONTRIBUTING.md).
 
-## License
+## ⚖️ License
 
 [MIT](LICENSE).

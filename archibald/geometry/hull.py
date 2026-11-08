@@ -709,7 +709,7 @@ if __name__=="__main__":
     import os
     from archibald.optimization import Opti
     
-    stl = os.path.abspath(r"..\..\examples\02 - Geometry\data\molenez2_data\hull.stl")
+    stl = os.path.abspath(r"..\..\examples\03 - Geometry\data\molenez2_data\hull.stl")
     hull = Hull(mesh=stl)
     
     T0, ref = 1.3, 116.487

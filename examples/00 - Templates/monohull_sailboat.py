@@ -18,7 +18,7 @@ How to use it: replace every line marked TODO with your own data, then run the
 file from this folder. Start with heel and draft fixed (see step 7), then free
 them once the speed and leeway converge.
 
-Complete working examples: ``examples/02 - Geometry/49er_sailboat_object.py``
+Complete working examples: ``examples/03 - Geometry/49er_sailboat_object.py``
 (a skiff, 2 unknowns) and ``molenez_hybrid.py`` (a cargo sailboat, 5 unknowns).
 """
 import archibald.numpy as np

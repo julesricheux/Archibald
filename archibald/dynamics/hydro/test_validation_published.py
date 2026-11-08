@@ -2,7 +2,7 @@
 """
 Hydrodynamic models against numbers printed in their sources.
 
-The plots and the full comparisons are in ``examples/03 - Validation``, with the references.
+The plots and the full comparisons are in ``examples/01 - Validation``, with the references.
 These tests only keep the numbers that must not move.
 """
 import math

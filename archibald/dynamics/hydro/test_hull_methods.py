@@ -13,7 +13,7 @@ from archibald.performance import OperatingPoint
 
 STL = os.path.join(
     os.path.dirname(__file__), "..", "..", "..",
-    "examples", "02 - Geometry", "data", "molenez2_data", "hull.stl",
+    "examples", "03 - Geometry", "data", "molenez2_data", "hull.stl",
 )
 
 SAVITSKY_KW = dict(trim=4., deadrise=15.)
