@@ -50,7 +50,7 @@ def test_horizontal_foil_lift_follows_pitch():
             lifts[order, trim] = float(onp.asarray(result["F_ab"], dtype=float).ravel()[2])
             assert onp.abs(onp.asarray(vlm.alpha, dtype=float)) == pytest.approx(3., abs=0.05)
 
-    # 523 N at 10 kt and 3 deg, i.e. CL 0.26 for an aspect ratio of 6.7
-    assert lifts[1, -3.] == pytest.approx(523., rel=0.05)
+    # 537 N at 10 kt and 3 deg in sea water (default environment), i.e. CL 0.26 for an aspect ratio of 6.7
+    assert lifts[1, -3.] == pytest.approx(537., rel=0.05)
     assert lifts[1, 3.] == pytest.approx(-lifts[1, -3.], rel=1e-6)
     assert lifts[-1, -3.] == pytest.approx(lifts[1, -3.], rel=1e-6)

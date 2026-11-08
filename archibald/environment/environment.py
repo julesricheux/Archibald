@@ -169,19 +169,25 @@ class Water(Fluid):
     @property
     def density(self):
         """
-        Returns density [kg/m^3].
+        Returns density [kg/m^3], at atmospheric pressure.
 
-        Based on Sharqawy et al. (2010). Thermophysical properties of seawater:
-        a review of existing correlations and data.
+        One-atmosphere equation of state of seawater (EOS-80), as reviewed in
+        Sharqawy et al. (2010), Thermophysical properties of seawater: a review of
+        existing correlations and data. It is written in practical salinity S_P,
+        which has no unit, so the absolute salinity of this object [g/kg] is
+        converted with S_A = (35.16504 / 35) S_P (ITTC 7.5-02-01-03, 2011, eq. 3).
+
+        Against the ITTC 7.5-02-01-03 (2011) tables (TEOS-10) at 15 °C, it is within
+        0.05 kg/m^3 from 0 to 35.16504 g/kg (Tables 1, 3 and 4). Before 2026-11 the
+        salinity was divided by 1000 here, so sea water had the density of fresh water.
 
         Validity:
         - -2 < T < 40 °C
         - 0 < S < 42 g/kg
-        Accuracy: ±0.01 %
         """
 
         T = self.temperature
-        S = self.salinity * 1e-3  # g/kg -> kg/kg
+        S = self.salinity * 35. / 35.16504  # absolute salinity [g/kg] -> practical salinity [-]
 
         # Pure water density
         rho_w = (
