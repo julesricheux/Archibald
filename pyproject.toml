@@ -36,6 +36,7 @@ dependencies = [
     "sortedcontainers",
     "dill",
     "neuralfoil",
+	"xarray",
 ]
 
 [project.optional-dependencies]
