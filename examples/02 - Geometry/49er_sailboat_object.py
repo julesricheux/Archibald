@@ -1,45 +1,64 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul  1 14:37:22 2026
+Sailing equilibrium of the 49er in the horizontal plane, 2 dofs.
 
-@author: jrich
+Boat speed and leeway are solved so that the drive of the rig balances the hull
+resistance (Fx) and the side force of the rig is carried by the daggerboard,
+the rudder and the hull (Fy). Same structure as ``nacra15_equilibrium.py``,
+without its first solve of the immersion.
+
+What is held fixed:
+- heel (``HEEL``), meant to come from the crew position later.
+- the immersion dz, an ``opti.parameter``. At dz = 0 and zero heel the hull
+  displaces 192 kg, close to the 200.5 kg of the masses. The weight and the
+  buoyancy are vertical in the motion frame, so they do not enter Fx and Fy.
+- the sail trims and the rudder angle (``RUDDER_ANGLE``).
+- yaw: Mz is not balanced, nor is the heeling moment of the rig (about
+  -11.5 kN.m), so the result is the speed of a boat held upright.
+
+At TWA 50 and TWS 20 the balance is near 18.6 kt and -2.2 deg of leeway. IPOPT
+needs an initial guess close to it: from (12 kt, -5 deg) it does not converge in
+50 iterations.
+
+The daggerboard and the rudder use the symmetric ``e836`` section, so the order
+of their sections (bottom to top in the DXF) does not change the side of their
+lift.
 """
-
 import archibald.numpy as np
-from archibald.geometry.airfoil import ThinAirfoil
-from archibald.geometry import Hull, Sailboat, Rig, Sail, Airfoil, WingXSec, Appendage, Fin
+
+from archibald.dynamics.hydro import holtrop, dsyhs, jones
+from archibald.geometry import Hull, Sailboat, Rig, Sail, WingXSec, ThinAirfoil, Fin, Appendage, Airfoil
 from archibald.geometry.mesh import ArchibaldMesh
-from archibald.toolbox.mesh_utils import load_stl
+from archibald.optimization import Opti
+from archibald.performance import OperatingPoint
 from archibald.toolbox.geom_utils import dxf_to_le_chords
+from archibald.toolbox.mesh_utils import load_stl
+from archibald.weights import MassProperties
 
 
-#%% HULL
+#%% SETTINGS
 
-hullStl = r'data/49er_data/hull.stl'
+TWA = 50.               # true wind angle [deg]
+TWS = 20.               # true wind speed at the reference height [kt]
+HELLMANN = 0.035        # wind gradient exponent
+HEEL = 0.               # fixed heel, positive to starboard [deg]
+DZ = 0.                 # fixed immersion, positive lifts the boat [m]
+MAINSAIL_TRIM = -10.1   # [deg]
+JIB_TRIM = -10.5        # [deg]
+RUDDER_ANGLE = 0.       # about its leading edge, bottom to top; positive pushes to port [deg]
 
-hull = Hull(
-    mesh=hullStl,
-)
 
-# hull.draw(
-#     backend="pyvista",
-#     draw_plane=True,
-#     point=np.array([0, 0, 0]),
-# )
+#%% HULL AND FITTINGS
 
-#%% MESH
+hull = Hull(name="hull", mesh="data/49er_data/hull.stl")
 
-wingsStl = r'data/49er_data/wings.stl'
+wings = ArchibaldMesh(*load_stl("data/49er_data/wings.stl"))  # racks, drawn only
 
-wings = ArchibaldMesh(*load_stl(wingsStl))
 
 #%% RIG
 
-main_le, main_chords = dxf_to_le_chords(r'data/49er_data/gv.dxf', 10)
-jib_le, jib_chords = dxf_to_le_chords(r'data/49er_data/jibsail.dxf', 7)
-
-# main_le[:, 0] *= -1.
-# jib_le[:, 0] *= -1.
+main_le, main_chords = dxf_to_le_chords("data/49er_data/gv.dxf", 10)
+jib_le, jib_chords = dxf_to_le_chords("data/49er_data/jibsail.dxf", 7)
 
 rig = Rig(
     name="49er_rig",
@@ -51,211 +70,167 @@ rig = Rig(
                     xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.45, mc=0.12),
-                    twist=-i/10 * 10,
+                    twist=-i / 10 * 10,
                 )
-            for i, (xyz, c) in enumerate(zip(main_le, main_chords))]
+                for i, (xyz, c) in enumerate(zip(main_le, main_chords))
+            ],
         ),
         Sail(
             name="jibsail",
             xsecs=[
                 WingXSec(
-                    xyz_le=xyz,                    
+                    xyz_le=xyz,
                     chord=c,
                     airfoil=ThinAirfoil(xc=0.45, mc=0.18),
-                    twist=-i/7*60,
+                    twist=-i / 7 * 60,
                 )
-            for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))]
+                for i, (xyz, c) in enumerate(zip(jib_le, jib_chords))
+            ],
         ),
-    ]
+    ],
 )
-
-area0 = np.sum([wing.area() for wing in rig.wings]) + 1e-2
-# area0 = 21.2 # sqm
-
-# SETTINGS
-
-# rig["mainsail"] = rig["mainsail"].rotate_local(
-#     angle_deg=-35.,
-#     axis=jib_le[-1] - main_le[0],
-#     origin=main_le[0],
-# )
-
-# rig["jibsail"] = rig["jibsail"].rotate_local(
-#     angle_deg=-15,
-#     axis=jib_le[-1] - jib_le[0],
-#     origin=jib_le[0],
-# )
-
-# rig.draw()
-
-#%% APPENDAGE
-
-dag_le, dag_chords = dxf_to_le_chords(r'data/49er_data/dagger.dxf', 10)
-rud_le, rud_chords = dxf_to_le_chords(r'data/49er_data/rudder.dxf', 10)
-
-app = Appendage(
-    name="49er_appendages",
-    fins=[
-        Fin(
-            name="dagger",
-            xsecs=[
-                WingXSec(
-                    xyz_le=xyz,
-                    chord=c,
-                    airfoil=Airfoil("e836"),
-                    twist=0.,
-                )
-            for xyz, c in zip(dag_le, dag_chords)]
-        ),
-        Fin(
-            name="rudder",
-            xsecs=[
-                WingXSec(
-                    xyz_le=xyz,
-                    chord=c,
-                    airfoil=Airfoil("e836"),
-                    twist=0.,
-                )
-            for xyz, c in zip(rud_le, rud_chords)]
-        ),
-    ]
-)
-
-#%% SAILBOAT
-
-# rig.draw(thin_wings=True)
-# rig.draw_three_view()
-# hull.draw_three_view()
-
-sailboat = Sailboat(
-    displacement=200.5,
-    cog=[2., 0., 1.],
-    hulls=[hull],
-    rigs=[rig],
-    appendages=[app],
-    fittings=[wings],
-)
-
-# sailboat.draw(
-#     backend="pyvista",
-#     draw_plane=True,
-#     point=np.array([0, 0, 0]),
-#     set_axis_visibility=True,
-# )
-
-#%%
-from archibald.dynamics.aero_3D.vortex_lattice_method import AeroVortexLatticeMethod, HydroVortexLatticeMethod
-from archibald.performance import OperatingPoint
-from archibald.optimization import Opti
-
-opti = Opti()
-
-# t = opti.variable(init_guess=0., upper_bound=90, lower_bound=0)
-
-twa = 50.
-
-op_point = OperatingPoint(
-    stw=12.,
-    tws0=20., 
-    # tws0=opti.variable(init_guess=15.), 
-    # twa = opti.variable(init_guess=40.),
-    twa=twa,
-    # z0=10.,
-    a=0.035,
-    dz=0,
-    heel=0.,
-    trim=0.,
-    # leeway=opti.variable(init_guess=-1.),
-    
-    # mainsail_trim=opti.variable(init_guess=-twa/3., upper_bound=0., lower_bound=-twa),
-    # jib_trim=opti.variable(init_guess=-twa/3., upper_bound=0., lower_bound=-twa),
-    # mainsail_twist = opti.variable(init_guess=np.zeros(8), upper_bound=0, lower_bound=-twa),
-    # jibsail_twist = opti.variable(init_guess=np.zeros(6), upper_bound=0, lower_bound=-twa),
-    
-    mainsail_trim=-10.107250619055744,
-    jib_trim=-10.4517189920483182,
-    mainsail_twist = [ 1.00e-08, -3.21e+00, -7.28e+00, -1.17e+01, -1.63e+01, -2.04e+01, -2.66e+01, -7.76e+01],
-    jibsail_twist = [ -6.9,  -16.07, -28.81, -40.48, -46.39, -77.82],
-    
-)
-
-# for i, xsec in enumerate(rig["mainsail"].xsecs[2:]):
-#     xsec.twist = op_point.mainsail_twist[i]
-
-# for i, xsec in enumerate(rig["jibsail"].xsecs[1:]):
-#     xsec.twist = op_point.jibsail_twist[i]
 
 rig["mainsail"] = rig["mainsail"].rotate_local(
-    angle_deg=op_point.mainsail_trim,
+    angle_deg=MAINSAIL_TRIM,
     axis=jib_le[-1] - main_le[0],
     origin=main_le[0],
 )
-
 rig["jibsail"] = rig["jibsail"].rotate_local(
-    angle_deg=op_point.jib_trim,
+    angle_deg=JIB_TRIM,
     axis=jib_le[-1] - jib_le[0],
     origin=jib_le[0],
 )
 
-for w in app.wings:
-    app[w.name] = w.rotate_local(
-        angle_deg=op_point.leeway,
-        axis=[0,0,1],
-        origin=[0,0,0],
+
+#%% APPENDAGES
+
+fins = []
+for name in ("dagger", "rudder"):
+    le, chords = dxf_to_le_chords(f"data/49er_data/{name}.dxf", 10)
+    fin = Fin(
+        name=name,
+        xsecs=[
+            WingXSec(
+                xyz_le=xyz,
+                chord=c,
+                airfoil=Airfoil("e836"),
+                twist=0.,
+            )
+            for xyz, c in zip(le, chords)
+        ],
     )
+    if name == "rudder":
+        fin = fin.rotate_local(
+            angle_deg=RUDDER_ANGLE,
+            axis=le[-1] - le[0],
+            origin=le[0],
+        )
+    fins.append(fin)
 
-aeroVLM = AeroVortexLatticeMethod(rig, op_point, chordwise_resolution=10, spanwise_resolution=1)
-
-hydroVLM = HydroVortexLatticeMethod(app, op_point, chordwise_resolution=10, spanwise_resolution=1)
-
-resA = aeroVLM.run(alpha_stall=15)
-resH = hydroVLM.run(alpha_stall=15)
-
-opti.maximize((resA["F_ab"][0] + resH["F_ab"][0]))
-# opti.maximize(res["CL"])
-# opti.maximize(res["F_ab"][0] / res["F_ab"][1])
-# opti.maximize(res["F_w"][1] / res["F_w"][0])
-
-area = 0
-for wing in rig.wings:
-    area += wing.area()
-
-opti.subject_to([
-    # (area <= area0),
-    # (resA["F_ab"][1] + resH["F_ab"][1]) == 0.,
-])
-
-# {'F_ab': np.array([-370.36, -674.33,   27.  ])}
+appendage = Appendage(name="49er_appendages", fins=fins)
 
 
-sol = opti.solve()
+#%% MASSES
 
-print(sol((resA["F_ab"][0] + resH["F_ab"][0])))
-
-print(sol(op_point.mainsail_trim))
-print(sol(op_point.jib_trim))
-# print(sol(op_point.mainsail_twist))
-# print(sol(op_point.jibsail_twist))
-
-print(sol(resA["F_ab"][0]))
-
-print("CL", sol(resA["CL"]))
-print("CD", sol(resA["CD"]))
-
-# print(sol(aeroVLM.alpha))
-# print(aeroVLM.alphaeff)
-# print(sol(aeroVLM.soft_stall_fac))
-
-# import matplotlib.pyplot as plt
-# # plt.plot(aeroVLM.insight)
-# plt.plot(aeroVLM.soft_stall_fac)
-# # plt.plot(aeroVLM.stall_fac)
-# plt.ylim((-1e-2, 1+1e-2))
-
-# # print(res)
-# # aeroVLM.draw_flow()
-# aeroVLM.draw()
-
-sailboat.draw()
+# PLACEHOLDER, NOT SOURCED: the displacement and centre of gravity of the former
+# version of this example, to be replaced by the class rules or weighings.
+# Boat axes: x from the transom (hull 0 to 5 m), y to port, z up.
+masses = [
+    MassProperties(mass=200.5, x_cg=2., y_cg=0., z_cg=1.),  # boat and crew
+]
+mass_names = ["boat and crew"]
 
 
+#%% SAILBOAT
+
+boat = Sailboat(
+    name="49er",
+    hulls=[hull],
+    rigs=[rig],
+    appendages=[appendage],
+    fittings=[wings],
+    masses=masses,
+)
+
+resistance_method = {
+    "Rf": dsyhs.compute_Rf_dsyhs,
+    "Rw": dsyhs.compute_Rw_dsyhs,
+    "Rtr": holtrop.compute_Rtr_holtrop,
+    "L": jones.compute_L_jones,
+    "Ri": jones.compute_Ri_jones,
+}
+
+
+#%% EQUILIBRIUM
+
+opti = Opti()
+
+stw = opti.variable(init_guess=18., lower_bound=1.)  # boat speed [kt]
+leeway = opti.variable(init_guess=-2.5)              # positive to starboard [deg]
+dz = opti.parameter(DZ)                             # immersion, positive lifts the boat [m]
+
+op_point = OperatingPoint(
+    stw=stw,
+    twa=TWA,
+    tws0=TWS,
+    a=HELLMANN,
+    heel=HEEL,
+    leeway=leeway,
+    dz=dz,
+)
+
+hull.compute_hydrostatics_properties(op_point)
+
+boat.compute_weight(op_point)
+boat.compute_buoyancy(op_point)
+boat.compute_resistance(
+    op_point,
+    method=resistance_method,
+    **{"Csternchoice": 1, "Bulbchoice": 0},
+)
+boat.compute_aerodynamics(op_point)
+boat.compute_hydrodynamics(op_point)
+
+# Weight and buoyancy are vertical: they are summed but do not enter Fx and Fy.
+Ftot, Mtot = boat.compute_torsor(op_point, components=["h", "sail", "app", "b", "w"])
+
+sol = boat.find_equilibrium(
+    opti,
+    Ftot,
+    Mtot,
+    dofs=["Fx", "Fy"],
+    force_scale=100.,
+    verbose=True,
+    max_iter=50,
+)
+
+
+#%% RESULTS
+
+print(f"\nTWA {TWA:.0f} deg, TWS {TWS:.0f} kt, heel {HEEL:+.1f} deg, dz {DZ:+.3f} m, rudder {RUDDER_ANGLE:+.1f} deg")
+print(f"Boat speed : {sol(stw):.2f} kt")
+print(f"Leeway     : {sol(leeway):+.2f} deg (positive to starboard)")
+
+print("\nResiduals")
+print(f"Fx : {sol(Ftot[0, 0]):+.2e} N")
+print(f"Fy : {sol(Ftot[0, 1]):+.2e} N")
+print(f"Fz : {sol(Ftot[0, 2]) / 9.8066:+.1f} kg (not balanced, dz fixed)")
+print(f"Mz : {sol(Mtot[0, 2]):+.1f} N.m (not balanced)")
+
+print("\nTorsor at equilibrium, motion frame")
+print(f"{'':>10} {'Fx [N]':>9} {'Fy [N]':>9} {'Fz [N]':>9} {'Mx [N.m]':>10} {'Mz [N.m]':>10}")
+for key, name in (("h", "hull"), ("sail", "rig"), ("app", "appendages"), ("w", "weight"), ("b", "buoyancy")):
+    F = sol(boat.forces[f"F{key}"]).ravel()
+    M = sol(boat.moments[f"M{key}"]).ravel()
+    print(f"{name:>10} {F[0]:9.1f} {F[1]:9.1f} {F[2]:9.1f} {M[0]:10.1f} {M[2]:10.1f}")
+
+print("\nMasses (placeholder)")
+for i, name in enumerate(mass_names):
+    M_i = sol(boat.moments[f"Mw_{i}"]).ravel()
+    print(f"{name:>14} {masses[i].mass:6.1f} kg, Mx {M_i[0]:+8.1f} N.m")
+
+
+#%% DRAWING
+
+boat_sol = sol(boat)
+boat_sol.draw_vlm(cmap="fire", draw_forces=True)

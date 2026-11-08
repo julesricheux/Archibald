@@ -682,15 +682,21 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_freestream_x = normalize(self.strips_freestream_in_strips_planes) # strips Y from spanwise local vectors
         
-        ### Compute strips Z
-        # self.strips_z = normalize(np.cross(self.strips_freestream_x, self.strips_y))  # (n, 3)
+        ### Compute strips lift axis
+        # Perpendicular to the local freestream, on the side of the section normal
+        # strips_z. strips_z itself is perpendicular to the chord: used as the lift
+        # axis, it made the basis oblique by alpha, tilted the lift backwards and
+        # added a drag of about L sin(alpha) (309 N of 496 N on the 49er boards).
+        lift_axis = normalize(np.cross(self.strips_freestream_x, self.strips_y))
+        lift_side = np.where(np.sum(lift_axis * self.strips_z, axis=1) >= 0., 1., -1.)
+        self.strips_lift_axis = lift_axis * tall(lift_side)
 
-        ### Join strips X, Y and Z 
-        
+        ### Join strips X, Y and lift axis
+
         self.strips_freestream_axes = [
                 np.array([[1.,0.,0.],]*3)*tall(self.strips_freestream_x[i,:]) +\
                 np.array([[0.,1.,0.],]*3)*tall(self.strips_y[i,:]) +\
-                np.array([[0.,0.,1.],]*3)*tall(self.strips_z[i,:]) \
+                np.array([[0.,0.,1.],]*3)*tall(self.strips_lift_axis[i,:]) \
             for i in range(self.total_spanwise_resolution)
         ]
         
