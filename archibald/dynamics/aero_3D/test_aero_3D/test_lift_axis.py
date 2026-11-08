@@ -32,3 +32,25 @@ def test_force_along_flow_is_profile_plus_induced_drag(leeway):
     assert F @ flow == pytest.approx(drag, rel=1e-6)
     assert onp.linalg.norm(F - (F @ flow) * flow) == pytest.approx(abs(lift), rel=1e-6)
     assert drag < 0.1 * abs(lift)
+
+
+def test_horizontal_foil_lift_follows_pitch():
+    """alpha used to be read in the boat x-y plane, which gave ~0 for a horizontal strip whatever the pitch."""
+    lifts = {}
+    for order in (1, -1):
+        ys = onp.linspace(-0.5, 0.5, 5)[::order]
+        foil = Fin(name="foil", xsecs=[WingXSec(xyz_le=[0., y, -1.], chord=0.15, airfoil=Airfoil("naca0012"), twist=0.)
+                                       for y in ys])
+        for trim in (-3., 3.):  # bow up, then bow down
+            vlm = HydroVortexLatticeMethod(Appendage(name="a", fins=[foil]), OperatingPoint(stw=10., trim=trim),
+                                           xyz_ref=[0., 0., 0.], chordwise_resolution=6, spanwise_resolution=1)
+            with warnings.catch_warnings(), contextlib.redirect_stdout(io.StringIO()), onp.errstate(all="ignore"):
+                warnings.simplefilter("ignore")
+                result = vlm.run(alpha_stall=15)
+            lifts[order, trim] = float(onp.asarray(result["F_ab"], dtype=float).ravel()[2])
+            assert onp.abs(onp.asarray(vlm.alpha, dtype=float)) == pytest.approx(3., abs=0.05)
+
+    # 523 N at 10 kt and 3 deg, i.e. CL 0.26 for an aspect ratio of 6.7
+    assert lifts[1, -3.] == pytest.approx(523., rel=0.05)
+    assert lifts[1, 3.] == pytest.approx(-lifts[1, -3.], rel=1e-6)
+    assert lifts[-1, -3.] == pytest.approx(lifts[1, -3.], rel=1e-6)

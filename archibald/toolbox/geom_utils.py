@@ -196,6 +196,76 @@ def dxf_to_le_chords(filename, nSections, method='bezier', direction='Z'):
             print('Invalid method')
 
 
+def outline_to_le_chords(filename, nSections, margin=1e-3, flattening=1e-3):
+    """
+    Leading edges and chords of a wing drawn as a planform outline in a DXF.
+
+    Unlike ``dxf_to_le_chords``, which needs exactly two curves (leading edge
+    first, then trailing edge), the outline can be made of any number of
+    entities (lines, splines, arcs, polylines), in any order and direction, as
+    long as they lie in a plane containing the span along z. At each station
+    the outline is cut by the plane z = const: the most forward crossing is the
+    leading edge, the most aft one the trailing edge (x forward).
+
+    Parameters
+    ----------
+    filename : str, DXF file.
+    nSections : int, number of sections, evenly spaced in z.
+    margin : float, distance [m] kept from the lowest and highest points of the
+        outline, where the chord would vanish.
+    flattening : float, maximum distance [m] between a curve and its polyline.
+
+    Returns
+    -------
+    le : array (nSections, 3), leading edge points, from bottom to top [m].
+    chords : array (nSections,), chords [m].
+    """
+    msp = ezdxf.readfile(filename).modelspace()
+    polylines = []
+    for entity in msp:
+        if entity.dxftype() not in _VALID_DXF_TYPES:
+            continue
+        if entity.dxftype() == 'LINE':
+            points = [entity.dxf.start, entity.dxf.end]
+        else:
+            points = list(ezdxf.path.make_path(entity).flattening(flattening))
+        polylines.append(np.array([[p[0], p[1], p[2]] for p in points], dtype=float))
+
+    if not polylines:
+        raise ValueError(f"No curve found in {filename}")
+
+    def cut(z):
+        crossings = []
+        for p in polylines:
+            z0, z1 = p[:-1, 2], p[1:, 2]
+            for k in np.nonzero((np.minimum(z0, z1) <= z) & (np.maximum(z0, z1) >= z) & (z0 != z1))[0]:
+                t = (z - z0[k]) / (z1[k] - z0[k])
+                crossings.append(p[k] + t * (p[k + 1] - p[k]))
+        return np.array(crossings)
+
+    # Span where the outline has both edges, i.e. is cut at least twice
+    # (an open outline, such as two lines of different lengths, is shorter)
+    allZ = np.concatenate([p[:, 2] for p in polylines])
+    fine = np.linspace(allZ.min(), allZ.max(), 2001)
+    cut_twice = fine[[len(cut(z)) >= 2 for z in fine]]
+    if len(cut_twice) == 0:
+        raise ValueError(f"The outline of {filename} has no span with both edges")
+    Z = np.linspace(cut_twice.min() + margin, cut_twice.max() - margin, nSections)
+
+    le = []
+    chords = []
+    for z in Z:
+        crossings = cut(z)
+        if len(crossings) < 2:
+            raise ValueError(f"The outline of {filename} is crossed less than twice at z = {z:.4f}")
+        front = crossings[np.argmax(crossings[:, 0])]
+        back = crossings[np.argmin(crossings[:, 0])]
+        le.append(front)
+        chords.append(front[0] - back[0])
+
+    return np.array(le), np.array(chords)
+
+
 # DEPRECATED
 def world_to_vlm(coords3D):
     return np.transpose(np.vstack([-coords3D[:,0], coords3D[:,2], coords3D[:,1]]))

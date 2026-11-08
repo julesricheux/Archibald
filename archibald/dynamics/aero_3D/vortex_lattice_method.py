@@ -729,15 +729,13 @@ class VortexLatticeMethod(ExplicitAnalysis):
         self.alphai = np.arctan(Di_local * L_local / (L_local ** 2 + 1e-12)) * 180. / np.pi
         
         ### Freestream angle of attack by strips
-        # read in the x-y plane of the boat, so that alpha follows the wing when the boat heels
-        stream_boat = self.op_point.apply_transformations(self.strips_freestream_x, inverse=True, is_vector=True)
-        chord_boat = self.op_point.apply_transformations(self.strips_x, inverse=True, is_vector=True)
-        stream_angle = np.arctan2(-stream_boat[:,1], stream_boat[:,0])
-        deflection_angle = np.arctan2(-chord_boat[:,1], chord_boat[:,0])
-        # self.alpha = np.rad2deg(stream_angle-deflection_angle)
-        alpha = (stream_angle-deflection_angle) * 180/np.pi
-        
-        self.alpha = np.mod(alpha + 180., 360.) - 180.
+        # Read in the section plane of each strip, from the chord towards the oriented
+        # normal strips_z: a positive alpha gives a lift along +strips_z. For a vertical
+        # strip this equals the former angle read in the boat x-y plane, which was ~0
+        # whatever the flow for a horizontal strip (foils, stabilisers).
+        stream_x = np.sum(self.strips_freestream_x * self.strips_x, axis=1)
+        stream_z = np.sum(self.strips_freestream_x * self.strips_z, axis=1)
+        self.alpha = np.arctan2(stream_z, stream_x) * 180. / np.pi
         
         ### Separate strips freestream velocities
         strips_U = np.linalg.norm(self.strips_freestream_in_strips_planes, axis=1) # Z,X plane
