@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Windage of the hull and crew of a sailing dinghy, after Day (2017),
-"Performance Prediction for Sailing Dinghies".
+Windage of the hull and crew of a sailing dinghy, after Day (2017), "Performance Prediction for Sailing Dinghies".
 
 The hull follows the ORC VPP, with a projected area varying sinusoidally
 between its frontal and side values. The crew drag area is derived from
@@ -27,21 +26,19 @@ def hull_areas_day(
     ):
     """
     Parametric areas of the topsides, with the heel correction of Day (2017), eq. 7.
-    
+
     Only meant for an UPRIGHT freeboard ``Fb``: with an aerostatics computed
     on a heeled mesh, the heel is already in the areas.
-    
-    Parameters
-    ----------
-    Fb : float, Mean freeboard [m].
-    Boa : float, Overall beam [m].
-    Loa : float, Overall length [m].
-    Cwp : float, Waterplane area coefficient (mean beam = Cwp * Boa).
-    heel : float, Heel angle [deg].
 
-    Returns
-    -------
-    Af, As, zce : Frontal area [m^2], side area [m^2], centre of effort height [m].
+    Args:
+        Fb: float, Mean freeboard [m].
+        Boa: float, Overall beam [m].
+        Loa: float, Overall length [m].
+        Cwp: float, Waterplane area coefficient (mean beam = Cwp * Boa).
+        heel: float, Heel angle [deg].
+
+    Returns:
+        Af, As, zce: Frontal area [m^2], side area [m^2], centre of effort height [m].
     """
     heeled_freeboard = Fb + 0.5 * Boa * Cwp * smooth_abs_sind(heel)
     
@@ -60,15 +57,13 @@ def crew_areas_day(
     """
     Frontal and side areas of a person, from Du Bois (1916) and Penwarden et al. (1978).
 
-    Parameters
-    ----------
-    crew_mass : float, Mass of the person [kg].
-    crew_height : float, Height of the person [m].
-    g : float, Gravity [m/s^2].
+    Args:
+        crew_mass: float, Mass of the person [kg].
+        crew_height: float, Height of the person [m].
+        g: float, Gravity [m/s^2].
 
-    Returns
-    -------
-    A_front, A_side : Frontal and side projected areas [m^2].
+    Returns:
+        A_front, A_side: Frontal and side projected areas [m^2].
     """
     weight = crew_mass * g  # Du Bois formula of Day (2017) takes the weight in N
     A_Du = 0.0769 * weight ** 0.425 * crew_height ** 0.725
@@ -98,29 +93,27 @@ def compute_Fhull_day(
     ):
     """
     Windage of the topsides, Day (2017) model.
-    
+
     The drag is evaluated with a projected area varying sinusoidally with the
     apparent wind angle between the frontal and the side areas:
 
         A(awa) = Af + (As - Af) * |sin(awa)|
-    
+
     The drag coefficient is not given by Day, who follows the ORC VPP (0.816).
 
-    Parameters
-    ----------
-    stw, tws, twa, rho_air : see ``compute_Fhull_orc``.
-    Ax, Ay, cex, cey : Frontal and lateral areas and their centroids from aerostatics.
-    Fb, Boa, Loa : Mean freeboard, overall beam and length from aerostatics [m].
-    Cd_hull : float, Drag coefficient of the hull.
-    parametric : bool, If True, areas come from ``hull_areas_day`` (upright
-        freeboard and heel correction) instead of the mesh areas. Requires Cwp.
-    Cwp : float, Waterplane area coefficient, from hydrostatics. Used if parametric.
-    heel : float, Heel angle [deg]. Used if parametric.
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
+    Args:
+        stw, tws, twa, rho_air: see ``compute_Fhull_orc``.
+        Ax, Ay, cex, cey: Frontal and lateral areas and their centroids from aerostatics.
+        Fb, Boa, Loa: Mean freeboard, overall beam and length from aerostatics [m].
+        Cd_hull: float, Drag coefficient of the hull.
+        parametric: bool, If True, areas come from ``hull_areas_day`` (upright
+            freeboard and heel correction) instead of the mesh areas. Requires Cwp.
+        Cwp: float, Waterplane area coefficient, from hydrostatics. Used if parametric.
+        heel: float, Heel angle [deg]. Used if parametric.
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce : Force components [N] and height of the centre of effort [m].
+    Returns:
+        Fx, Fy, zce: Force components [N] and height of the centre of effort [m].
     """
     
     if parametric:
@@ -172,37 +165,35 @@ def compute_Fcrew_day(
     ):
     """
     Windage of the crew, Day (2017) model.
-    
+
     Areas from Du Bois and Penwarden, drag coefficients from the lowest values
     measured by Penwarden et al., reduced by 10% for the clothing and the drag
     area by 20% for the shielding by the cockpit (or the other crew member).
-    
+
     Day does not specify how the drag area varies with the wind angle, nor the
     height of the centre of effort: the ORC interpolation and height are used.
 
-    Parameters
-    ----------
-    stw, tws, twa, rho_air : see ``compute_Fhull_orc``.
-    g : float, Gravity [m/s^2].
-    Fb, Boa : Mean freeboard and overall beam from aerostatics [m].
-    heel : float, Heel angle [deg].
-    crew_mass : float, Mass of one crew member [kg].
-    crew_height : float, Height of one crew member [m].
-    n_crew : float, Number of crew members.
-    Cd_front, Cd_side : float, Drag coefficients on frontal and side areas.
-    clothing_factor : float, Multiplier on the drag coefficients.
-    shielding_factor : float, Multiplier on the drag areas.
-    crew_position : (1, 3) array or None, Position of the crew in the water axes [m]
-        (given by ``Hull.compute_windage`` from the position in the boat frame).
-        Its z coordinate is the height of the centre of effort.
-    zce_crew : float or None, Explicit height of the centre of effort above the
-        waterplane [m], with priority over ``crew_position``. If neither is
-        given, the ORC value is used, see ``crew_zce``.
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
+    Args:
+        stw, tws, twa, rho_air: see ``compute_Fhull_orc``.
+        g: float, Gravity [m/s^2].
+        Fb, Boa: Mean freeboard and overall beam from aerostatics [m].
+        heel: float, Heel angle [deg].
+        crew_mass: float, Mass of one crew member [kg].
+        crew_height: float, Height of one crew member [m].
+        n_crew: float, Number of crew members.
+        Cd_front, Cd_side: float, Drag coefficients on frontal and side areas.
+        clothing_factor: float, Multiplier on the drag coefficients.
+        shielding_factor: float, Multiplier on the drag areas.
+        crew_position: (1, 3) array or None, Position of the crew in the water axes [m]
+            (given by ``Hull.compute_windage`` from the position in the boat frame).
+            Its z coordinate is the height of the centre of effort.
+        zce_crew: float or None, Explicit height of the centre of effort above the
+            waterplane [m], with priority over ``crew_position``. If neither is
+            given, the ORC value is used, see ``crew_zce``.
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce : Force components [N] and height of the centre of effort [m].
+    Returns:
+        Fx, Fy, zce: Force components [N] and height of the centre of effort [m].
     """
     
     A_front, A_side = crew_areas_day(

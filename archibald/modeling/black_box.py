@@ -87,9 +87,7 @@ def black_box(
 
         # Number of inputs and outputs
         def get_n_in(self):
-            """
-            Number of scalar inputs to the black-box function.
-            """
+            """Number of scalar inputs to the black-box function."""
             return n_in
 
         def get_n_out(self):
@@ -108,8 +106,9 @@ def black_box(
 
     def wrapped_function_with_kwargs_support(*args, **kwargs):
         """
-        This is a function with the same call signature as the original function, allowing both positional and keyword
-        arguments. Should work identically to the original function:
+        This is a function with the same call signature as the original function.
+
+        It allows both positional and keyword arguments. Should work identically to the original function:
             - Keyword arguments should be optional, and the default values should be the same as the original function.
             - Keyword arguments should have the option of being passed as positional arguments, provided they are in the
                 correct order and all required positional arguments are passed.

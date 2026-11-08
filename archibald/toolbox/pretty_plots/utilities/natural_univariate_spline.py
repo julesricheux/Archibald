@@ -26,7 +26,7 @@ class NaturalUnivariateSpline(interpolate.PPoly):
         check_finite=None,
     ):
         """
-
+        Initializes the spline from the data, like a UnivariateSpline.
 
         Args:
 
@@ -39,11 +39,6 @@ class NaturalUnivariateSpline(interpolate.PPoly):
             k: Degree of the smoothing spline. Must be 1 <= k <= 5. k = 3 is a cubic spline. Default is 3.
 
             s: Positive smoothing factor used to choose the number of knots.
-
-        Returns:
-
-
-
         """
         if s is None:
             m = len(x)

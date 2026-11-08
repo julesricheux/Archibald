@@ -39,8 +39,9 @@ def sears_haack_drag_from_volume(volume: float, length: float) -> float:
 
 def mach_crit_Korn(CL, t_over_c, sweep=0, kappa_A=0.95):
     """
-        Wave drag_force coefficient prediction using the low-fidelity Korn Equation method;
-    derived in "Configuration Aerodynamics" by W.H. Mason, Sect. 7.5.2, pg. 7-18
+    Wave drag_force coefficient prediction using the low-fidelity Korn Equation method.
+
+    Derived in "Configuration Aerodynamics" by W.H. Mason, Sect. 7.5.2, pg. 7-18
 
     Args:
         CL: Sectional lift coefficient
@@ -64,14 +65,18 @@ def mach_crit_Korn(CL, t_over_c, sweep=0, kappa_A=0.95):
 
 def Cd_wave_Korn(Cl, t_over_c, mach, sweep=0, kappa_A=0.95):
     """
-    Wave drag_force coefficient prediction using the low-fidelity Korn Equation method;
-    derived in "Configuration Aerodynamics" by W.H. Mason, Sect. 7.5.2, pg. 7-18
+    Wave drag_force coefficient prediction using the low-fidelity Korn Equation method.
 
-    :param Cl: Sectional lift coefficient
-    :param t_over_c: thickness-to-chord ratio
-    :param sweep: sweep angle, in degrees
-    :param kappa_A: Airfoil technology factor (0.95 for supercritical section, 0.87 for NACA 6-series)
-    :return: Wave drag coefficient
+    Derived in "Configuration Aerodynamics" by W.H. Mason, Sect. 7.5.2, pg. 7-18
+
+    Args:
+        Cl: Sectional lift coefficient
+        t_over_c: thickness-to-chord ratio
+        sweep: sweep angle, in degrees
+        kappa_A: Airfoil technology factor (0.95 for supercritical section, 0.87 for NACA 6-series)
+
+    Returns:
+        Wave drag coefficient
     """
     smooth_abs_Cl = np.softmax(Cl, -Cl, hardness=10)
 

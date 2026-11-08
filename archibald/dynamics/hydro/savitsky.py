@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SAVITSKY 1964 / SAVITSKY & BROWN 1976 PLANING METHOD FUNCTIONS -- DYNAMIC COMPONENTS ONLY
+SAVITSKY 1964 / SAVITSKY & BROWN 1976 PLANING METHOD FUNCTIONS -- DYNAMIC COMPONENTS ONLY.
 
 No hydrostatic component is computed here :
   - the buoyancy-like lift term of Savitsky's C_L0 (the one in lambda^2.5 / Cv^2, which carries g)
@@ -53,19 +53,18 @@ TAU_SPRAY_MIN = 2.0   # Trim angle defining the lower bound of the spray line an
 
 def smooth_clip(x, a, b, beta=10.0):
     r"""
-    Smooth and differentiable clipping function bounded between [a, b] 
-    using np.softplus, suitable for gradient-based optimization (IPOPT).
-    
-    Parameters
-    ----------
-    x : float or ndarray, Input value(s) to clip.
-    a : float, Lower bound.
-    b : float, Upper bound.
-    beta : float, Steepness factor for the transition smoothing (higher = sharper).
-    
-    Returns
-    -------
-    float or ndarray, Smoothed and clipped values.
+    Smooth and differentiable clipping function bounded between [a, b].
+
+    Uses np.softplus, suitable for gradient-based optimization (IPOPT).
+
+    Args:
+        x: float or ndarray, Input value(s) to clip.
+        a: float, Lower bound.
+        b: float, Upper bound.
+        beta: float, Steepness factor for the transition smoothing (higher = sharper).
+
+    Returns:
+        float or ndarray, Smoothed and clipped values.
     """
     # 1. Smooth lower bound (smooth maximum with 'a')
     # Equivalent to: max(x, a) smoothly smoothed out
@@ -80,8 +79,9 @@ def smooth_clip(x, a, b, beta=10.0):
 
 def smooth_ramp(x, a, b, beta=10.0):
     """
-    Smooth and differentiable ramp function from 0 to 1 over the interval [a, b],
-    suitable for gradient-based optimization (IPOPT).
+    Smooth and differentiable ramp function from 0 to 1 over the interval [a, b].
+
+    Suitable for gradient-based optimization (IPOPT).
     """
     clipped = smooth_clip(x, a, b, beta=beta)
     return (clipped - a) / (b - a)
@@ -94,6 +94,7 @@ def validity_factor(
         trim,
         **kwargs,
     ):
+    """Smooth factor, near 1 inside the validity range of the Savitsky method."""
     
     _Cv = C_v(stw=stw, Bwl=Bwl, g=g)
     _tau = tau(trim)
@@ -114,18 +115,17 @@ def tau(
         trim,
         **kwargs,
     ):
-    r"""Effective trim angle, smoothly bounded below to avoid the singularity at zero trim.
+    r"""
+    Effective trim angle, smoothly bounded below to avoid the singularity at zero trim.
 
     .. math::
         \tau = \tau_{min} + \text{softplus}\left(\text{trim} - \tau_{min}\right)
 
-    Parameters
-    ----------
-    trim : float, Trim angle, bow up positive [deg].
+    Args:
+        trim: float, Trim angle, bow up positive [deg].
 
-    Returns
-    -------
-    float, Effective trim angle tau [deg].
+    Returns:
+        float, Effective trim angle tau [deg].
     """
     # return TAU_MIN + np.softplus(trim - TAU_MIN, beta=10.)
     return np.softplus(trim, beta=1.)
@@ -137,20 +137,19 @@ def C_v(
         g,
         **kwargs,
     ):
-    r"""Speed coefficient based on the chine beam (diagnostic : the dynamic lift does not use it).
+    r"""
+    Speed coefficient based on the chine beam (diagnostic : the dynamic lift does not use it).
 
     .. math::
         C_V = \frac{V}{\sqrt{g\,b}}
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Bwl : float, Beam at the chines [m].
-    g : float, Gravitational acceleration [m/s²].
+    Args:
+        stw: float, Speed through water [kt].
+        Bwl: float, Beam at the chines [m].
+        g: float, Gravitational acceleration [m/s²].
 
-    Returns
-    -------
-    float, Speed coefficient Cv [-].
+    Returns:
+        float, Speed coefficient Cv [-].
     """
     Vms = np.softplus(stw * u.kt, beta=1e3) + 1e-6
     return Vms / np.sqrt(g * Bwl)
@@ -162,20 +161,19 @@ def lambda_K(
         rise_factor=1.,
         **kwargs,
     ):
-    r"""Wetted keel length to chine beam ratio.
+    r"""
+    Wetted keel length to chine beam ratio.
 
     .. math::
         \lambda_K = \frac{f_{rise}\,L_{WL}}{b}
 
-    Parameters
-    ----------
-    Lwl : float, Wetted keel length at the current attitude (hydrostatics) [m].
-    Bwl : float, Beam at the chines [m].
-    rise_factor : float, Dynamic water rise-up factor applied to Lwl [-] (calibration).
+    Args:
+        Lwl: float, Wetted keel length at the current attitude (hydrostatics) [m].
+        Bwl: float, Beam at the chines [m].
+        rise_factor: float, Dynamic water rise-up factor applied to Lwl [-] (calibration).
 
-    Returns
-    -------
-    float, Keel wetted length ratio [-].
+    Returns:
+        float, Keel wetted length ratio [-].
     """
     return rise_factor * Lwl / Bwl
 
@@ -185,20 +183,19 @@ def w_wetted(
         deadrise,
         **kwargs,
     ):
-    r"""Chine wetted length offset of Savitsky & Brown (1976), Eq. 12.
+    r"""
+    Chine wetted length offset of Savitsky & Brown (1976), Eq. 12.
 
     .. math::
         w = \left(0.57 + \frac{\beta}{1000}\right)
             \left(\frac{\tan\beta}{2\tan\tau} - \frac{\beta}{167}\right)
 
-    Parameters
-    ----------
-    trim : float, Trim angle [deg].
-    deadrise : float, Deadrise angle beta [deg].
+    Args:
+        trim: float, Trim angle [deg].
+        deadrise: float, Deadrise angle beta [deg].
 
-    Returns
-    -------
-    float, Offset w [-].
+    Returns:
+        float, Offset w [-].
     """
     _tau = tau(trim)
     return (0.57 + deadrise / 1000.) * (np.tan(deadrise * _DEG) / (2. * np.tan(_tau * _DEG)) - deadrise / 167.)
@@ -213,7 +210,8 @@ def lambda_C(
         wetted_lengths="76",
         **kwargs,
     ):
-    r"""Chine wetted length to chine beam ratio, smoothly bounded below by zero (dry chines).
+    r"""
+    Chine wetted length to chine beam ratio, smoothly bounded below by zero (dry chines).
 
     '76 (Savitsky & Brown 1976, Eq. 14) :
 
@@ -225,18 +223,16 @@ def lambda_C(
     .. math::
         \lambda_C = \lambda_K - \frac{\tan\beta}{\pi\tan\tau}
 
-    Parameters
-    ----------
-    trim : float, Trim angle [deg].
-    Lwl : float, Wetted keel length [m].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    rise_factor : float, Dynamic water rise-up factor [-].
-    wetted_lengths : str, "76" or "64".
+    Args:
+        trim: float, Trim angle [deg].
+        Lwl: float, Wetted keel length [m].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        rise_factor: float, Dynamic water rise-up factor [-].
+        wetted_lengths: str, "76" or "64".
 
-    Returns
-    -------
-    float, Chine wetted length ratio [-].
+    Returns:
+        float, Chine wetted length ratio [-].
     """
     _lK = lambda_K(Lwl=Lwl, Bwl=Bwl, rise_factor=rise_factor)
 
@@ -259,7 +255,8 @@ def lambda_(
         wetted_lengths="76",
         **kwargs,
     ):
-    r"""Mean wetted length to chine beam ratio.
+    r"""
+    Mean wetted length to chine beam ratio.
 
     Purely geometric : Lwl is the wetted keel length supplied by the hydrostatics module at the
     current attitude (no hydrostatic force is involved).
@@ -274,19 +271,17 @@ def lambda_(
     .. math::
         \lambda = \frac{\lambda_K + \lambda_C}{2}
 
-    Parameters
-    ----------
-    trim : float, Trim angle, bow up positive [deg].
-    Lwl : float, Wetted keel length at the current attitude [m].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    rise_factor : float, Dynamic water rise-up factor applied to Lwl [-] (calibration).
-    lam : float, Optional imposed value of lambda (external variable) [-].
-    wetted_lengths : str, "76" (default) or "64".
+    Args:
+        trim: float, Trim angle, bow up positive [deg].
+        Lwl: float, Wetted keel length at the current attitude [m].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        rise_factor: float, Dynamic water rise-up factor applied to Lwl [-] (calibration).
+        lam: float, Optional imposed value of lambda (external variable) [-].
+        wetted_lengths: str, "76" (default) or "64".
 
-    Returns
-    -------
-    float, Mean wetted length ratio lambda [-].
+    Returns:
+        float, Mean wetted length ratio lambda [-].
     """
     if lam is not None:
         return lam
@@ -309,14 +304,14 @@ def x_s(
         wetted_lengths="76",
         **kwargs,
     ):
-    r"""Distance from the keel / waterline intersection to the start of the wetted chine.
+    r"""
+    Distance from the keel / waterline intersection to the start of the wetted chine.
 
     .. math::
         x_s = L_K - L_C \qquad (\text{imposed } \lambda : x_s = \tfrac{b}{\pi}\tan\beta/\tan\tau)
 
-    Returns
-    -------
-    float, Distance x_s [m].
+    Returns:
+        float, Distance x_s [m].
     """
     if lam is not None:
         return Bwl / np.pi * np.tan(deadrise * _DEG) / np.tan(tau(trim) * _DEG)
@@ -337,14 +332,14 @@ def A_wetted(
         wetted_lengths="76",
         **kwargs,
     ):
-    r"""Wetted bottom area : chine dry triangle + chine wet rectangle.
+    r"""
+    Wetted bottom area : chine dry triangle + chine wet rectangle.
 
     .. math::
         S = \frac{b\,(L_K + L_C)}{2\cos\beta} \qquad (\text{imposed } \lambda : S = \lambda b^2 / \cos\beta)
 
-    Returns
-    -------
-    float, Wetted bottom area [m²].
+    Returns:
+        float, Wetted bottom area [m²].
     """
     if lam is not None:
         return lam * Bwl ** 2 / np.cos(deadrise * _DEG)
@@ -364,16 +359,16 @@ def chines_dry(
         deadrise,
         **kwargs,
     ):
-    r"""Chines dry planing margin of Savitsky & Brown (1976), Eq. 3 (diagnostic / constraint).
+    r"""
+    Chines dry planing margin of Savitsky & Brown (1976), Eq. 3 (diagnostic / constraint).
 
     .. math::
         m = C_V^2 - \frac{\lambda - 0.16\tan\beta/\tan\tau}{3\sin\tau}
 
     m >= 0 : chines dry ; m < 0 : the chines are wetted along a side length L_C2.
 
-    Returns
-    -------
-    float, Margin m [-].
+    Returns:
+        float, Margin m [-].
     """
     _tau = tau(trim)
     _lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -390,14 +385,14 @@ def L_C2(
         deadrise,
         **kwargs,
     ):
-    r"""Side chine wetted length of Savitsky & Brown (1976), Eq. 1 (zero when the chines are dry).
+    r"""
+    Side chine wetted length of Savitsky & Brown (1976), Eq. 1 (zero when the chines are dry).
 
     .. math::
         L_{C2} = L_C - 3\,\frac{V^2 \sin\tau}{g}
 
-    Returns
-    -------
-    float, Side wetted length [m].
+    Returns:
+        float, Side wetted length [m].
     """
     Vms = np.softplus(stw * u.kt, beta=1e3) + 1e-6
     _lC = Bwl * lambda_C(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -411,7 +406,8 @@ def C_L0(
         lam,
         **kwargs,
     ):
-    r"""Dynamic lift coefficient of the flat plate (zero deadrise).
+    r"""
+    Dynamic lift coefficient of the flat plate (zero deadrise).
 
     Savitsky's :math:`C_{L_0} = \tau^{1.1}(0.012\lambda^{0.5} + 0.0055\lambda^{2.5}/C_V^2)`
     without its second (gravity dependent, hydrostatic) term:
@@ -419,14 +415,12 @@ def C_L0(
     .. math::
         C_{L_0} = 0.012\,\tau^{1.1}\,\lambda^{0.5}
 
-    Parameters
-    ----------
-    trim : float, Trim angle [deg].
-    lam : float, Mean wetted length ratio [-].
+    Args:
+        trim: float, Trim angle [deg].
+        lam: float, Mean wetted length ratio [-].
 
-    Returns
-    -------
-    float, Dynamic flat plate lift coefficient [-].
+    Returns:
+        float, Dynamic flat plate lift coefficient [-].
     """
     _tau = tau(trim)
     return 0.012 * _tau ** 1.1 * np.sqrt(lam)
@@ -438,22 +432,21 @@ def C_Lbeta(
         deadrise,
         **kwargs,
     ):
-    r"""Dynamic lift coefficient of the deadrise surface.
+    r"""
+    Dynamic lift coefficient of the deadrise surface.
 
     According to :cite:`savitsky1964hydrodynamic`:
 
     .. math::
         C_{L_\beta} = C_{L_0} - 0.0065\,\beta\,C_{L_0}^{0.6} \quad (\geq 0, \text{smooth floor})
 
-    Parameters
-    ----------
-    trim : float, Trim angle [deg].
-    lam : float, Mean wetted length ratio [-].
-    deadrise : float, Deadrise angle beta [deg].
+    Args:
+        trim: float, Trim angle [deg].
+        lam: float, Mean wetted length ratio [-].
+        deadrise: float, Deadrise angle beta [deg].
 
-    Returns
-    -------
-    float, Dynamic deadrise lift coefficient [-].
+    Returns:
+        float, Dynamic deadrise lift coefficient [-].
     """
     _CL0 = C_L0(trim=trim, lam=lam)
     # smooth floor at zero : the empirical formula turns negative outside its validity range
@@ -465,7 +458,8 @@ def lcp(
         Bwl,
         **kwargs,
     ):
-    r"""Centre of pressure of the dynamic lift, measured from the transom along the keel line.
+    r"""
+    Centre of pressure of the dynamic lift, measured from the transom along the keel line.
 
     Savitsky's :math:`l_{cp} = \lambda b\,(0.75 - 1/(5.21 C_V^2/\lambda^2 + 2.39))` moves aft at
     low speed because of the hydrostatic lift ; the purely dynamic limit is kept:
@@ -473,14 +467,12 @@ def lcp(
     .. math::
         l_{cp} = 0.75\,\lambda\,b
 
-    Parameters
-    ----------
-    lam : float, Mean wetted length ratio [-].
-    Bwl : float, Beam at the chines [m].
+    Args:
+        lam: float, Mean wetted length ratio [-].
+        Bwl: float, Beam at the chines [m].
 
-    Returns
-    -------
-    float, Centre of pressure abscissa from the transom [m].
+    Returns:
+        float, Centre of pressure abscissa from the transom [m].
     """
     return 0.75 * lam * Bwl
 
@@ -491,22 +483,21 @@ def V_m_ratio(
         deadrise,
         **kwargs,
     ):
-    r"""Mean bottom velocity to speed ratio.
+    r"""
+    Mean bottom velocity to speed ratio.
 
     According to :cite:`savitsky1964hydrodynamic`:
 
     .. math::
         \frac{V_m}{V} = \sqrt{1 - \frac{C_{L_\beta}}{\lambda\cos\tau}}
 
-    Parameters
-    ----------
-    trim : float, Trim angle [deg].
-    lam : float, Mean wetted length ratio [-].
-    deadrise : float, Deadrise angle beta [deg].
+    Args:
+        trim: float, Trim angle [deg].
+        lam: float, Mean wetted length ratio [-].
+        deadrise: float, Deadrise angle beta [deg].
 
-    Returns
-    -------
-    float, Ratio Vm / V [-].
+    Returns:
+        float, Ratio Vm / V [-].
     """
     _tau = tau(trim)
     _CLb = C_Lbeta(trim=trim, lam=lam, deadrise=deadrise)
@@ -518,11 +509,11 @@ def L_K(
         rise_factor=1.,
         **kwargs,
     ):
-    r"""Wetted keel length (dynamic) : :math:`L_K = f_{rise}\,L_{WL}`.
+    r"""
+    Wetted keel length (dynamic) : :math:`L_K = f_{rise}\,L_{WL}`.
 
-    Returns
-    -------
-    float, Wetted keel length [m].
+    Returns:
+        float, Wetted keel length [m].
     """
     return rise_factor * Lwl
 
@@ -534,11 +525,11 @@ def L_C(
         deadrise,
         **kwargs,
     ):
-    r"""Wetted chine length : :math:`L_C = \lambda_C\,b`.
+    r"""
+    Wetted chine length : :math:`L_C = \lambda_C\,b`.
 
-    Returns
-    -------
-    float, Wetted chine length [m].
+    Returns:
+        float, Wetted chine length [m].
     """
     return Bwl * lambda_C(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
 
@@ -550,7 +541,8 @@ def alpha_spray(
         deadrise,
         **kwargs,
     ):
-    r"""Angle of the stagnation / spray root line relative to the keel (plan view).
+    r"""
+    Angle of the stagnation / spray root line relative to the keel (plan view).
 
     .. math::
         \alpha = \arctan\left(\frac{b}{2\,x_s}\right)
@@ -560,9 +552,8 @@ def alpha_spray(
     least 2 deg (validity range of the spray model, below it A_as ~ 1 / sin(2 alpha) diverges)
     and smoothly bounded to 45 deg (the model is meant for deep-V hulls at small trim).
 
-    Returns
-    -------
-    float, Spray root line angle alpha [deg].
+    Returns:
+        float, Spray root line angle alpha [deg].
     """
     _xs = np.fmax(x_s(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs), 1e-3 * Bwl)
     a = np.arctan(Bwl / (2. * _xs)) / _DEG
@@ -578,16 +569,16 @@ def A_spray(
         deadrise,
         **kwargs,
     ):
-    r"""Whisker spray wetted area (forward of the stagnation line).
+    r"""
+    Whisker spray wetted area (forward of the stagnation line).
 
     .. math::
         A_{as} = \frac{b^2}{4\,\sin(2\alpha)\cos\beta}
 
     !! Trigonometric form read from secondary sources (see compute_Rsp_savitsky).
 
-    Returns
-    -------
-    float, Whisker spray area [m²].
+    Returns:
+        float, Whisker spray area [m²].
     """
     _alpha = alpha_spray(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
     return Bwl ** 2 / (4. * np.sin(2. * _alpha * _DEG) * np.cos(deadrise * _DEG))
@@ -600,16 +591,16 @@ def phi_spray(
         deadrise,
         **kwargs,
     ):
-    r"""Angle between the spray viscous force and the keel line.
+    r"""
+    Angle between the spray viscous force and the keel line.
 
     .. math::
         \varphi = \arctan\left(\frac{\tan\theta}{\cos\beta}\right), \qquad \theta = 2\alpha
 
     (the whisker spray leaves the stagnation line at about twice its angle).
 
-    Returns
-    -------
-    float, Spray force angle phi [deg].
+    Returns:
+        float, Spray force angle phi [deg].
     """
     _alpha = alpha_spray(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
     return np.arctan(np.tan(2. * _alpha * _DEG) / np.cos(deadrise * _DEG)) / _DEG
@@ -620,19 +611,18 @@ def blount_fox_M_prime(
         bf_K=0.5,
         **kwargs,
     ):
-    r"""Blount & Fox semi-planing correction factor.
+    r"""
+    Blount & Fox semi-planing correction factor.
 
     .. math::
         M' = K\,(M - 1) + 1
 
-    Parameters
-    ----------
-    bf_M : float, Blount & Fox factor M [-] (user supplied).
-    bf_K : float, Correlation factor [-] (0 = Savitsky, 0.5 = realistic hump, 1 = Blount & Fox).
+    Args:
+        bf_M: float, Blount & Fox factor M [-] (user supplied).
+        bf_K: float, Correlation factor [-] (0 = Savitsky, 0.5 = realistic hump, 1 = Blount & Fox).
 
-    Returns
-    -------
-    float, Corrected factor M' [-].
+    Returns:
+        float, Corrected factor M' [-].
     """
     return bf_K * (bf_M - 1.) + 1.
 
@@ -646,24 +636,23 @@ def L_dynamic(
         deadrise,
         **kwargs,
     ):
-    r"""Dynamic vertical lift (no hydrostatic part).
+    r"""
+    Dynamic vertical lift (no hydrostatic part).
 
     .. math::
         L = C_{L_\beta}\,\tfrac{1}{2}\rho V^2 b^2
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    rho : float, Water density [kg/m³].
-    trim : float, Trim angle [deg].
-    Lwl : float, Wetted keel length at the current attitude [m].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    Optional (kwargs) : rise_factor, lam, wetted_lengths.
+    Args:
+        stw: float, Speed through water [kt].
+        rho: float, Water density [kg/m³].
+        trim: float, Trim angle [deg].
+        Lwl: float, Wetted keel length at the current attitude [m].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        Optional (kwargs) : rise_factor, lam, wetted_lengths.
 
-    Returns
-    -------
-    float, Dynamic vertical lift [N].
+    Returns:
+        float, Dynamic vertical lift [N].
     """
     Vms = np.softplus(stw * u.kt, beta=1e3) + 1e-6
     _lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -685,21 +674,20 @@ def D_f(
         use_Aws=False,
         **kwargs,
     ):
-    r"""Frictional force along the keel line (ITTC '57 on the mean wetted length).
+    r"""
+    Frictional force along the keel line (ITTC '57 on the mean wetted length).
 
     .. math::
         D_f = \tfrac{1}{2}\rho\,C_f(Re_m)\,V_m^2\,S, \qquad Re_m = \frac{V_m\,\lambda\,b}{\nu}
 
-    Parameters
-    ----------
-    nu : float, Kinematic viscosity [m²/s].
-    dCf : float, Roughness allowance [-].
-    Aws : float, Hydrostatic wetted surface [m²] (used if use_Aws is True).
-    use_Aws : bool, Use the hydrostatic wetted surface instead of the Savitsky wetted area.
+    Args:
+        nu: float, Kinematic viscosity [m²/s].
+        dCf: float, Roughness allowance [-].
+        Aws: float, Hydrostatic wetted surface [m²] (used if use_Aws is True).
+        use_Aws: bool, Use the hydrostatic wetted surface instead of the Savitsky wetted area.
 
-    Returns
-    -------
-    float, Frictional force along the keel [N].
+    Returns:
+        float, Frictional force along the keel [N].
     """
     Vms = np.softplus(stw * u.kt, beta=1e3) + 1e-6
     _lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -725,14 +713,14 @@ def N_normal(
         deadrise,
         **kwargs,
     ):
-    r"""Dynamic force normal to the keel line.
+    r"""
+    Dynamic force normal to the keel line.
 
     .. math::
         N = \frac{L + D_f \sin\tau}{\cos\tau}
 
-    Returns
-    -------
-    float, Normal force [N].
+    Returns:
+        float, Normal force [N].
     """
     _tau = tau(trim)
     _L = L_dynamic(stw=stw, rho=rho, trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -758,15 +746,15 @@ def Raw_parameters(
         displacement,
         **kwargs,
     ):
-    r"""Non dimensional parameters of the added resistance regression (imperial units).
+    r"""
+    Non dimensional parameters of the added resistance regression (imperial units).
 
     Applicability range of the regression (Savitsky & Brown 1976, p. 395) :
     100 <= P1 = Delta_LT / (0.01 L)^3 <= 250 ; 3 <= P2 = L/b <= 5 ; 3 <= trim <= 7 deg ;
     10 <= beta <= 30 deg ; 0.2 <= P5 = swh/b <= 0.7 ; 2 <= P6 = Vk/sqrt(L) <= 6.
 
-    Returns
-    -------
-    dict, C_Delta, P1, P2, P5, P6, and the imperial quantities Delta, L, b, H, w.
+    Returns:
+        dict, C_Delta, P1, P2, P5, P6, and the imperial quantities Delta, L, b, H, w.
     """
     Delta_LT = displacement / _LT
     Delta = Delta_LT * 2240.
@@ -792,7 +780,8 @@ def R_AW_interp(
         displacement,
         **kwargs,
     ):
-    r"""Added resistance in waves : regression at Vk/sqrt(L) = 2, 4, 6 and parabolic interpolation.
+    r"""
+    Added resistance in waves : regression at Vk/sqrt(L) = 2, 4, 6 and parabolic interpolation.
 
     .. math::
         R_{AW,2} = w b^3\left[66\cdot10^{-6}\,(H/b + 0.5)\frac{(L/b)^3}{C_\Delta} + 0.0043(\tau - 4)\right]
@@ -801,9 +790,8 @@ def R_AW_interp(
 
         R_{AW,6} = w b^3\,\frac{0.158\,H/b}{1 + (H/b)\left(0.12\beta - 21 C_\Delta (5.6 - L/b) + 7.5(6 - L/b)\right)}
 
-    Returns
-    -------
-    float, Added resistance [N].
+    Returns:
+        float, Added resistance [N].
     """
     P = Raw_parameters(stw=stw, rho=rho, g=g, trim=trim, Bwl=Bwl, deadrise=deadrise,
                        swh=swh, Loa=Loa, displacement=displacement)
@@ -840,20 +828,18 @@ def compute_Rf_savitsky(
     .. math::
         R_f = \frac{D_f}{\cos\tau}
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    rho : float, Water density [kg/m³].
-    nu : float, Kinematic viscosity of water [m²/s].
-    trim : float, Trim angle, bow up positive [deg].
-    Lwl : float, Wetted keel length at the current attitude [m].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    Optional (kwargs) : wetted_lengths ("76" or "64"), rise_factor, lam, dCf, Aws, use_Aws.
+    Args:
+        stw: float, Speed through water [kt].
+        rho: float, Water density [kg/m³].
+        nu: float, Kinematic viscosity of water [m²/s].
+        trim: float, Trim angle, bow up positive [deg].
+        Lwl: float, Wetted keel length at the current attitude [m].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        Optional (kwargs) : wetted_lengths ("76" or "64"), rise_factor, lam, dCf, Aws, use_Aws.
 
-    Returns
-    -------
-    float, Frictional resistance [N].
+    Returns:
+        float, Frictional resistance [N].
     """
     _tau = tau(trim)
     _Df = D_f(stw=stw, rho=rho, nu=nu, trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -887,20 +873,18 @@ def compute_Rp_savitsky(
     The trim drag of the hydrostatic (buoyant) part is NOT included : it belongs to the
     hydrostatics module.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    rho : float, Water density [kg/m³].
-    trim : float, Trim angle, bow up positive [deg].
-    Lwl : float, Wetted keel length at the current attitude [m].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    bf_M : float, Optional Blount & Fox factor M (user supplied) [-].
-    bf_K : float, Blount & Fox correlation factor K [-].
+    Args:
+        stw: float, Speed through water [kt].
+        rho: float, Water density [kg/m³].
+        trim: float, Trim angle, bow up positive [deg].
+        Lwl: float, Wetted keel length at the current attitude [m].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        bf_M: float, Optional Blount & Fox factor M (user supplied) [-].
+        bf_K: float, Blount & Fox correlation factor K [-].
 
-    Returns
-    -------
-    float, Pressure resistance [N].
+    Returns:
+        float, Pressure resistance [N].
     """
     _tau = tau(trim)
     _L = L_dynamic(stw=stw, rho=rho, trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -940,23 +924,20 @@ def compute_Rsp_savitsky(
     .. math::
         F_s = \tfrac{1}{2}\rho V^2 C_f A_{as}, \qquad R_{sp} = F_s \cos\varphi \cos\tau
 
-    Parameters
-    ----------
-    (same as compute_Rf_savitsky)
+    Args:
+        (same as compute_Rf_savitsky)
 
-    Returns
-    -------
-    float, Whisker spray resistance [N].
+    Returns:
+        float, Whisker spray resistance [N].
 
-    Notes
-    -----
-    !! The original paper could not be consulted. The root-line angle alpha, F_s, phi and
-       R_sp = F_s cos(phi) cos(tau) come from secondary sources ; the area
-       A_as = b^2 / (4 sin(2 alpha) cos(beta)) and theta = 2 alpha are the readings
-       consistent with the published magnitude (spray = 10-15 % of the total). Check them
-       against the original (Marine Technology 44(1), 2007) before normative use.
-       Cf is evaluated at the free stream speed on the mean wetted length (+ dCf).
-       The spray force moment / lift are neglected.
+    Notes:
+        !! The original paper could not be consulted. The root-line angle alpha, F_s, phi and
+           R_sp = F_s cos(phi) cos(tau) come from secondary sources ; the area
+           A_as = b^2 / (4 sin(2 alpha) cos(beta)) and theta = 2 alpha are the readings
+           consistent with the published magnitude (spray = 10-15 % of the total). Check them
+           against the original (Marine Technology 44(1), 2007) before normative use.
+           Cf is evaluated at the free stream speed on the mean wetted length (+ dCf).
+           The spray force moment / lift are neglected.
     """
     Vms = np.softplus(stw * u.kt, beta=1e3) + 1e-6
     _lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
@@ -999,21 +980,19 @@ def compute_Raw_savitsky(
        2 <= Vk/sqrt(L[ft]) <= 6. A dinghy is usually OUTSIDE this range (extrapolation) :
        see Raw_parameters() to check the margins.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
-    trim : float, Trim angle [deg].
-    Bwl : float, Beam at the chines [m].
-    deadrise : float, Deadrise angle [deg].
-    swh : float, Significant wave height [m].
-    Loa : float, Overall length [m] (default Lbp, else 3 b).
-    displacement : float, Vessel displacement [N] (or mass [kg]).
+    Args:
+        stw: float, Speed through water [kt].
+        rho: float, Water density [kg/m³].
+        g: float, Gravitational acceleration [m/s²].
+        trim: float, Trim angle [deg].
+        Bwl: float, Beam at the chines [m].
+        deadrise: float, Deadrise angle [deg].
+        swh: float, Significant wave height [m].
+        Loa: float, Overall length [m] (default Lbp, else 3 b).
+        displacement: float, Vessel displacement [N] (or mass [kg]).
 
-    Returns
-    -------
-    float, Added resistance in waves [N].
+    Returns:
+        float, Added resistance in waves [N].
     """
     if swh is None or (isinstance(swh, (int, float)) and swh == 0):
         return 0. * stw
@@ -1036,9 +1015,7 @@ def compute_Rtr_savitsky(
         stw,
         **kwargs,
     ):
-    """
-    Transom resistance : the transom is dry in the planing regime.
-    """
+    """Transom resistance : the transom is dry in the planing regime."""
     return 0. * stw
 
 #%% HYDRODYNAMIC WRENCH (not resistances)
@@ -1053,8 +1030,9 @@ def compute_Fz_savitsky(
         **kwargs,
     ):
     """
-    Dynamic vertical force, upward positive [N] (no hydrostatic part : add it to the
-    buoyancy supplied by the hydrostatics module).
+    Dynamic vertical force, upward positive [N].
+
+    No hydrostatic part : add it to the buoyancy supplied by the hydrostatics module.
     """
     Fz = L_dynamic(stw=stw, rho=rho, trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
 
@@ -1074,8 +1052,9 @@ def point_Fz_savitsky(
         **kwargs,
     ):
     """
-    Application point of ``compute_Fz_savitsky`` in the hull frame [m], shape (1, 3):
-    the dynamic centre of pressure ``lcp`` forward of the aft end of the waterline
+    Application point of ``compute_Fz_savitsky`` in the hull frame [m], shape (1, 3).
+
+    The dynamic centre of pressure ``lcp`` forward of the aft end of the waterline
     ``app`` (taken as the transom), at the height and side of the wetted surface
     centroid ``cow``. ``lcp`` is measured along the keel and used along x, which
     neglects 1 - cos(trim) (0.3 % at 4.5 deg).
@@ -1109,11 +1088,10 @@ def compute_My_savitsky(
     .. math::
         M_y = N\,(l_{cp} - l_{cg}) - D_f\left(v_{cg} - \frac{b}{4}\tan\beta\right)
 
-    Parameters
-    ----------
-    lcg_tr : float, Reduction point abscissa from the transom, along the keel [m].
-    vcg_keel : float, Reduction point height above the keel, normal to it [m]
-        (default : friction lever arm set to zero).
+    Args:
+        lcg_tr: float, Reduction point abscissa from the transom, along the keel [m].
+        vcg_keel: float, Reduction point height above the keel, normal to it [m]
+            (default : friction lever arm set to zero).
     """
     _lam = lambda_(trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)
     _N = N_normal(stw=stw, rho=rho, nu=nu, trim=trim, Lwl=Lwl, Bwl=Bwl, deadrise=deadrise, **kwargs)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 r"""
-ADDED RESISTANCE IN WAVES OF ARBITRARY HEADING (MITTENDORF ET AL.)
+ADDED RESISTANCE IN WAVES OF ARBITRARY HEADING (MITTENDORF ET AL.).
 
 Semi-empirical transfer function of the added resistance of a ship in regular
 waves, with its 90 % prediction interval, from:
@@ -218,7 +218,8 @@ def caw_mittendorf(
         g=G_PUBLISHED,
         estimate="mean",
     ):
-    r"""Added resistance coefficient in regular waves, differentiable.
+    r"""
+    Added resistance coefficient in regular waves, differentiable.
 
     .. math::
         C_{AW} = \frac{R_{AW}}{\rho\,g\,\zeta_a^2\,B^2 / L_{pp}}
@@ -226,23 +227,21 @@ def caw_mittendorf(
     Same formula and coefficients as the code published with the paper, for one
     wavelength. Valid for wave headings from 0 (following) to 180 deg (head seas).
 
-    Parameters
-    ----------
-    wavelength : float, Wavelength [m].
-    wave_heading : float, Wave heading, 180 for head seas, 0 for following seas [deg].
-    Lpp : float, Length between perpendiculars [m].
-    Bwl : float, Beam [m].
-    Tf, Ta : float, Draughts at the forward and aft perpendiculars [m].
-    Cb : float, Block coefficient [-].
-    Le, Lr : float, Lengths of entrance (bow) and run (stern) [m].
-    kyy : float, Radius of gyration in pitch divided by Lpp, in general 0.25 [-].
-    Fr : float, Froude number on Lpp [-].
-    g : float, Gravitational acceleration [m/s²].
-    estimate : str, "mean", or a bound of the 90 % prediction interval, "upper" or "lower".
+    Args:
+        wavelength: float, Wavelength [m].
+        wave_heading: float, Wave heading, 180 for head seas, 0 for following seas [deg].
+        Lpp: float, Length between perpendiculars [m].
+        Bwl: float, Beam [m].
+        Tf, Ta: float, Draughts at the forward and aft perpendiculars [m].
+        Cb: float, Block coefficient [-].
+        Le, Lr: float, Lengths of entrance (bow) and run (stern) [m].
+        kyy: float, Radius of gyration in pitch divided by Lpp, in general 0.25 [-].
+        Fr: float, Froude number on Lpp [-].
+        g: float, Gravitational acceleration [m/s²].
+        estimate: str, "mean", or a bound of the 90 % prediction interval, "upper" or "lower".
 
-    Returns
-    -------
-    float, Added resistance coefficient C_AW [-].
+    Returns:
+        float, Added resistance coefficient C_AW [-].
     """
     k = _ESTIMATES[estimate]
     args = dict(
@@ -272,10 +271,11 @@ def mm_raw(
         Fr,
     ):
     """
-    Function for computing the R_AW transfer function and its 90% prediction interval
-    for arbitrary heading angle following the proposed method by Mittendorf, M.; Nielsen,
-    U.D.; Bingham, H.B.; Liu, S. (2021) "Towards the Uncertainty Quantification of Semi-Empirical
-    Formulas Applied to the Added Resistance of Ships in Waves of Arbitrary Heading" Ocean Engineering Vol. 251 No. 111040.
+    Function for computing the R_AW transfer function and its 90% prediction interval for arbitrary heading angle.
+
+    Follows the proposed method by Mittendorf, M.; Nielsen, U.D.; Bingham, H.B.; Liu, S. (2021) "Towards the
+    Uncertainty Quantification of Semi-Empirical Formulas Applied to the Added Resistance of Ships in Waves of
+    Arbitrary Heading" Ocean Engineering Vol. 251 No. 111040.
 
     Interface of the published code, numeric only. See ``caw_mittendorf`` for a
     differentiable version.
@@ -336,7 +336,8 @@ def wave_spectrum(
         gamma=1.,
         **kwargs,
     ):
-    r"""Wave spectrum of a sea state, JONSWAP or Pierson-Moskowitz.
+    r"""
+    Wave spectrum of a sea state, JONSWAP or Pierson-Moskowitz.
 
     .. math::
         S(\omega) = A_\gamma\,\frac{5}{16}\,H_s^2\,\omega_p^4\,\omega^{-5}
@@ -349,16 +350,14 @@ def wave_spectrum(
     zeroth moment is exactly :math:`H_s^2/16`. With gamma > 1, :math:`A_\gamma`
     is an approximate normalisation.
 
-    Parameters
-    ----------
-    omega : float, Wave frequency [rad/s].
-    swh : float, Significant wave height Hs [m].
-    tp : float, Peak period [s].
-    gamma : float, Peak enhancement factor, 1 to 7, 3.3 for the mean JONSWAP [-].
+    Args:
+        omega: float, Wave frequency [rad/s].
+        swh: float, Significant wave height Hs [m].
+        tp: float, Peak period [s].
+        gamma: float, Peak enhancement factor, 1 to 7, 3.3 for the mean JONSWAP [-].
 
-    Returns
-    -------
-    float, Spectral density [m².s/rad].
+    Returns:
+        float, Spectral density [m².s/rad].
     """
     wp = 2. * np.pi / tp
     sigma = np.where(omega <= wp, 0.07, 0.09)
@@ -393,7 +392,8 @@ def compute_Raw_mittendorf(
         n_omega=241,
         **kwargs,
     ):
-    r"""Mean added resistance in irregular waves, from Mittendorf et al. (2022).
+    r"""
+    Mean added resistance in irregular waves, from Mittendorf et al. (2022).
 
     .. math::
         \bar R_{AW} = 2\,\frac{\rho\,g\,B^2}{L_{pp}}
@@ -407,29 +407,27 @@ def compute_Raw_mittendorf(
     The method was fitted on merchant ships (Cb about 0.5 to 0.85): for a
     sailing yacht it is an extrapolation.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
-    Lbp : float, Length between perpendiculars [m].
-    Bwl : float, Waterline beam [m].
-    T : float, Draught [m], used for Tf and Ta when they are not given.
-    Cb : float, Block coefficient [-].
-    swh : float, Significant wave height Hs [m].
-    tp : float, Peak period Tp [s].
-    wave_heading : float, Wave heading relative to the ship, 180 for head seas,
-        0 for following seas, from 0 to 180 [deg].
-    Le, Lr : float, Lengths of entrance (bow) and run (stern) [m].
-    kyy : float, Radius of gyration in pitch [m]. Default 0.25 Lbp.
-    Tf, Ta : float, Draughts at the forward and aft perpendiculars [m]. Default T.
-    gamma : float, JONSWAP peak enhancement factor, 1 for Pierson-Moskowitz [-].
-    estimate : str, "mean", "upper" or "lower" bound of the 90 % prediction interval.
-    n_omega : int, Number of frequencies of the quadrature.
+    Args:
+        stw: float, Speed through water [kt].
+        rho: float, Water density [kg/m³].
+        g: float, Gravitational acceleration [m/s²].
+        Lbp: float, Length between perpendiculars [m].
+        Bwl: float, Waterline beam [m].
+        T: float, Draught [m], used for Tf and Ta when they are not given.
+        Cb: float, Block coefficient [-].
+        swh: float, Significant wave height Hs [m].
+        tp: float, Peak period Tp [s].
+        wave_heading: float, Wave heading relative to the ship, 180 for head seas,
+            0 for following seas, from 0 to 180 [deg].
+        Le, Lr: float, Lengths of entrance (bow) and run (stern) [m].
+        kyy: float, Radius of gyration in pitch [m]. Default 0.25 Lbp.
+        Tf, Ta: float, Draughts at the forward and aft perpendiculars [m]. Default T.
+        gamma: float, JONSWAP peak enhancement factor, 1 for Pierson-Moskowitz [-].
+        estimate: str, "mean", "upper" or "lower" bound of the 90 % prediction interval.
+        n_omega: int, Number of frequencies of the quadrature.
 
-    Returns
-    -------
-    float, Mean added resistance [N].
+    Returns:
+        float, Mean added resistance [N].
     """
     if swh is None or (isinstance(swh, (int, float)) and swh == 0):
         return 0. * stw

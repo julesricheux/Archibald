@@ -278,6 +278,7 @@ class Wing(ArchibaldObject):
         self,
         type: str = "planform",
     ) -> float | list[float]:
+        """Chords of the wing cross-sections, measured in the given plane."""
 
         # Handle overloaded names
         if type == "projected" or type == "top":
@@ -318,7 +319,7 @@ class Wing(ArchibaldObject):
         _sectional: bool = False,
     ) -> float | list[float]:
         """
-        Computes the wing area, with options for various ways of measuring this (see `type` argument):
+        Computes the wing area, with options for various ways of measuring this (see `type` argument).
 
         If the wing is symmetric, both left/right sides are included in order to obtain the full area. In the case
         where the root cross-section is not coincident with the center plane (e.g., XZ plane), this function's
@@ -469,6 +470,7 @@ class Wing(ArchibaldObject):
             raise ValueError("Bad value of `type`!")
 
     def is_entirely_symmetric(self) -> bool:
+        """Whether the wing and all its control surfaces are symmetric."""
         # Returns a boolean of whether the wing is totally symmetric (i.e.), every xsec has symmetric control surfaces.
         for xsec in self.xsecs:  # To be symmetric, all
             for surf in xsec.control_surfaces:
@@ -489,15 +491,13 @@ class Wing(ArchibaldObject):
         return True
 
     def mean_geometric_chord(self) -> float:
-        """
-        Returns the mean geometric chord of the wing (S/b).
-        :return:
-        """
+        """Returns the mean geometric chord of the wing (S/b)."""
         return self.area() / self.span()
 
     def mean_aerodynamic_chord(self) -> float:
         """
         Computes the length of the mean aerodynamic chord of the wing.
+
         Uses the generalized methodology described here:
             https://core.ac.uk/download/pdf/79175663.pdf
 
@@ -534,7 +534,9 @@ class Wing(ArchibaldObject):
     def mean_twist_angle(self) -> float:
         r"""
         Returns the mean twist angle (in degrees) of the wing, weighted by area.
-        :return: mean twist angle (in degrees)
+
+        Returns:
+            mean twist angle (in degrees)
         """
 
         sectional_twists = [
@@ -554,6 +556,7 @@ class Wing(ArchibaldObject):
     def mean_sweep_angle(self, x_nondim=0.25) -> float:
         """
         Returns the mean sweep angle (in degrees) of the wing, relative to the x-axis.
+
         Positive sweep is backwards, negative sweep is forward.
 
         This is purely measured from root to tip, with no consideration for the sweep of the individual
@@ -592,6 +595,7 @@ class Wing(ArchibaldObject):
     def mean_dihedral_angle(self, x_nondim=0.25) -> float:
         """
         Returns the mean dihedral angle (in degrees) of the wing, relative to the XY plane.
+
         Positive dihedral is bending up, negative dihedral is bending down.
 
         This is purely measured from root to tip, with no consideration for the dihedral of the individual
@@ -632,6 +636,7 @@ class Wing(ArchibaldObject):
     ) -> np.ndarray:
         """
         Computes the location of the aerodynamic center of the wing.
+
         Uses the generalized methodology described here:
             https://core.ac.uk/downloattttd/pdf/79175663.pdf
 
@@ -1650,8 +1655,10 @@ class Wing(ArchibaldObject):
         spacing_function: Callable[[float, float, float], np.ndarray] = np.linspace,
     ) -> "Wing":
         """
-        Generates a new Wing that subdivides the existing sections of this Wing into several smaller ones. Splits
-        each section into N=`ratio` smaller sub-sections by inserting new cross-sections (xsecs) as needed.
+        Generates a new Wing that subdivides the existing sections of this Wing into several smaller ones.
+
+        Splits each section into N=`ratio` smaller sub-sections by inserting new cross-sections (xsecs) as
+        needed.
 
         This can allow for finer aerodynamic resolution of sectional properties in certain analyses.
 
@@ -1807,9 +1814,11 @@ class Wing(ArchibaldObject):
         self, index: int, flow_direction: str = "-x"
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Computes the local reference frame associated with a particular section. (Note that sections and cross
-        sections are different! cross-sections, or xsecs, are the vertices, and sections are the parts in between. In
-        other words, a wing with N cross-sections (xsecs) will always have N-1 sections.
+        Computes the local reference frame associated with a particular section.
+
+        (Note that sections and cross sections are different! cross-sections, or xsecs, are the vertices, and
+        sections are the parts in between. In other words, a wing with N cross-sections (xsecs) will always have N-1
+        sections.
 
         Args:
 
@@ -1921,19 +1930,20 @@ class Wing(ArchibaldObject):
         axis1: np.ndarray,
     ) -> float:
         """
-        Computes the signed angle (in degrees) that a chord vector has rotated about a given axis, going from
-        state 0 (chord `c0`, axis `axis0`) to state 1 (chord `c1`, axis `axis1`).
-    
+        Computes the signed angle (in degrees) that a chord vector has rotated about a given axis.
+
+        Goes from state 0 (chord `c0`, axis `axis0`) to state 1 (chord `c1`, axis `axis1`).
+
         Each chord vector is projected onto the plane normal to its own corresponding axis before measuring the
         angle between them; this isolates the rotation component about that axis only (e.g., about `yg` for
         twist, or `zg` for sweep).
-    
+
         Args:
             c0: The chord vector (trailing edge - leading edge) before transformation.
             c1: The chord vector after transformation.
             axis0: The local frame axis (e.g., yg or zg) associated with `c0`.
             axis1: The local frame axis (e.g., yg or zg) associated with `c1`.
-    
+
         Returns: The signed rotation angle, in degrees.
         """
         c0_proj = c0 - np.dot(c0, axis0) * axis0
@@ -1955,9 +1965,10 @@ class Wing(ArchibaldObject):
     ) -> "Wing":
         """
         Applies the global transformation defined by an OperatingPoint to the entire Wing.
+
         This shifts the Wing from the boat's local reference frame to the global frame
         based on heel, trim, leeway, and translations.
-    
+
         Because heel, trim, and leeway are rigid-body rotations, twist and sweep -- being
         intrinsic, frame-relative angles -- are unaffected by this transformation in principle;
         what actually changes is each cross-section's position (`xyz_le`, `xyz_te`) in space.
@@ -1966,10 +1977,10 @@ class Wing(ArchibaldObject):
         transformed chord vector (`xyz_te - xyz_le`) for each xsec. This avoids depending on
         the globally-anchored axis conventions used by `_compute_frame_of_WingXSec`, which
         would otherwise introduce spurious twist/sweep corrections at nonzero trim/leeway.
-    
+
         Args:
             op_point: The OperatingPoint object containing the transformation state.
-    
+
         Returns:
             A new Wing object with globally transformed cross-sections.
         """
@@ -2023,8 +2034,9 @@ class Wing(ArchibaldObject):
         inverse: bool = False,
     ) -> "Wing":
         """
-        Applies a rigid-body rotation to the Wing, about a given axis and origin defined in the boat's local
-        reference frame.
+        Applies a rigid-body rotation to the Wing, about a given axis and origin.
+
+        The axis and origin are defined in the boat's local reference frame.
 
         If the Wing's cross-sections are still expressed in the boat's local reference frame (i.e., prior to any
         `apply_operating_point` call), leave `op_point` as None: `axis` and `origin` are used directly.
@@ -2150,9 +2162,7 @@ class Sail(Wing):
 
 
 class WingXSec(ArchibaldObject):
-    """
-    Definition for a wing cross-section ("X-section").
-    """
+    """Definition for a wing cross-section ("X-section")."""
 
     def __init__(
         self,
@@ -2186,7 +2196,7 @@ class WingXSec(ArchibaldObject):
                     * That direction vector is projected onto the geometry Y-Z plane.
 
                     * That direction vector is now the twist axis.
-                    
+
             sweep: Sweep angle, in degrees, as defined about the local zg axis.
 
                 Uses the same reference-frame construction as `twist` (see above), except the rotation is applied
@@ -2340,8 +2350,8 @@ class WingXSec(ArchibaldObject):
     def apply_operating_point(self, op_point: OperatingPoint, inverse: bool = False) -> "WingXSec":
         """
         Applies an OperatingPoint's rigid-body transformation to this cross-section.
-        
-        Transforms the leading-edge coordinates (`xyz_le`) either forward (from the 
+
+        Transforms the leading-edge coordinates (`xyz_le`) either forward (from the
         boat's local reference frame to the global frame) or inversely.
 
         Args:
@@ -2368,7 +2378,9 @@ class WingXSec(ArchibaldObject):
 
 class ControlSurface(ArchibaldObject):
     """
-    Definition for a control surface, which is attached to a particular WingXSec via WingXSec's `control_surfaces=[]` parameter.
+    Definition for a control surface.
+
+    It is attached to a particular WingXSec via WingXSec's `control_surfaces=[]` parameter.
     """
 
     def __init__(

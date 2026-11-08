@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed May 27 16:23:04 2026
+Created on Wed May 27 16:23:04 2026.
 
 @author: jrich
 """
@@ -37,8 +37,9 @@ def amidships(
         **kwargs,
     ):
     """
-    Point amidships, between the ends of the waterline ``fpp`` and ``app``, at the
-    side and height of the wetted surface centroid ``cow``, in the hull frame [m].
+    Point amidships, between the ends of the waterline ``fpp`` and ``app``.
+
+    At the side and height of the wetted surface centroid ``cow``, in the hull frame [m].
     """
     return np.reshape(np.array([
         (fpp[0, 0] + app[0, 0]) / 2.,
@@ -157,22 +158,23 @@ DEFAULT_WINDAGE_METHODS = {
 
 
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
 def get_air_density(op_point, default=1.225):
-    """
-    Air density [kg/m^3] of the operating point environment, if defined, else default.
-    """
+    """Air density [kg/m^3] of the operating point environment, if defined, else default."""
     air = getattr(op_point.environment, 'air', None)
     return getattr(air, 'density', default)
 
 
 class Hull(ArchibaldObject):
+    """Hull defined by a mesh, with its hydrostatics, resistance and windage."""
     def __init__(
             self,
             name: str = 'hull',
@@ -201,9 +203,7 @@ class Hull(ArchibaldObject):
             backend: str = "pyvista",
             **kwargs
         ):
-        """
-        Standardized Hull draw method to behave like a component of the Sailboat.
-        """
+        """Standardized Hull draw method to behave like a component of the Sailboat."""
         if self.mesh:
             # Pass all kwargs (like draw_plane, opacity, etc.) directly to the mesh
             return self.mesh.draw(backend=backend, **kwargs)
@@ -212,9 +212,7 @@ class Hull(ArchibaldObject):
             self,
             op_point: OperatingPoint,
         ):
-        """
-        Point and normal of the water plane, expressed in the hull local frame.
-        """
+        """Point and normal of the water plane, expressed in the hull local frame."""
         
         xh = np.mean(self.mesh.vertices[:, 0])
         yh = np.mean(self.mesh.vertices[:, 1])
@@ -242,6 +240,7 @@ class Hull(ArchibaldObject):
             self,
             op_point: OperatingPoint,
         ):
+        """Computes the hydrostatics of the hull at the waterplane of the operating point."""
         
         point, normal = self.get_waterplane(op_point)
         
@@ -251,9 +250,7 @@ class Hull(ArchibaldObject):
             self,
             op_point: OperatingPoint,
         ):
-        """
-        Geometric properties of the hull above the water plane, see ``ArchibaldMesh.aerostatics``.
-        """
+        """Geometric properties of the hull above the water plane, see ``ArchibaldMesh.aerostatics``."""
         
         point, normal = self.get_waterplane(op_point)
         
@@ -264,8 +261,9 @@ class Hull(ArchibaldObject):
             op_point: OperatingPoint,
         ):
         """
-        Position (x, y) [m] of the hull centre of buoyancy in the water axes,
-        i.e. with the heel, trim and leeway of the operating point applied.
+        Position (x, y) [m] of the hull centre of buoyancy in the water axes.
+
+        With the heel, trim and leeway of the operating point applied.
         Used to compute the interaction between the hulls of a multihull.
         Hydrostatics must have been computed beforehand.
         """
@@ -278,6 +276,7 @@ class Hull(ArchibaldObject):
             op_point: OperatingPoint = OperatingPoint(),
             recompute_statics: bool = True,
         ):
+        """Buoyancy force and moment of the hull, in the boat motion frame."""
         
         if recompute_statics:
             self.compute_hydrostatics_properties(op_point)
@@ -305,14 +304,12 @@ class Hull(ArchibaldObject):
         """
         Merge the methods asked for into one dict of components.
 
-        Parameters
-        ----------
-        method : str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of components,
-            or list of them, e.g. ``["dsyhs", "kijima"]``.
+        Args:
+            method: str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of components,
+                or list of them, e.g. ``["dsyhs", "kijima"]``.
 
-        Returns
-        -------
-        dict, name of the component: (function, point_function or None).
+        Returns:
+            dict, name of the component: (function, point_function or None).
         """
         methods = method if isinstance(method, (list, tuple)) else [method]
         if len(methods) == 0:
@@ -347,8 +344,9 @@ class Hull(ArchibaldObject):
 
     def is_wet(self):
         """
-        Whether the immersed volume exceeds ``DRY_VOLUME`` (symbolic with the
-        hydrostatics). Hydrostatics must have been computed beforehand.
+        Whether the immersed volume exceeds ``DRY_VOLUME`` (symbolic with the hydrostatics).
+
+        Hydrostatics must have been computed beforehand.
         """
         return self.hydrostatics_data["volume"] > DRY_VOLUME
 
@@ -381,9 +379,10 @@ class Hull(ArchibaldObject):
             op_point: OperatingPoint,
         ):
         """
-        Arguments given to every hydrodynamic method: hydrostatics, environment
-        and state. Hydrostatics must have been computed beforehand. A dry hull
-        (``is_wet`` false) gets ``dry_reference_hydrostatics`` instead.
+        Arguments given to every hydrodynamic method: hydrostatics, environment and state.
+
+        Hydrostatics must have been computed beforehand. A dry hull (``is_wet``
+        false) gets ``dry_reference_hydrostatics`` instead.
         """
         V = op_point.stw * u.kt
         rho = op_point.environment.water.density
@@ -429,14 +428,12 @@ class Hull(ArchibaldObject):
         """
         Values of the components of the hydrodynamic methods.
 
-        Parameters
-        ----------
-        Same as ``compute_resistance``.
+        Args:
+            Same as ``compute_resistance``.
 
-        Returns
-        -------
-        dict, value of each component, plus "_total", the sum of the
-        resistances "R..." [N].
+        Returns:
+            dict, value of each component, plus "_total", the sum of the
+            resistances "R..." [N].
         """
         if recompute_statics:
             self.compute_hydrostatics_properties(op_point)
@@ -479,17 +476,15 @@ class Hull(ArchibaldObject):
         points (motion frame) in ``resistance_points``, and the force and
         moment of each component in ``resistance_torsors``.
 
-        Parameters
-        ----------
-        op_point : operating point. Positive leeway is to starboard.
-        method : str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of
-            components, or list of them, e.g. ``["dsyhs", "kijima", "mittendorf"]``.
-        recompute_statics : bool, recompute the hydrostatics of the hull.
-        **kwargs : parameters of the methods, given to all of them.
+        Args:
+            op_point: operating point. Positive leeway is to starboard.
+            method: str, a key of ``DEFAULT_RESISTANCE_METHODS``, dict of
+                components, or list of them, e.g. ``["dsyhs", "kijima", "mittendorf"]``.
+            recompute_statics: bool, recompute the hydrostatics of the hull.
+            **kwargs: parameters of the methods, given to all of them.
 
-        Returns
-        -------
-        Fh, Mh : force [N] and moment [N.m] about the frame origin, of shape (1, 3).
+        Returns:
+            Fh, Mh: force [N] and moment [N.m] about the frame origin, of shape (1, 3).
         """
         if recompute_statics:
             self.compute_hydrostatics_properties(op_point)
@@ -552,28 +547,26 @@ class Hull(ArchibaldObject):
         ):
         """
         Aerodynamic force of the wind on the above-water part of the hull and on the crew.
-        
-        Parameters
-        ----------
-        op_point : OperatingPoint, boat attitude and speed through water.
-        tws : float, True wind speed [kt], at the reference height of the wind profile.
-        twa : float, True wind angle [deg], positive when the wind comes from starboard.
-        method : str or dict, key of ``DEFAULT_WINDAGE_METHODS`` or custom dict of methods.
-        recompute_statics : bool, whether to recompute the aerostatics of the hull.
-        rho_air : float or None, air density [kg/m^3]. Default from the environment, else 1.225.
-        crew_position : (1, 3) or (3,) array or None, position (x, y, z) of the crew in the
-            boat frame [m], y being non zero for a crew hiking or on a trapeze. It is brought
-            in the water axes, and given to the windage methods as ``crew_position``, where the
-            "Crew" element uses its z coordinate as the height of its centre of effort.
-        **kwargs : parameters of the windage methods (crew_mass, n_crew, Cd_hull, ...).
-        
-        Returns
-        -------
-        dict, for each element of the method: ``Fx`` and ``Fy`` [N] along the boat
-        x (forward) and y (port) axes, ``zce`` [m], height of its centre of effort
-        above the waterplane, and ``dxce`` [m], longitudinal offset of its application
-        point from the lateral centre of effort of the hull. ``_total`` gives the sum
-        of ``Fx`` and ``Fy``.
+
+        Args:
+            op_point: OperatingPoint, boat attitude and speed through water.
+            tws: float, True wind speed [kt], at the reference height of the wind profile.
+            twa: float, True wind angle [deg], positive when the wind comes from starboard.
+            method: str or dict, key of ``DEFAULT_WINDAGE_METHODS`` or custom dict of methods.
+            recompute_statics: bool, whether to recompute the aerostatics of the hull.
+            rho_air: float or None, air density [kg/m^3]. Default from the environment, else 1.225.
+            crew_position: (1, 3) or (3,) array or None, position (x, y, z) of the crew in the
+                boat frame [m], y being non zero for a crew hiking or on a trapeze. It is brought
+                in the water axes, and given to the windage methods as ``crew_position``, where the
+                "Crew" element uses its z coordinate as the height of its centre of effort.
+            **kwargs: parameters of the windage methods (crew_mass, n_crew, Cd_hull, ...).
+
+        Returns:
+            dict, for each element of the method: ``Fx`` and ``Fy`` [N] along the boat
+            x (forward) and y (port) axes, ``zce`` [m], height of its centre of effort
+            above the waterplane, and ``dxce`` [m], longitudinal offset of its application
+            point from the lateral centre of effort of the hull. ``_total`` gives the sum
+            of ``Fx`` and ``Fy``.
         """
         
         if recompute_statics:
@@ -650,23 +643,22 @@ class Hull(ArchibaldObject):
             **kwargs,
         ):
         """
-        Aerodynamic force and moment of the wind on the above-water part of the hull
-        and on the crew, in the water axes. See ``compute_windage_components``.
-        
+        Aerodynamic force and moment of the wind on the above-water part of the hull and on the crew, in the water axes.
+
+        See ``compute_windage_components``.
+
         The hull elements are applied at the horizontal position of the lateral centre
         of effort of the hull (plus the offset ``dxce`` of the method, if any), and at
         their own height. The "Crew" element is applied at ``crew_position`` if given,
         otherwise like the hull elements.
-        
-        Parameters
-        ----------
-        crew_position : (1, 3) or (3,) array or None, position (x, y, z) of the crew in the
-            boat frame [m]. The force is applied at this point, off the centreline if y
-            is not zero, which gives the yaw moment term -y * Fx.
-        
-        Returns
-        -------
-        Fa, Ma : (1, 3) arrays, force [N] and moment [N.m] about the origin.
+
+        Args:
+            crew_position: (1, 3) or (3,) array or None, position (x, y, z) of the crew in the
+                boat frame [m]. The force is applied at this point, off the centreline if y
+                is not zero, which gives the yaw moment term -y * Fx.
+
+        Returns:
+            Fa, Ma: (1, 3) arrays, force [N] and moment [N.m] about the origin.
         """
         
         self.windage_components = self.compute_windage_components(

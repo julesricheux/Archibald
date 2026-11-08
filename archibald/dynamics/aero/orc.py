@@ -32,23 +32,21 @@ def compute_Fhull_orc(
     ):
     """
     Windage of the hull (topsides and superstructures), ORC VPP model.
-    
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    tws : float, True wind speed at z_ref [kt].
-    twa : float, True wind angle [deg].
-    rho_air : float, Air density [kg/m^3].
-    Ax : float, Frontal area above the waterplane [m^2].
-    Ay : float, Lateral area above the waterplane [m^2].
-    cex : (1, 3) array, Centroid of Ax, in the water axes [m].
-    cey : (1, 3) array, Centroid of Ay, in the water axes [m].
-    Cd_hull : float, Drag coefficient of the hull, 0.816 in the ORC VPP.
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce : Force components [N] and height of the centre of effort [m].
+    Args:
+        stw: float, Speed through water [kt].
+        tws: float, True wind speed at z_ref [kt].
+        twa: float, True wind angle [deg].
+        rho_air: float, Air density [kg/m^3].
+        Ax: float, Frontal area above the waterplane [m^2].
+        Ay: float, Lateral area above the waterplane [m^2].
+        cex: (1, 3) array, Centroid of Ax, in the water axes [m].
+        cey: (1, 3) array, Centroid of Ay, in the water axes [m].
+        Cd_hull: float, Drag coefficient of the hull, 0.816 in the ORC VPP.
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
+
+    Returns:
+        Fx, Fy, zce: Force components [N] and height of the centre of effort [m].
     """
     
     # single centre of effort height for the hull, as in the ORC model
@@ -87,32 +85,30 @@ def compute_Fcrew_orc(
     ):
     """
     Windage of the movable crew, ORC VPP model.
-    
+
     The reference areas are those of the ORC table (to be checked against the
     original document): a constant frontal area for the whole crew, and a side
     area proportional to the number of movable crew.
-    
-    Parameters
-    ----------
-    stw, tws, twa, rho_air : see ``compute_Fhull_orc``.
-    Fb : float, Mean freeboard [m], from aerostatics.
-    Boa : float, Overall beam [m], from aerostatics.
-    heel : float, Heel angle [deg].
-    n_crew : float, Number of movable crew.
-    Cd_crew : float, Drag coefficient of the crew, 1.08 in the ORC VPP.
-    A_front : float, Frontal area of the crew [m^2].
-    A_side_per_crew : float, Side area per crew member [m^2].
-    crew_position : (1, 3) array or None, Position of the crew in the water axes [m]
-        (given by ``Hull.compute_windage`` from the position in the boat frame).
-        Its z coordinate is the height of the centre of effort.
-    zce_crew : float or None, Explicit height of the centre of effort above the
-        waterplane [m], with priority over ``crew_position``. If neither is
-        given, the ORC value is used, see ``crew_zce``.
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce : Force components [N] and height of the centre of effort [m].
+    Args:
+        stw, tws, twa, rho_air: see ``compute_Fhull_orc``.
+        Fb: float, Mean freeboard [m], from aerostatics.
+        Boa: float, Overall beam [m], from aerostatics.
+        heel: float, Heel angle [deg].
+        n_crew: float, Number of movable crew.
+        Cd_crew: float, Drag coefficient of the crew, 1.08 in the ORC VPP.
+        A_front: float, Frontal area of the crew [m^2].
+        A_side_per_crew: float, Side area per crew member [m^2].
+        crew_position: (1, 3) array or None, Position of the crew in the water axes [m]
+            (given by ``Hull.compute_windage`` from the position in the boat frame).
+            Its z coordinate is the height of the centre of effort.
+        zce_crew: float or None, Explicit height of the centre of effort above the
+            waterplane [m], with priority over ``crew_position``. If neither is
+            given, the ORC value is used, see ``crew_zce``.
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
+
+    Returns:
+        Fx, Fy, zce: Force components [N] and height of the centre of effort [m].
     """
     
     zce_crew = resolve_crew_zce(

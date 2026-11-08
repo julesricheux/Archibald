@@ -17,10 +17,12 @@ import archibald.numpy as np
 
 class SurrogateModel(ArchibaldObject):
     """
-    A SurrogateModel is effectively a callable; it only has the __call__ method, and all subclasses must explicitly
-    overwrite this. The only reason it is not a callable is that you want to be able to save it to disk (via
-    pickling) while also having the capability to save associated data (for example, constants associated with a
-    particular model, or underlying data).
+    A SurrogateModel is effectively a callable.
+
+    It only has the __call__ method, and all subclasses must explicitly overwrite this. The only reason it is
+    not a callable is that you want to be able to save it to disk (via pickling) while also having the
+    capability to save associated data (for example, constants associated with a particular model, or
+    underlying data).
 
     If data is used to generate the SurrogateModel, it should be stored as follows:
 
@@ -42,9 +44,7 @@ class SurrogateModel(ArchibaldObject):
 
     @abstractmethod
     def __init__(self):
-        """
-        SurrogateModel is an abstract class; you should not instantiate it directly.
-        """
+        """SurrogateModel is an abstract class; you should not instantiate it directly."""
         pass
 
     @abstractmethod  # If you subclass SurrogateModel, you must overwrite __call__ so that it's a callable.
@@ -91,9 +91,7 @@ class SurrogateModel(ArchibaldObject):
         )
 
     def input_dimensionality(self) -> int:
-        """
-        Returns the number of inputs that should be supplied in x, where x is the input to the SurrogateModel.
-        """
+        """Returns the number of inputs that should be supplied in x, where x is the input to the SurrogateModel."""
         input_names = self.input_names()
         if input_names is not None:
             return len(input_names)
@@ -112,11 +110,13 @@ class SurrogateModel(ArchibaldObject):
             return None
 
     def plot(self, resolution=250):
+        """Plots the model over the range of its data."""
         import matplotlib.pyplot as plt
 
         def axis_range(x_data_axis: np.ndarray) -> tuple[float, float]:
             """
             Given the entries of one axis of the dependent variable, determine a min/max range over which to plot the fit.
+
             Args:
                 x_data_axis: The entries of one axis of the dependent variable, i.e. x_data["x1"].
 

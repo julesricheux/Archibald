@@ -36,6 +36,7 @@ class XFoil(ExplicitAnalysis):
 
     # Defines an exception to throw if XFoil fails externally
     class XFoilError(Exception):
+        """Raised when XFoil fails."""
         pass
 
     def __init__(
@@ -58,8 +59,9 @@ class XFoil(ExplicitAnalysis):
         working_directory: Union[Path, str] = None,
     ):
         """
-        Interface to XFoil. Compatible with both XFoil v6.xx (public) and XFoil v7.xx (private, contact Mark Drela at
-        MIT for a copy.)
+        Interface to XFoil.
+
+        Compatible with both XFoil v6.xx (public) and XFoil v7.xx (private, contact Mark Drela at MIT for a copy.)
 
         Args:
 

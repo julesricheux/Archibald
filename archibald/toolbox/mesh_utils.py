@@ -18,8 +18,9 @@ def stack_meshes(
         *meshes: Tuple[Tuple[np.ndarray, np.ndarray]]
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Takes in a series of tuples (points, faces) and merges them into a single tuple (points, faces). All (points,
-    faces) tuples are meshes given in standard format.
+    Takes in a series of tuples (points, faces) and merges them into a single tuple (points, faces).
+
+    All (points, faces) tuples are meshes given in standard format.
 
     Args:
         *meshes: Any number of mesh tuples in standard (points, faces) format.
@@ -62,8 +63,9 @@ def convert_mesh_to_polydata_format(
         faces: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    PyVista uses a slightly different convention for the standard (points, faces) format as described above. They
-    give `faces` as a single 1D vector of roughly length (M*3), or (M*4) in the case of quadrilateral meshing.
+    PyVista uses a slightly different convention for the standard (points, faces) format as described above.
+
+    They give `faces` as a single 1D vector of roughly length (M*3), or (M*4) in the case of quadrilateral meshing.
     Basically, the mesh displayer goes down the `faces` array, and when it sees a number N, it interprets that as the
     number of vertices in the following face. Then, the next N entries are interpreted as integer references to the
     vertices of the face.
@@ -142,10 +144,7 @@ def read_ascii_stl(file_path):
     return vertices, faces
 
 def load_stl(file_path):
-    """
-    Detects whether an STL is ASCII or Binary,
-    parses it using NumPy, and returns (vertices, faces).
-    """
+    """Detects whether an STL is ASCII or Binary, parses it using NumPy, and returns (vertices, faces)."""
     file_size = os.path.getsize(file_path)
     
     with open(file_path, 'rb') as f:

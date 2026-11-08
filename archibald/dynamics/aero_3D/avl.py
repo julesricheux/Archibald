@@ -410,9 +410,7 @@ class AVL(ExplicitAnalysis):
         """
 
         def clean(s):
-            """
-            Removes leading and trailing whitespace from each line of a multi-line string.
-            """
+            """Removes leading and trailing whitespace from each line of a multi-line string."""
             return "\n".join([line.strip() for line in s.split("\n")])
 
         airplane = self.airplane

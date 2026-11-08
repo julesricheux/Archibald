@@ -31,9 +31,10 @@ def calculate_reduced_time(
 ) -> Union[float, np.ndarray]:
     """
     Calculates reduced time from time in seconds and velocity history in m/s.
-    For constant velocity it reduces to s = 2*U*t/c
-    The reduced time is the number of semichords travelled by the airfoil/aircaft
-    i.e. 2 / chord * integral from t0 to t of velocity dt
+
+    For constant velocity it reduces to s = 2*U*t/c The reduced time is the
+    number of semichords travelled by the airfoil/aircaft i.e. 2 / chord *
+    integral from t0 to t of velocity dt
 
 
     Args:
@@ -60,7 +61,8 @@ def calculate_reduced_time(
 
 def wagners_function(reduced_time: Union[float, np.ndarray]):
     """
-    A commonly used approximation to Wagner's function
+    A commonly used approximation to Wagner's function.
+
     (Jones, R.T. The Unsteady Lift of a Finite Wing; Technical Report NACA TN-682; NACA: Washington, DC, USA, 1939)
 
     Args:
@@ -74,7 +76,7 @@ def wagners_function(reduced_time: Union[float, np.ndarray]):
 
 def kussners_function(reduced_time: Union[float, np.ndarray]):
     """
-    A commonly used approximation to Kussner's function (Sears and Sparks 1941)
+    A commonly used approximation to Kussner's function (Sears and Sparks 1941).
 
     Args:
         reduced_time (float,np.ndarray) : This is equal to the number of semichords travelled. See function calculate_reduced_time
@@ -89,7 +91,8 @@ def indicial_pitch_response(
     reduced_time: Union[float, np.ndarray], angle_of_attack: float  # In degrees
 ):
     """
-    Computes the evolution of the lift coefficient in Wagner's problem which can be interpreted as follows
+    Computes the evolution of the lift coefficient in Wagner's problem which can be interpreted as follows.
+
     1) An impulsively started flat plate at constant angle of attack
     2) An impuslive change in the angle of attack of a flat plate at constant velocity
 
@@ -112,8 +115,9 @@ def indicial_gust_response(
     chord: float = 1,
 ):
     """
-    Computes the evolution of the lift coefficient of a flat plate entering a
-    an infinitely long, sharp step gust (Heaveside function) at a constant angle of attack.
+    Computes the evolution of the lift coefficient of a flat plate entering a sharp step gust.
+
+    The gust is infinitely long (Heaveside function), at a constant angle of attack.
     Reduced_time = 0 corresponds to the instance the gust is entered
 
 
@@ -145,8 +149,9 @@ def calculate_lift_due_to_transverse_gust(
     chord: float = 1,
 ):
     """
-    Calculates the lift (as a function of reduced time) caused by an arbitrary transverse gust profile
-    by computing duhamel superposition integral of Kussner's problem at a constant angle of attack
+    Calculates the lift (as a function of reduced time) caused by an arbitrary transverse gust profile.
+
+    Computes the duhamel superposition integral of Kussner's problem at a constant angle of attack
 
     Args:
         reduced_time (float,np.ndarray) : Reduced time, equal to the number of semichords travelled. See function reduced_time
@@ -196,6 +201,7 @@ def calculate_lift_due_to_pitching_profile(
 ):
     """
     Calculates the duhamel superposition integral of Wagner's problem.
+
     Given some arbitrary pitching profile. The lift coefficient as a function
     of reduced time of a flat plate can be computed using this function
 
@@ -246,8 +252,9 @@ def added_mass_due_to_pitching(
     reduced_time: np.ndarray, angle_of_attack: Callable[[float], float]  # In degrees
 ):
     """
-    This function calculate the lift coefficient due to the added mass of a flat plate
-    pitching about its midchord while moving at constant velocity.
+    This function calculate the lift coefficient due to the added mass of a flat plate.
+
+    The plate is pitching about its midchord while moving at constant velocity.
 
     Args:
         reduced_time (np.ndarray) : Reduced time, equal to the number of semichords travelled. See function reduced_time
@@ -272,8 +279,9 @@ def pitching_through_transverse_gust(
     chord: float = 1,
 ):
     """
-    This function calculates the lift as a function of time of a flat plate pitching
-    about its midchord through an arbitrary transverse gust. It combines Kussner's gust response with
+    This function calculates the lift as a function of time of a flat plate pitching about its midchord.
+
+    The plate goes through an arbitrary transverse gust. It combines Kussner's gust response with
     wagners pitch response as well as added mass.
 
     The following physics are accounted for
@@ -309,6 +317,7 @@ def pitching_through_transverse_gust(
 def top_hat_gust(reduced_time: float) -> float:
     """
     A canonical example gust.
+
     Args:
         reduced_time (float)
     Returns:
@@ -324,11 +333,12 @@ def top_hat_gust(reduced_time: float) -> float:
 
 def sine_squared_gust(reduced_time: float) -> float:
     """
-    A canonical gust of used by the FAA to show 'compliance with the
-    requirements of Title 14, Code of Federal Regulations (14 CFR) 25.341,
-    Gust and turbulence loads. Section 25.341 specifies the discrete gust
-    and continuous turbulence dynamic load conditions that apply to the
-    airplane and engines.'
+    A canonical gust of used by the FAA.
+
+    It is used to show 'compliance with the requirements of Title 14, Code of Federal Regulations (14 CFR)
+    25.341, Gust and turbulence loads. Section 25.341 specifies the discrete gust and continuous turbulence
+    dynamic load conditions that apply to the airplane and engines.'
+
     Args:
         reduced_time (float)
     Returns:
@@ -351,7 +361,8 @@ def sine_squared_gust(reduced_time: float) -> float:
 
 def gaussian_pitch(reduced_time: float) -> float:
     """
-    A pitch maneuver resembling a guassian curve
+    A pitch maneuver resembling a guassian curve.
+
     Args:
         reduced_time (float)
     Returns:
@@ -362,7 +373,8 @@ def gaussian_pitch(reduced_time: float) -> float:
 
 def linear_ramp_pitch(reduced_time: float) -> float:
     """
-    A pitch maneuver resembling a linear ramp
+    A pitch maneuver resembling a linear ramp.
+
     Args:
         reduced_time (float)
     Returns:

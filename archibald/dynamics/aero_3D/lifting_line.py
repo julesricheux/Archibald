@@ -16,17 +16,20 @@ import archibald.numpy as np
 ### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
 # Useful for broadcasting with matrices later.
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
 class LiftingLine(ExplicitAnalysis):
     """
-    An implicit aerodynamics analysis based on lifting line theory, with modifications for nonzero sweep
-    and dihedral + multiple wings.
+    An implicit aerodynamics analysis based on lifting line theory.
+
+    With modifications for nonzero sweep and dihedral + multiple wings.
 
     Nonlinear, and includes viscous effects based on 2D data.
 
@@ -129,6 +132,7 @@ class LiftingLine(ExplicitAnalysis):
 
     @dataclass
     class AeroComponentResults:
+        """Aerodynamic results of one component, in reference, geometry, body and wind axes."""
         s_ref: float  # Reference area [m^2]
         c_ref: float  # Reference chord [m]
         b_ref: float  # Reference span [m]
@@ -161,80 +165,60 @@ class LiftingLine(ExplicitAnalysis):
 
         @property
         def F_b(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of forces in body axes [N]
-            """
+            """An [x, y, z] list of forces in body axes [N]."""
             return self.op_point.convert_axes(
                 *self.F_g, from_axes="geometry", to_axes="body"
             )
 
         @property
         def F_w(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of forces in wind axes [N]
-            """
+            """An [x, y, z] list of forces in wind axes [N]."""
             return self.op_point.convert_axes(
                 *self.F_g, from_axes="geometry", to_axes="wind"
             )
 
         @property
         def M_b(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of moments about body axes [Nm]
-            """
+            """An [x, y, z] list of moments about body axes [Nm]."""
             return self.op_point.convert_axes(
                 *self.M_g, from_axes="geometry", to_axes="body"
             )
 
         @property
         def M_w(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of moments about wind axes [Nm]
-            """
+            """An [x, y, z] list of moments about wind axes [Nm]."""
             return self.op_point.convert_axes(
                 *self.M_g, from_axes="geometry", to_axes="wind"
             )
 
         @property
         def L(self) -> Union[float, np.ndarray]:
-            """
-            The lift force [N]. Definitionally, this is in wind axes.
-            """
+            """The lift force [N]. Definitionally, this is in wind axes."""
             return -self.F_w[2]
 
         @property
         def Y(self) -> Union[float, np.ndarray]:
-            """
-            The side force [N]. Definitionally, this is in wind axes.
-            """
+            """The side force [N]. Definitionally, this is in wind axes."""
             return self.F_w[1]
 
         @property
         def D(self) -> Union[float, np.ndarray]:
-            """
-            The drag force [N]. Definitionally, this is in wind axes.
-            """
+            """The drag force [N]. Definitionally, this is in wind axes."""
             return -self.F_w[0]
 
         @property
         def l_b(self) -> Union[float, np.ndarray]:
-            """
-            The rolling moment [Nm] in body axes. Positive is roll-right.
-            """
+            """The rolling moment [Nm] in body axes. Positive is roll-right."""
             return self.M_b[0]
 
         @property
         def m_b(self) -> Union[float, np.ndarray]:
-            """
-            The pitching moment [Nm] in body axes. Positive is nose-up.
-            """
+            """The pitching moment [Nm] in body axes. Positive is nose-up."""
             return self.M_b[1]
 
         @property
         def n_b(self) -> Union[float, np.ndarray]:
-            """
-            The yawing moment [Nm] in body axes. Positive is nose-right.
-            """
+            """The yawing moment [Nm] in body axes. Positive is nose-right."""
             return self.M_b[2]
 
     def run(self) -> Dict:
@@ -532,6 +516,7 @@ class LiftingLine(ExplicitAnalysis):
         return run_base
 
     def wing_aerodynamics(self) -> AeroComponentResults:
+        """Meshes the wings and computes their aerodynamics with the lifting line."""
 
         if self.verbose:
             print("Meshing...")
@@ -979,6 +964,7 @@ class LiftingLine(ExplicitAnalysis):
         return V
 
     def calculate_fuselage_influences(self, points: np.ndarray) -> np.ndarray:
+        """Velocities induced by the fuselages at the given points."""
 
         this_fuse_centerline_points = []  # fuselage sections centres
         this_fuse_radii = []
@@ -1116,9 +1102,10 @@ class LiftingLine(ExplicitAnalysis):
         backend: str = "pyvista",
     ):
         """
-        Draws the solution. Note: Must be called on a SOLVED AeroProblem object.
-        To solve an AeroProblem, use opti.solve(). To substitute a solved solution, use ap = sol(ap).
-        :return:
+        Draws the solution.
+
+        Note: Must be called on a SOLVED AeroProblem object. To solve an AeroProblem, use
+        opti.solve(). To substitute a solved solution, use ap = sol(ap).
         """
         if show_kwargs is None:
             show_kwargs = {}

@@ -23,20 +23,24 @@ import warnings
 
 
 class ArchibaldObject(ABC):
+    """Base class of the geometry and analysis objects of Archibald."""
     _arch_metadata: dict[str, str] = None
 
     @abstractmethod
     def __init__(self):
         """
-        Denotes ArchibaldObject as an abstract class, meaning you can't instantiate it directly - you must subclass
-        (extend) it instead.
+        Denotes ArchibaldObject as an abstract class.
+
+        You can't instantiate it directly - you must subclass (extend) it instead.
         """
         pass
 
     def __eq__(self, other):
         """
-        Checks if two Archibald objects are value-equivalent. A more sensible default for classes that represent
-        physical objects than checking for memory equivalence.
+        Checks if two Archibald objects are value-equivalent.
+
+        A more sensible default for classes that represent physical objects than checking for memory
+        equivalence.
 
         This is done by checking if the two objects are of the same type and have the same __dict__.
 
@@ -126,15 +130,11 @@ class ArchibaldObject(ABC):
             )
 
     def copy(self):
-        """
-        Returns a shallow copy of the object.
-        """
+        """Returns a shallow copy of the object."""
         return copy.copy(self)
 
     def deepcopy(self):
-        """
-        Returns a deep copy of the object.
-        """
+        """Returns a deep copy of the object."""
         return copy.deepcopy(self)
 
     def substitute_solution(
@@ -146,8 +146,9 @@ class ArchibaldObject(ABC):
         Substitutes a solution from CasADi's solver recursively as an in-place operation.
 
         In-place operation. To make it not in-place, do `y = copy.deepcopy(x)` or similar first.
-        :param sol: OptiSol object.
-        :return:
+
+        Args:
+            sol: OptiSol object.
         """
         import warnings
 
@@ -346,6 +347,7 @@ def load(
 
 
 class ExplicitAnalysis(ArchibaldObject):
+    """Base class of the analyses that compute their results directly."""
     default_analysis_specific_options: dict[type, dict[str, Any]] = {}
     """This is part of archibald's "analysis-specific options" feature, which lets you "tag" geometry objects with 
     flags that change how different analyses act on them. 
@@ -391,7 +393,9 @@ class ExplicitAnalysis(ArchibaldObject):
         geometry_object: ArchibaldObject,
     ) -> dict[str, Any]:
         """
-        Retrieves the analysis-specific options that correspond to both:
+        Retrieves the analysis-specific options.
+
+        They correspond to both:
 
             * An analysis type (which is this object, "self"), and
 
@@ -477,6 +481,7 @@ class ExplicitAnalysis(ArchibaldObject):
 
 
 class ImplicitAnalysis(ArchibaldObject):
+    """Base class of the analyses solved inside an optimization problem."""
     @staticmethod
     def initialize(init_method):
         """
@@ -539,6 +544,7 @@ class ImplicitAnalysis(ArchibaldObject):
         return init_wrapped
 
     class ImplicitAnalysisInitError(Exception):
+        """Raised when an ImplicitAnalysis has no `opti` property."""
         def __init__(
             self,
             message="""
@@ -552,6 +558,7 @@ class ImplicitAnalysis(ArchibaldObject):
 
     @property
     def opti(self):
+        """The Opti instance of this analysis."""
         try:
             return self._opti
         except AttributeError:
@@ -563,6 +570,7 @@ class ImplicitAnalysis(ArchibaldObject):
 
     @property
     def opti_provided(self):
+        """Whether the Opti instance was given by the user."""
         try:
             return self._opti_provided
         except AttributeError:

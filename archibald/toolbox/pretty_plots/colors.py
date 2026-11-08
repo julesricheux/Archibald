@@ -40,6 +40,7 @@ def get_discrete_colors_from_colormap(
 ):
     """
     Returns uniformly-spaced discrete color samples from a (continuous) colormap.
+
     Args:
         cmap: Name of a colormap.
         N: Number of colors to retrieve from colormap.
@@ -72,6 +73,7 @@ def adjust_lightness(color, amount=1.0):
 
 
 def get_last_line_color():
+    """Color of the last line drawn on the current axes."""
     lines = plt.gca().lines
     try:
         line = lines[-1]

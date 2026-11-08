@@ -17,9 +17,7 @@ import os
 
 
 class Airfoil(Polygon):
-    """
-    An airfoil. See constructor docstring for usage details.
-    """
+    """An airfoil. See constructor docstring for usage details."""
 
     def __init__(
         self,
@@ -148,9 +146,7 @@ class Airfoil(Polygon):
                     )
 
                 def default_CL_function(alpha, Re, mach=0, deflection=0):
-                    """
-                    Lift coefficient.
-                    """
+                    """Lift coefficient."""
                     print_default_warning()
                     Cl_inc = np.pi * np.sind(2 * alpha)
                     beta = (1 - mach) ** 2
@@ -159,9 +155,7 @@ class Airfoil(Polygon):
                     return Cl
 
                 def default_CD_function(alpha, Re, mach=0, deflection=0):
-                    """
-                    Drag coefficient.
-                    """
+                    """Drag coefficient."""
                     print_default_warning()
                     Cf = Cf_flat_plate(Re_L=Re, method="hybrid-sharpe-convex")
 
@@ -176,9 +170,7 @@ class Airfoil(Polygon):
                     return Cd
 
                 def default_CM_function(alpha, Re, mach=0, deflection=0):
-                    """
-                    Pitching moment coefficient, as measured about quarter-chord.
-                    """
+                    """Pitching moment coefficient, as measured about quarter-chord."""
                     print_default_warning()
                     return np.zeros_like(alpha)
 
@@ -207,6 +199,7 @@ class Airfoil(Polygon):
         normalize_coordinates: bool = True,
         use_leading_edge_modification: bool = True,
     ) -> "KulfanAirfoil":
+        """Returns a KulfanAirfoil fitted to the coordinates of this airfoil."""
 
         from archibald.geometry.airfoil.kulfan_airfoil import KulfanAirfoil
         from archibald.geometry.airfoil.airfoil_families import get_kulfan_parameters
@@ -242,8 +235,9 @@ class Airfoil(Polygon):
         make_symmetric_polars: bool = False,
     ) -> None:
         """
-        Generates airfoil polar surrogate models (CL, CD, CM functions) from XFoil data and assigns them in-place to
-        this Airfoil's polar functions.
+        Generates airfoil polar surrogate models (CL, CD, CM functions) from XFoil data.
+
+        Assigns them in-place to this Airfoil's polar functions.
 
         In other words, when this function is run, the following functions will be added (or overwritten) to the instance:
             * Airfoil.CL_function(alpha, Re, mach)
@@ -664,6 +658,7 @@ class Airfoil(Polygon):
         control_surfaces: List["ControlSurface"] = None,
         include_360_deg_effects: bool = True,
     ) -> Dict[str, Union[float, np.ndarray]]:
+        """Aerodynamic coefficients of the airfoil from NeuralFoil."""
 
         ### Normalize the inputs and evaluate
         normalization_outputs = self.normalize(return_dict=True)
@@ -710,6 +705,7 @@ class Airfoil(Polygon):
         show: bool = True,
         Re_colors=None,
     ) -> None:
+        """Plots the CL, CD, CM and L/D polars of the airfoil for several Reynolds numbers."""
         import matplotlib.pyplot as plt
         import archibald.toolbox.pretty_plots as p
 
@@ -935,9 +931,7 @@ class Airfoil(Polygon):
                 return fig
 
     def LE_index(self) -> int:
-        """
-        Returns the index of the leading edge point in the airfoil coordinates.
-        """
+        """Returns the index of the leading edge point in the airfoil coordinates."""
         return int(np.argmin(self.x()))
 
     def lower_coordinates(self) -> np.ndarray:
@@ -963,6 +957,7 @@ class Airfoil(Polygon):
         return self.coordinates[: self.LE_index() + 1, :]
 
     def LE_radius(self, softness: float = 1e-6):
+        """Leading edge radius of the airfoil, relative to the chord."""
         LE_index = self.LE_index()
 
         # The three points closest to the leading edge
@@ -984,18 +979,14 @@ class Airfoil(Polygon):
         return diameter / 2
 
     def TE_thickness(self) -> float:
-        """
-        Returns the thickness of the trailing edge of the airfoil.
-        """
+        """Returns the thickness of the trailing edge of the airfoil."""
         x_gap = self.coordinates[0, 0] - self.coordinates[-1, 0]
         y_gap = self.coordinates[0, 1] - self.coordinates[-1, 1]
 
         return (x_gap**2 + y_gap**2) ** 0.5
 
     def TE_angle(self) -> float:
-        """
-        Returns the trailing edge angle of the airfoil, in degrees.
-        """
+        """Returns the trailing edge angle of the airfoil, in degrees."""
         upper_TE_vec = self.coordinates[0, :] - self.coordinates[1, :]
         lower_TE_vec = self.coordinates[-1, :] - self.coordinates[-2, :]
 
@@ -1105,7 +1096,9 @@ class Airfoil(Polygon):
         return_dict: bool = False,
     ) -> Union["Airfoil", Dict[str, Union["Airfoil", float]]]:
         """
-        Returns a copy of the Airfoil with a new set of `coordinates`, such that:
+        Returns a copy of the Airfoil with a new set of `coordinates`.
+
+        The new coordinates are such that:
             - The leading edge (LE) is at (0, 0)
             - The trailing edge (TE) is at (1, 0)
             - The chord length is equal to 1
@@ -1205,8 +1198,9 @@ class Airfoil(Polygon):
         modify_polars: bool = True,
     ) -> "Airfoil":
         """
-        Returns a version of the airfoil with a trailing-edge control surface added at a given point. Implicitly
-        repanels the airfoil as part of this operation.
+        Returns a version of the airfoil with a trailing-edge control surface added at a given point.
+
+        Implicitly repanels the airfoil as part of this operation.
 
         Args:
             deflection: Deflection angle [degrees]. Downwards-positive.
@@ -1421,6 +1415,7 @@ class Airfoil(Polygon):
     ) -> "Airfoil":
         """
         Translates an Airfoil by a given amount.
+
         Args:
             translate_x: Amount to translate in the x-direction
             translate_y: Amount to translate in the y-direction

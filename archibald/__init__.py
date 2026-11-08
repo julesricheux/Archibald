@@ -27,9 +27,7 @@ except Exception:
 
 
 def docs():
-    """
-    Opens the archibald documentation.
-    """
+    """Opens the archibald documentation."""
     import webbrowser
 
     webbrowser.open_new(
@@ -38,9 +36,7 @@ def docs():
 
 
 def run_tests():
-    """
-    Runs all of the Archibald internal unit tests on this computer.
-    """
+    """Runs all of the Archibald internal unit tests on this computer."""
     # TODO implement tests
     # try:
     #     import pytest

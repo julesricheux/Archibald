@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SAILBOAT DESCRIPTION
+SAILBOAT DESCRIPTION.
 
 Created 19/04/2023
 Last update: 22/10/2024
@@ -35,10 +35,12 @@ from archibald.common import ArchibaldObject
 #%%
 
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
@@ -50,6 +52,7 @@ EQUILIBRIUM_DOFS = ("Fx", "Fy", "Fz", "Mx", "My", "Mz")
 #%%
 
 class Sailboat(ArchibaldObject):
+    """Sailboat made of hulls, rigs, appendages, propellers and masses, with its torsors."""
     
     def __init__(
             self,
@@ -131,9 +134,8 @@ class Sailboat(ArchibaldObject):
         ``forces["Fsail_<i>"]``, ``moments["Msail_<i>"]`` for the i-th rig, and
         ``forces["Fsail"]``, ``moments["Msail"]`` for their sum.
 
-        Returns
-        -------
-        Fsail, Msail : total force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Fsail, Msail: total force [N] and moment [N.m], of shape (1, 3).
         """
         self._start_torsor("sail", op_point)
         self.aero_vlms = []
@@ -169,9 +171,8 @@ class Sailboat(ArchibaldObject):
         ``forces["Fapp_<i>"]``, ``moments["Mapp_<i>"]`` for the i-th appendage, and
         ``forces["Fapp"]``, ``moments["Mapp"]`` for their sum.
 
-        Returns
-        -------
-        Fapp, Mapp : total force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Fapp, Mapp: total force [N] and moment [N.m], of shape (1, 3).
         """
         self._start_torsor("app", op_point)
         self.hydro_vlms = []
@@ -206,9 +207,8 @@ class Sailboat(ArchibaldObject):
         for their sum. Without ``masses``, ``displacement`` and ``cog`` act as
         a single mass.
 
-        Returns
-        -------
-        Fw, Mw : total weight force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Fw, Mw: total weight force [N] and moment [N.m], of shape (1, 3).
         """
         masses = self.masses
 
@@ -238,12 +238,13 @@ class Sailboat(ArchibaldObject):
             recompute_statics: bool = True,
         ):
         """
-        Buoyancy force and moment of each hull, stored as ``forces["Fb_<i>"]`` and
-        ``moments["Mb_<i>"]``, and ``forces["Fb"]`` and ``moments["Mb"]`` for their sum.
+        Buoyancy force and moment of each hull.
 
-        Returns
-        -------
-        Fb, Mb : total buoyancy force [N] and moment [N.m], of shape (1, 3).
+        They are stored as ``forces["Fb_<i>"]`` and ``moments["Mb_<i>"]``, and ``forces["Fb"]`` and
+        ``moments["Mb"]`` for their sum.
+
+        Returns:
+            Fb, Mb: total buoyancy force [N] and moment [N.m], of shape (1, 3).
         """
         self._start_torsor("b", op_point)
 
@@ -275,16 +276,14 @@ class Sailboat(ArchibaldObject):
         The interference of each hull is applied as a drag force along -x at the
         hull centre of water, as done in ``Hull.compute_resistance``.
 
-        Parameters
-        ----------
-        op_point : OperatingPoint
-        method : str or dict, key of ``multihull.INTERACTION_METHODS`` or custom dict.
-        positions : list of (x, y) or None, hull positions, default from ``hull.get_position``.
-        **kwargs : method parameters (``calibrate``, ``fn_grid``, ``tau_table``...).
+        Args:
+            op_point: OperatingPoint
+            method: str or dict, key of ``multihull.INTERACTION_METHODS`` or custom dict.
+            positions: list of (x, y) or None, hull positions, default from ``hull.get_position``.
+            **kwargs: method parameters (``calibrate``, ``fn_grid``, ``tau_table``...).
 
-        Returns
-        -------
-        dict, ``dRw`` (n x n), ``dRf``, ``dR_hull`` and ``dR`` [N].
+        Returns:
+            dict, ``dRw`` (n x n), ``dRf``, ``dR_hull`` and ``dR`` [N].
         """
         self.hull_interaction = multihull.compute_hull_interaction(
             self.hulls,
@@ -334,17 +333,15 @@ class Sailboat(ArchibaldObject):
         ``moments["Mi_<i>"]``. The totals ``forces["Fh"]`` and ``moments["Mh"]``
         include the interaction.
 
-        Parameters
-        ----------
-        method : str, dict or list of them, hull methods (see ``Hull.compute_resistance``).
-        interaction : str, dict or None, interaction method between hulls (see
-            ``compute_hull_interaction``). None: hulls are independent.
-        interaction_kwargs : dict, parameters of the interaction method.
-        **kwargs : parameters of the hull methods, given to all of them.
+        Args:
+            method: str, dict or list of them, hull methods (see ``Hull.compute_resistance``).
+            interaction: str, dict or None, interaction method between hulls (see
+                ``compute_hull_interaction``). None: hulls are independent.
+            interaction_kwargs: dict, parameters of the interaction method.
+            **kwargs: parameters of the hull methods, given to all of them.
 
-        Returns
-        -------
-        Fh, Mh : total resistance force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Fh, Mh: total resistance force [N] and moment [N.m], of shape (1, 3).
         """
         self._start_torsor("h", op_point)
         self._clear_torsor("i")
@@ -395,27 +392,25 @@ class Sailboat(ArchibaldObject):
 
         The rig is not included: its aerodynamics is the purpose of ``compute_aerodynamics``.
 
-        Parameters
-        ----------
-        op_point : OperatingPoint
-        tws : float or None, True wind speed [kt]. Default: ``op_point.tws0``.
-        twa : float or None, True wind angle [deg], positive when the wind comes
-            from starboard. Default: ``op_point.twa``.
-        method : str or dict, key of ``hull.DEFAULT_WINDAGE_METHODS`` or custom dict of methods.
-        recompute_statics : bool, whether to recompute the aerostatics of the hulls.
-        crew_hull : int, index of the hull whose geometry (freeboard, beam) gives the
-            default height of the crew. Use ``zce_crew`` to set it directly.
-        crew_position : (1, 3) or (3,) array or None, position (x, y, z) of the crew in
-            the boat frame [m]. The y coordinate is not zero for a crew hiking or on a
-            trapeze. The wind force of the crew is applied at this point, and its z
-            coordinate, brought in the water axes (heel included), gives the height of
-            its centre of effort. Default: horizontal position of the lateral centre of
-            effort of ``crew_hull``, and ORC height of the crew.
-        **kwargs : parameters of the windage methods (crew_mass, n_crew, ship_type, ...).
+        Args:
+            op_point: OperatingPoint
+            tws: float or None, True wind speed [kt]. Default: ``op_point.tws0``.
+            twa: float or None, True wind angle [deg], positive when the wind comes
+                from starboard. Default: ``op_point.twa``.
+            method: str or dict, key of ``hull.DEFAULT_WINDAGE_METHODS`` or custom dict of methods.
+            recompute_statics: bool, whether to recompute the aerostatics of the hulls.
+            crew_hull: int, index of the hull whose geometry (freeboard, beam) gives the
+                default height of the crew. Use ``zce_crew`` to set it directly.
+            crew_position: (1, 3) or (3,) array or None, position (x, y, z) of the crew in
+                the boat frame [m]. The y coordinate is not zero for a crew hiking or on a
+                trapeze. The wind force of the crew is applied at this point, and its z
+                coordinate, brought in the water axes (heel included), gives the height of
+                its centre of effort. Default: horizontal position of the lateral centre of
+                effort of ``crew_hull``, and ORC height of the crew.
+            **kwargs: parameters of the windage methods (crew_mass, n_crew, ship_type, ...).
 
-        Returns
-        -------
-        Fa, Ma : (1, 3) arrays, total force [N] and moment [N.m] in the water axes.
+        Returns:
+            Fa, Ma: (1, 3) arrays, total force [N] and moment [N.m] in the water axes.
         """
         if len(self.hulls) == 0:
             raise ValueError("The boat has no hull.")
@@ -483,17 +478,15 @@ class Sailboat(ArchibaldObject):
         ``forces["Fprop"]`` and ``moments["Mprop"]`` for their sum. The details of each
         propeller (J, Kt, torque, power...) are in ``propeller.performance``.
 
-        Parameters
-        ----------
-        op_point : OperatingPoint
-        wake_fraction : float, wake fraction w [-].
-        thrust_deduction : float, thrust deduction t [-].
-        relative_rotative_efficiency : float, etaR [-].
-        shaft_efficiency : float, etaS [-].
+        Args:
+            op_point: OperatingPoint
+            wake_fraction: float, wake fraction w [-].
+            thrust_deduction: float, thrust deduction t [-].
+            relative_rotative_efficiency: float, etaR [-].
+            shaft_efficiency: float, etaS [-].
 
-        Returns
-        -------
-        Fprop, Mprop : total force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Fprop, Mprop: total force [N] and moment [N.m], of shape (1, 3).
         """
         self._start_torsor("prop", op_point)
 
@@ -536,16 +529,14 @@ class Sailboat(ArchibaldObject):
         >>> boat.compute_propellers(op_point)
         >>> Ftot, Mtot = boat.compute_torsor(op_point, exclude=["prop", "w_2"])
 
-        Parameters
-        ----------
-        op_point : OperatingPoint, the operating point of the sum. Summing a group
-            computed with another one raises, unless that group is excluded.
-        components : str, list of str or None, what to sum. Default: all that was computed.
-        exclude : str, list of str or None, what to leave out of ``components``.
+        Args:
+            op_point: OperatingPoint, the operating point of the sum. Summing a group
+                computed with another one raises, unless that group is excluded.
+            components: str, list of str or None, what to sum. Default: all that was computed.
+            exclude: str, list of str or None, what to leave out of ``components``.
 
-        Returns
-        -------
-        Ftot, Mtot : total force [N] and moment [N.m], of shape (1, 3).
+        Returns:
+            Ftot, Mtot: total force [N] and moment [N.m], of shape (1, 3).
         """
         components = [components] if isinstance(components, str) else components
         exclude = [exclude] if isinstance(exclude, str) else (exclude or [])
@@ -610,16 +601,14 @@ class Sailboat(ArchibaldObject):
         """
         Residuals of a set of degrees of freedom of a torsor.
 
-        Parameters
-        ----------
-        Ftot, Mtot : force [N] and moment [N.m] of shape (1, 3).
-        dofs : str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
-        force_scale : float, reference force dividing the force residuals [N].
-        moment_scale : float, reference moment dividing the moment residuals [N.m].
+        Args:
+            Ftot, Mtot: force [N] and moment [N.m] of shape (1, 3).
+            dofs: str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
+            force_scale: float, reference force dividing the force residuals [N].
+            moment_scale: float, reference moment dividing the moment residuals [N.m].
 
-        Returns
-        -------
-        dict, residual of each degree of freedom, scaled.
+        Returns:
+            dict, residual of each degree of freedom, scaled.
         """
         dofs = [dofs] if isinstance(dofs, str) else dofs
 
@@ -657,18 +646,16 @@ class Sailboat(ArchibaldObject):
         >>> opti.subject_to(boat.propellers[0].performance["P"] <= 500e3)
         >>> sol = boat.find_equilibrium(opti, Ftot, Mtot, dofs=["Fx", "Fz", "Mx", "My"])
 
-        Parameters
-        ----------
-        opti : Opti, the problem the variables belong to.
-        Ftot, Mtot : force [N] and moment [N.m] of shape (1, 3).
-        dofs : str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
-        force_scale : float, reference force dividing the force residuals [N].
-        moment_scale : float, reference moment dividing the moment residuals [N.m].
-        **solve_kwargs : arguments of ``opti.solve``.
+        Args:
+            opti: Opti, the problem the variables belong to.
+            Ftot, Mtot: force [N] and moment [N.m] of shape (1, 3).
+            dofs: str or list of str, among "Fx", "Fy", "Fz", "Mx", "My", "Mz".
+            force_scale: float, reference force dividing the force residuals [N].
+            moment_scale: float, reference moment dividing the moment residuals [N.m].
+            **solve_kwargs: arguments of ``opti.solve``.
 
-        Returns
-        -------
-        OptiSol, the solution.
+        Returns:
+            OptiSol, the solution.
         """
         residuals = Sailboat.equilibrium_residuals(
             Ftot,
@@ -722,8 +709,11 @@ class Sailboat(ArchibaldObject):
         return out
 
     def _hull_vertices(self):
-        """Vertices of all the hulls (``hull.mesh.vertices``), stacked as (N, 3).
-        Falls back on the rigs / appendages if no hull mesh is available."""
+        """
+        Vertices of all the hulls (``hull.mesh.vertices``), stacked as (N, 3).
+
+        Falls back on the rigs / appendages if no hull mesh is available.
+        """
         chunks = []
         for hull in self.hulls:
             try:
@@ -742,8 +732,9 @@ class Sailboat(ArchibaldObject):
             vertices=None,
         ):
         """
-        Corners (4, 3) of a rectangle lying in the plane (origin, normal), sized
-        and centred on the hull vertices projected onto that plane.
+        Corners (4, 3) of a rectangle lying in the plane (origin, normal).
+
+        It is sized and centred on the hull vertices projected onto that plane.
 
         margin : relative enlargement of the hull footprint (0.4 -> 40 % larger).
         Returns None if there is no geometry to fit the plane on.
@@ -836,22 +827,15 @@ class Sailboat(ArchibaldObject):
         **kwargs,
     ):
         """
-        Visualizes the sailboat by aggregating all wings, appendages and hulls
-        into a single scene.
+        Visualizes the sailboat by aggregating all wings, appendages and hulls into a single scene.
 
-        Parameters
-        ----------
-        draw_water : bool
-            Draw the waterplane.
-        water_origin, water_normal :
-            Point and normal of the waterplane. Default: (0, 0, 0) and (0, 0, 1).
-        water_margin : float
-            The waterplane is centred on the hull (``hull.mesh.vertices``) and is
-            ``1 + water_margin`` times larger than its footprint.
-        water_color, water_opacity :
-            Appearance of the waterplane.
-        **kwargs :
-            Forwarded to ``hull.draw`` and ``fitting.draw``.
+        Args:
+            draw_water (bool): Draw the waterplane.
+            water_origin, water_normal: Point and normal of the waterplane. Default: (0, 0, 0) and (0, 0, 1).
+            water_margin (float): The waterplane is centred on the hull (``hull.mesh.vertices``) and is
+                ``1 + water_margin`` times larger than its footprint.
+            water_color, water_opacity: Appearance of the waterplane.
+            **kwargs: Forwarded to ``hull.draw`` and ``fitting.draw``.
         """
         if show_kwargs is None:
             show_kwargs = {}
@@ -1006,8 +990,9 @@ class Sailboat(ArchibaldObject):
     @staticmethod
     def trailing_edge_seed_points(vlm):
         """
-        Middle of the trailing edge of every trailing-edge panel: streamlines of the
-        wake only. Pass it as ``draw_vlm(seed_fn=Sailboat.trailing_edge_seed_points)``.
+        Middle of the trailing edge of every trailing-edge panel: streamlines of the wake only.
+
+        Pass it as ``draw_vlm(seed_fn=Sailboat.trailing_edge_seed_points)``.
         """
         mask = vlm.is_trailing_edge
         return 0.5 * (
@@ -1023,8 +1008,9 @@ class Sailboat(ArchibaldObject):
             upstream_margin: float,
         ):
         """
-        Seeds upstream of the leading edges, so that the streamlines show the flow
-        coming onto the wings and around them, not only their wakes.
+        Seeds upstream of the leading edges.
+
+        So the streamlines show the flow coming onto the wings and around them, not only their wakes.
 
         Each leading-edge panel gets one seed, moved upstream from the middle of its
         leading edge along the local freestream (the apparent wind for the sails, the
@@ -1033,9 +1019,8 @@ class Sailboat(ArchibaldObject):
         ``upstream_margin`` [m] ahead of the foremost panel point for the sails (or
         appendages without a water plane).
 
-        Returns
-        -------
-        seeds : (n, 3) seed points, and the largest distance [m] they were moved upstream.
+        Returns:
+            seeds: (n, 3) seed points, and the largest distance [m] they were moved upstream.
         """
         mask = onp.asarray(vlm.is_leading_edge, dtype=bool)
         le = 0.5 * (
@@ -1079,8 +1064,9 @@ class Sailboat(ArchibaldObject):
             upstream_margin: float = 0.,
         ):
         """
-        Streamlines of a VLM as an array (n_lines, n_steps, 3), computed (and cached
-        on the VLM object) if necessary. None if there is no streamline to draw.
+        Streamlines of a VLM as an array (n_lines, n_steps, 3), computed (and cached on the VLM object) if necessary.
+
+        None if there is no streamline to draw.
 
         With the default seeds, ``length`` is counted from the leading edges, and the
         distance travelled upstream of them is added to it.
@@ -1113,8 +1099,9 @@ class Sailboat(ArchibaldObject):
     @staticmethod
     def _streamlines_travel_time(vlm, paths):
         """
-        Time [s] taken by a fluid particle to reach each point of the streamlines
-        (n_lines, n_steps, 3), from the local velocity of the VLM. Far from the lifting
+        Time [s] taken by a fluid particle to reach each point of the streamlines (n_lines, n_steps, 3).
+
+        It comes from the local velocity of the VLM. Far from the lifting
         surfaces, this velocity tends to the freestream: ``op_point._stw`` in water and
         ``op_point._aws(z)`` in air. As the streamlines run close to the wake filaments,
         where the velocity is singular, the local speed is limited to [0.1, 3] x freestream.
@@ -1161,9 +1148,10 @@ class Sailboat(ArchibaldObject):
     @staticmethod
     def _line_of_action_point(F, M, reference):
         """
-        Point of the line of action of the torsor (F, M about the origin) closest to
-        ``reference``. The part of M parallel to F is a couple with no line of action:
-        it is left out. Returns ``reference`` for a zero force.
+        Point of the line of action of the torsor (F, M about the origin) closest to ``reference``.
+
+        The part of M parallel to F is a couple with no line of action: it is left
+        out. Returns ``reference`` for a zero force.
         """
         F2 = float(F @ F)
         if F2 < 1e-12:
@@ -1173,8 +1161,9 @@ class Sailboat(ArchibaldObject):
 
     def _force_reference_point(self, element):
         """
-        Where an element of the torsor acts, roughly, in the boat motion frame: the
-        centre of gravity of a mass, the centre of buoyancy of a hull, the centroid of
+        Where an element of the torsor acts, roughly, in the boat motion frame.
+
+        The centre of gravity of a mass, the centre of buoyancy of a hull, the centroid of
         the panels of a wing, the centre of a propeller. The arrow is then placed on
         the exact line of action, at the point closest to it.
         """
@@ -1230,8 +1219,10 @@ class Sailboat(ArchibaldObject):
             elements: Optional[List[str]] = None,
         ):
         """
-        Forces of the torsor as arrows: one per group (weight, buoyancy, sails, ...),
-        or one per element (mass, hull, rig, ...) for the groups that are split.
+        Forces of the torsor as arrows.
+
+        One per group (weight, buoyancy, sails, ...), or one per element (mass, hull, rig, ...)
+        for the groups that are split.
 
         Each force is placed on its line of action, from its force and its moment
         about the origin, at the point closest to where the element is (centre of
@@ -1240,17 +1231,15 @@ class Sailboat(ArchibaldObject):
         that are not the moment of the force (couples along it, e.g. a yaw moment
         of a hull method) cannot be drawn as an arrow, and are reported as ``couple``.
 
-        Parameters
-        ----------
-        split : bool or list of str, groups drawn per element (``True`` for all), e.g.
-            ``["b", "sail"]`` for one buoyancy arrow per hull and one per rig.
-        elements : list of str, elements to draw, e.g. ``["w_0", "b_0", "sail_0"]``.
-            Default: those of the last ``compute_torsor``, or all that was computed.
+        Args:
+            split: bool or list of str, groups drawn per element (``True`` for all), e.g.
+                ``["b", "sail"]`` for one buoyancy arrow per hull and one per rig.
+            elements: list of str, elements to draw, e.g. ``["w_0", "b_0", "sail_0"]``.
+                Default: those of the last ``compute_torsor``, or all that was computed.
 
-        Returns
-        -------
-        list of dict with "name", "group", "label", "point" (3,) [m], "force" (3,) [N]
-        and "couple" (3,) [N.m], in the boat motion frame.
+        Returns:
+            list of dict with "name", "group", "label", "point" (3,) [m], "force" (3,) [N]
+            and "couple" (3,) [N.m], in the boat motion frame.
         """
         if elements is None:
             elements = list(self.torsor_elements) or [
@@ -1352,55 +1341,54 @@ class Sailboat(ArchibaldObject):
         show_kwargs: Optional[Dict] = None,
     ):
         """
-        Draws the VLM solution of the rigs and appendages: the panels are coloured
-        by pressure coefficient (``vlm.pressure_coef``, with its sign flipped on the
-        appendages so that it reads like the sails) and the flow is shown with
+        Draws the VLM solution of the rigs and appendages.
+
+        The panels are coloured by pressure coefficient (``vlm.pressure_coef``, with its sign
+        flipped on the appendages so that it reads like the sails) and the flow is shown with
         streamlines, optionally animated by particles advected along them.
 
         ``compute_aerodynamics`` and/or ``compute_hydrodynamics`` must have been called
         with numerical (not symbolic) values beforehand.
 
-        Parameters
-        ----------
-        backend : "pyvista" (default, supports animation) or "plotly" (static).
-        cmap : colormap name. One colour scale is shared by the sails and the appendages.
-        clim : (min, max) of the colour scale. Default: ``clip_quantiles`` of all the Cp.
-        clip_quantiles : quantiles of Cp setting the colour limits when ``clim`` is None,
-            so that stagnation / tip peaks do not wash out the rest. None: min / max.
-        draw_streamlines : draw the streamlines (computed on demand, cached on the VLM).
-        streamlines_length : length of the streamlines [m], counted from the leading edges with the
-            default seeds. Default: 5 x the largest reference chord.
-        streamlines_radius : tube radius of the streamlines [m]. Default: 0.15 % of the size of the boat.
-        seed_stride : keep one seed out of ``seed_stride`` (appendage seeds above the water are removed).
-        seed_fn : optional ``f(vlm) -> (n, 3)`` array of custom seed points. Default: one seed per
-            leading-edge panel, moved upstream along the local freestream, to the upstream edge of
-            the water plane for the appendages, and one reference chord ahead of the sails along the
-            apparent wind. ``Sailboat.trailing_edge_seed_points`` gives the wakes only.
-        recalculate_streamlines : ignore the streamlines already stored on the VLMs.
-        animate : animate particles along the streamlines (pyvista only). The window stays
-            open until closed or 'q' is pressed. Default: True with pyvista.
-        particles_per_line, particle_size : Number of particles per streamline, their size [px].
-        particle_speed : playback rate of the particles [s of flow / s of animation at ``fps``], 1 is
-            real time. Particles move at the local flow speed, with the same clock in air and water.
-        gif_path : if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
-            (implies ``animate``).
-        draw_forces : draw the forces of the torsor as arrows at their application point,
-            with a label at the tip giving their magnitude. See ``get_force_arrows``.
-        force_unit : unit of the labels, "N", "kN", "kgf" or "tf".
-        force_split : groups drawn with one arrow per element, ``True`` for all, e.g. ``["b", "sail"]``
-            for one buoyancy arrow per hull and one force per rig. Others are summed per group.
-        force_elements : elements drawn. Default: those of the last ``compute_torsor``, or all computed.
-        force_scale : arrow length per force [m/N]. Default: the largest arrow is 25 % of the scene size.
-        force_label_size : font size of the labels.
-        theme : "dark" or "light".
-        draw_hulls : draw the hulls and fittings at the operating point of the VLM, with ``hull_kwargs``.
-        draw_water, water_origin, water_normal, water_margin : waterplane, see ``draw``.
-        plot_axes : show the orientation axes (pyvista).
-        window_size : (width, height) in pixels (pyvista).
+        Args:
+            backend: "pyvista" (default, supports animation) or "plotly" (static).
+            cmap: colormap name. One colour scale is shared by the sails and the appendages.
+            clim: (min, max) of the colour scale. Default: ``clip_quantiles`` of all the Cp.
+            clip_quantiles: quantiles of Cp setting the colour limits when ``clim`` is None,
+                so that stagnation / tip peaks do not wash out the rest. None: min / max.
+            draw_streamlines: draw the streamlines (computed on demand, cached on the VLM).
+            streamlines_length: length of the streamlines [m], counted from the leading edges with the
+                default seeds. Default: 5 x the largest reference chord.
+            streamlines_radius: tube radius of the streamlines [m]. Default: 0.15 % of the size of the boat.
+            seed_stride: keep one seed out of ``seed_stride`` (appendage seeds above the water are removed).
+            seed_fn: optional ``f(vlm) -> (n, 3)`` array of custom seed points. Default: one seed per
+                leading-edge panel, moved upstream along the local freestream, to the upstream edge of
+                the water plane for the appendages, and one reference chord ahead of the sails along the
+                apparent wind. ``Sailboat.trailing_edge_seed_points`` gives the wakes only.
+            recalculate_streamlines: ignore the streamlines already stored on the VLMs.
+            animate: animate particles along the streamlines (pyvista only). The window stays
+                open until closed or 'q' is pressed. Default: True with pyvista.
+            particles_per_line, particle_size: Number of particles per streamline, their size [px].
+            particle_speed: playback rate of the particles [s of flow / s of animation at ``fps``], 1 is
+                real time. Particles move at the local flow speed, with the same clock in air and water.
+            gif_path: if set, renders ``n_frames`` frames off-screen to this GIF instead of opening a window
+                (implies ``animate``).
+            draw_forces: draw the forces of the torsor as arrows at their application point,
+                with a label at the tip giving their magnitude. See ``get_force_arrows``.
+            force_unit: unit of the labels, "N", "kN", "kgf" or "tf".
+            force_split: groups drawn with one arrow per element, ``True`` for all, e.g. ``["b", "sail"]``
+                for one buoyancy arrow per hull and one force per rig. Others are summed per group.
+            force_elements: elements drawn. Default: those of the last ``compute_torsor``, or all computed.
+            force_scale: arrow length per force [m/N]. Default: the largest arrow is 25 % of the scene size.
+            force_label_size: font size of the labels.
+            theme: "dark" or "light".
+            draw_hulls: draw the hulls and fittings at the operating point of the VLM, with ``hull_kwargs``.
+            draw_water, water_origin, water_normal, water_margin: waterplane, see ``draw``.
+            plot_axes: show the orientation axes (pyvista).
+            window_size: (width, height) in pixels (pyvista).
 
-        Returns
-        -------
-        pyvista.Plotter or plotly.graph_objects.Figure
+        Returns:
+            pyvista.Plotter or plotly.graph_objects.Figure
         """
         import warnings
 

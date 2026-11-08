@@ -13,6 +13,7 @@ def hline(
     text_kwargs=None,
     **kwargs
 ):  # TODO docs
+    """Draws a horizontal line, with optional text."""
     if text_kwargs is None:
         text_kwargs = {}
     ax = plt.gca()
@@ -43,6 +44,7 @@ def vline(
     text_kwargs=None,
     **kwargs
 ):  # TODO docs
+    """Draws a vertical line, with optional text."""
     if text_kwargs is None:
         text_kwargs = {}
     ax = plt.gca()

@@ -286,12 +286,13 @@ def get_kulfan_parameters(
     method: str = "least_squares",
 ) -> Dict[str, Union[np.ndarray, float]]:
     """
-    Given a set of airfoil coordinates, reconstructs the Kulfan parameters that would recreate that airfoil. Uses a
-    curve fitting (optimization) process.
-    
+    Given a set of airfoil coordinates, reconstructs the Kulfan parameters that would recreate that airfoil.
+
+    Uses a curve fitting (optimization) process.
+
     MODIFIED TO BE COMPATIBLE WITH CASADI COORDINATES.
     WARNING: lower and upper coordinates must have the same number of points
-    WARNING: 
+    WARNING:
 
     This function is the inverse of `get_kulfan_coordinates()`.
 
@@ -464,6 +465,7 @@ def get_kulfan_parameters(
         def least_squares(A, b):
             """
             Solve Ax ≈ b in least-squares sense.
+
             Works for both NumPy and CasADi.
             """
             AtA = A.T @ A
@@ -636,6 +638,7 @@ def get_coordinates_from_raw_dat(raw_text: List[str]) -> np.ndarray:
 
 
 def get_file_coordinates(filepath: Union[str, os.PathLike]):
+    """Reads airfoil coordinates from a file."""
     possible_errors = (FileNotFoundError, UnicodeDecodeError)
 
     if isinstance(filepath, np.ndarray):
@@ -662,6 +665,7 @@ def get_file_coordinates(filepath: Union[str, os.PathLike]):
 def get_UIUC_coordinates(name: str = "dae11") -> np.ndarray:
     """
     Returns the coordinates of a specified airfoil in the UIUC airfoil database.
+
     Args:
         name: Name of the airfoil to retrieve from the UIUC database.
 

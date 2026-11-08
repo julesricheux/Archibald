@@ -1,6 +1,7 @@
 """
-Radojcic et al. (2014) — résistance de coques à bouchain vif en pré-planing /
-planing (séries USCG, TUNS), Fn_vol 0.6 - 3.5.  Polish Maritime Research 21(2).
+Radojcic et al. (2014) — résistance de coques à bouchain vif en pré-planing / planing.
+
+Séries USCG, TUNS, Fn_vol 0.6 - 3.5.  Polish Maritime Research 21(2).
 
 Modèle « simple » : R/Δ|Δ=100000 lb = A Fn³ + B Fn² + C Fn + D, avec A..D
 fonctions de L/∇^(1/3) ; modèle « complexe » : réseau de neurones / polynôme à
@@ -38,6 +39,7 @@ def compute_Rtotal_radojcic(stw, rho, g, nu, volume, Lwl, Aws=None, S_over_V23=N
                             weight=None, **kw):
     """
     R total (N) = Δ [ (R/Δ)_std + correction de frottement géosim ].
+
     S_over_V23 (S/∇^(2/3)) et Lk_over_L : fournis (modèles de l'article ou CFD/géométrie).
     """
     S_over_V23, Lk_over_L = _geom(volume, Lwl, Aws, S_over_V23, Lk_over_L)
@@ -58,6 +60,7 @@ def compute_Rtotal_radojcic(stw, rho, g, nu, volume, Lwl, Aws=None, S_over_V23=N
 
 
 def compute_Rf_radojcic(stw, rho, g, nu, volume, Lwl, Aws=None, S_over_V23=None, Lk_over_L=None, **kw):
+    """Frictional resistance [N] on the wetted surface of the Radojcic method."""
     S_over_V23, Lk_over_L = _geom(volume, Lwl, Aws, S_over_V23, Lk_over_L)
     V = speed_ms(stw)
     return 0.5 * rho * friction_coefficient(V, Lk_over_L * Lwl, nu) * (S_over_V23 * volume ** (2. / 3.)) * V ** 2

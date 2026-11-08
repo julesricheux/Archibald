@@ -87,8 +87,9 @@ class MSES(ExplicitAnalysis):
         mses_mucon: float = -1.0,
     ):
         """
-        Interface to XFoil. Compatible with both XFoil v6.xx (public) and XFoil v7.xx (private, contact Mark Drela at
-        MIT for a copy.)
+        Interface to XFoil.
+
+        Compatible with both XFoil v6.xx (public) and XFoil v7.xx (private, contact Mark Drela at MIT for a copy.)
 
         Args:
             # TODO docs
@@ -189,6 +190,7 @@ class MSES(ExplicitAnalysis):
         Re: Union[float, np.ndarray, List] = 0.0,
         mach: Union[float, np.ndarray, List] = 0.01,
     ):
+        """Runs MSES at the given angles of attack, Reynolds and Mach numbers."""
         ### Make all inputs iterables:
         alphas, Res, machs = np.broadcast_arrays(
             np.ravel(alpha),

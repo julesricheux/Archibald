@@ -20,6 +20,7 @@ def pie(
     arm_length=20,
     arm_radius=5,
 ):
+    """Draws a pie chart with labels on arms."""
     # TODO docs
     ax = plt.gca()
     n_wedges = len(values)

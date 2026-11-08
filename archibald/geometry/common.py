@@ -16,8 +16,12 @@ from archibald.numpy.determine_type import is_casadi_type
 def reflect_over_XZ_plane(input_vector):
     """
     Takes in a vector or an array and flips the y-coordinates.
-    :param input_vector: A vector or list of vectors to flip.
-    :return: Vector with flipped sign on y-coordinate.
+
+    Args:
+        input_vector: A vector or list of vectors to flip.
+
+    Returns:
+        Vector with flipped sign on y-coordinate.
     """
     if not is_casadi_type(input_vector):
         shape = input_vector.shape

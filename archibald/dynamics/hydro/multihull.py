@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-MULTIHULL INTERACTION: COORDINATION OF THE METHODS
+MULTIHULL INTERACTION: COORDINATION OF THE METHODS.
 
 The resistance of each hull is computed alone first (``hull.compute_resistance``).
 The interaction between the n hulls is then evaluated at the Sailboat level
@@ -65,7 +65,8 @@ def compute_hull_interaction(
         T_kiss=0.01,
         **kwargs,
     ):
-    """Interaction resistance between the hulls of a multihull.
+    """
+    Interaction resistance between the hulls of a multihull.
 
     Called by ``Sailboat.compute_hull_interaction`` with ``self.hulls``.
 
@@ -73,29 +74,26 @@ def compute_hull_interaction(
     computed) and, for the calibrated Michell and the tabulated methods,
     ``hull.resistance_components`` (individual resistance already computed).
 
-    Parameters
-    ----------
-    hulls : list of Hull, Hulls with computed hydrostatics.
-    op_point : OperatingPoint, Operating point (``stw`` and ``environment`` are used).
-    method : str or dict, A key of ``INTERACTION_METHODS`` or a custom dict
-        ``{"Rw": callable, "Rf": callable}``.
-    positions : list of (x, y) or None, Hull positions [m]; if None, read with
-        ``hull.get_position(op_point)``.
-    rho : float or None, Water density [kg/m³]; default from ``op_point.environment``.
-    g : float or None, Gravitational acceleration [m/s²]; default from ``op_point.environment``.
-    nu : float or None, Kinematic viscosity [m²/s]; default from ``op_point.environment``.
-    T_kiss : float, Draught [m] at which the interference of a hull is halved. The
-        interference of a hull is weighted by ``immersion_weight`` so that it
-        vanishes smoothly when the hull lifts out of the water (heel).
-    **kwargs : Method parameters (``calibrate``, ``fn_grid``, ``sl_grid``, ``tau_table``...).
+    Args:
+        hulls: list of Hull, Hulls with computed hydrostatics.
+        op_point: OperatingPoint, Operating point (``stw`` and ``environment`` are used).
+        method: str or dict, A key of ``INTERACTION_METHODS`` or a custom dict
+            ``{"Rw": callable, "Rf": callable}``.
+        positions: list of (x, y) or None, Hull positions [m]; if None, read with
+            ``hull.get_position(op_point)``.
+        rho: float or None, Water density [kg/m³]; default from ``op_point.environment``.
+        g: float or None, Gravitational acceleration [m/s²]; default from ``op_point.environment``.
+        nu: float or None, Kinematic viscosity [m²/s]; default from ``op_point.environment``.
+        T_kiss: float, Draught [m] at which the interference of a hull is halved. The
+            interference of a hull is weighted by ``immersion_weight`` so that it
+            vanishes smoothly when the hull lifts out of the water (heel).
+        **kwargs: Method parameters (``calibrate``, ``fn_grid``, ``sl_grid``, ``tau_table``...).
 
-    Returns
-    -------
-    dict with
-        ``dRw`` : n x n wave interference matrix [N],
-        ``dRf`` : viscous interference per hull [N],
-        ``dR_hull`` : total interference attributed to each hull [N],
-        ``dR`` : total interference [N].
+    Returns:
+        dict with: ``dRw`` : n x n wave interference matrix [N],
+            ``dRf`` : viscous interference per hull [N],
+            ``dR_hull`` : total interference attributed to each hull [N],
+            ``dR`` : total interference [N].
     """
     n = len(hulls)
     process = INTERACTION_METHODS[method] if isinstance(method, str) else method

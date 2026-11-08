@@ -184,12 +184,18 @@ def induced_drag_ratio_from_ground_effect(
 ):
     """
     Gives the ratio of actual induced drag to free-flight induced drag experienced by a wing in ground effect.
-    Artificially smoothed below around h/b == 0.05 to retain differentiability and practicality.
-    Source: W. F. Phillips, D. F. Hunsaker, "Lifting-Line Predictions for Induced Drag and Lift in Ground Effect".
+
+    Artificially smoothed below around h/b == 0.05 to retain differentiability and practicality. Source: W. F.
+    Phillips, D. F. Hunsaker, "Lifting-Line Predictions for Induced Drag and Lift in Ground Effect".
+
         Using Equation 5 from the paper, which is modified from a model from Torenbeek:
             Torenbeek, E. "Ground Effects", 1982.
-    :param h_over_b: (Height above ground) divided by (wingspan).
-    :return: Ratio of induced drag in ground effect to induced drag out of ground effect [unitless]
+
+    Args:
+        h_over_b: (Height above ground) divided by (wingspan).
+
+    Returns:
+        Ratio of induced drag in ground effect to induced drag out of ground effect [unitless]
     """
     h_over_b = np.softmax(h_over_b, 0, hardness=1 / 0.03)
     return 1 - np.exp(-4.01 * (2 * h_over_b) ** 0.717)

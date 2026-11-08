@@ -1,5 +1,5 @@
 """
-RIGS AND APPENDAGES SETS DESCRIPTION
+RIGS AND APPENDAGES SETS DESCRIPTION.
 
 Created 19/04/2023
 Last update: 22/10/2024
@@ -259,10 +259,10 @@ class Planform(ArchibaldObject):
     def add_wing(self, wing: "Wing") -> None:
         """
         Adds a wing (or any Wing subclass, e.g. Sail, Fin) to this Planform, in-place.
-    
+
         Args:
             wing: The Wing (or subclass instance) to add. Appended to the end of `self.wings`.
-    
+
         Returns:
             None. (in-place)
         """
@@ -283,17 +283,18 @@ class Planform(ArchibaldObject):
     
     def remove_wing(self, wing: "str | int") -> "Wing":
         """
-        Removes a wing (or any Wing subclass, e.g. Sail, Fin) from this Planform, in-place, identified either by
-        name or by index.
-    
+        Removes a wing (or any Wing subclass, e.g. Sail, Fin) from this Planform, in-place.
+
+        The wing is identified either by name or by index.
+
         Args:
             wing: Either:
-    
+
                 * A string, giving the `.name` of the wing to remove (the first match is removed, if there are
                   duplicate names).
-    
+
                 * An integer, giving the index (into `self.wings`) of the wing to remove.
-    
+
         Returns:
             The removed Wing (or subclass instance).
         """
@@ -324,8 +325,9 @@ class Planform(ArchibaldObject):
                   stack_meshes=True,
                   ):
         """
-        Returns a surface mesh of the Planform, in (points, faces) format. For reference on this format,
-        see the documentation in `archibald.geometry.mesh_utilities`.
+        Returns a surface mesh of the Planform, in (points, faces) format.
+
+        For reference on this format, see the documentation in `archibald.geometry.mesh_utilities`.
 
         Args:
 
@@ -861,7 +863,9 @@ class Planform(ArchibaldObject):
     def is_entirely_symmetric(self):
         """
         Returns a boolean describing whether the planform is geometrically entirely symmetric across the XZ-plane.
-        :return: [boolean]
+
+        Returns:
+            [boolean]
         """
         for wing in self.wings:
             if not wing.is_entirely_symmetric():
@@ -874,7 +878,9 @@ class Planform(ArchibaldObject):
     def aerodynamic_center(self, chord_fraction: float = 0.25):
         """
         Computes the approximate location of the aerodynamic center of the wing.
+
         Uses the generalized methodology described here:
+
             https://core.ac.uk/download/pdf/79175663.pdf
 
         Args:
@@ -1089,6 +1095,7 @@ class Planform(ArchibaldObject):
                    filename,
                    include_fuselages: bool = True
                    ):
+        """Exports the planform to an AVL input file."""
         # TODO include option for mass file export as well
         # Use MassProperties.export_AVL_mass...
 
@@ -1101,6 +1108,7 @@ class Planform(ArchibaldObject):
         avl.write_avl(filepath=filename)
 
     def export_XFLR(self, *args, **kwargs):
+        """Deprecated alias of `export_XFLR5_xml`."""
         import warnings
 
         warnings.warn(
@@ -1445,6 +1453,7 @@ class Rig(Planform):
 
     @property
     def sails(self) -> list["Sail"]:
+        """Sails of the rig."""
         return self.wings
 
     @sails.setter
@@ -1488,6 +1497,7 @@ class Appendage(Planform):
 
     @property
     def fins(self) -> list["Fin"]:
+        """Fins of the appendage."""
         return self.wings
 
     @fins.setter

@@ -96,8 +96,9 @@ def cosine_hermite_patch(
     extrapolation: Literal["continue", "linear"] = "continue",
 ) -> float | np.ndarray:
     r"""
-    Computes a Hermite patch (i.e., values + derivatives at endpoints) that uses a cosine function to blend between
-    linear segments.
+    Computes a Hermite patch (i.e., values + derivatives at endpoints).
+
+    It uses a cosine function to blend between linear segments.
 
     The end result is conceptually similar to a cubic Hermite patch, but computation is faster and the patch is
     $C^\infty$-continuous.

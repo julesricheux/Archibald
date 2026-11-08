@@ -17,6 +17,7 @@ from archibald.dynamics.hydro.common import Cf_hull
 
 # ------------------------------------------------------------------ Froude
 def speed_ms(stw):
+    """Converts a speed through water from knots to m/s."""
     return stw * u.kt
 
 
@@ -31,6 +32,7 @@ def Cv_beam(V, b, g=9.81):
 
 
 def Fn_length(V, L, g=9.81):
+    """Length Froude number."""
     return V / np.sqrt(g * L)
 
 
@@ -42,6 +44,7 @@ def smoothstep(x, x0, x1):
 
 
 def sigmoid(x):
+    """Logistic sigmoid, written with tanh."""
     return 0.5 * (1. + np.tanh(0.5 * x))
 
 
@@ -52,6 +55,7 @@ def smooth_min(a, b, k):
 
 
 def blend(w, low, high):
+    """Linear blend between two values, with weight w on the second."""
     return (1. - w) * low + w * high
 
 

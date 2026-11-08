@@ -22,7 +22,9 @@ import copy
 
 class Opti(cas.Opti):
     """
-    The base class for mathematical optimization. For detailed usage, see the docstrings in its key methods:
+    The base class for mathematical optimization.
+
+    For detailed usage, see the docstrings in its key methods:
         * Opti.variable()
         * Opti.subject_to()
         * Opti.parameter()
@@ -95,9 +97,10 @@ class Opti(cas.Opti):
         _stacklevel: int = 1,
     ) -> cas.MX:
         """
-        Initializes a new decision variable (or vector of decision variables). You should pass an initial guess (
-        `init_guess`) upon defining a new variable. Dimensionality is inferred from this initial guess, but it can be
-        overridden; see below for syntax.
+        Initializes a new decision variable (or vector of decision variables).
+
+        You should pass an initial guess (`init_guess`) upon defining a new variable. Dimensionality is inferred
+        from this initial guess, but it can be overridden; see below for syntax.
 
         It is highly, highly recommended that you provide a scale (`scale`) for each variable, especially for
         nonconvex problems, although this is not strictly required.
@@ -498,6 +501,7 @@ class Opti(cas.Opti):
         self,
         f: cas.MX,
     ) -> None:
+        """Sets the objective to minimize."""
         # f = cas.cse(f)
         super().minimize(f)
 
@@ -505,6 +509,7 @@ class Opti(cas.Opti):
         self,
         f: cas.MX,
     ) -> None:
+        """Sets the objective to maximize."""
         # f = cas.cse(f)
         super().minimize(-1 * f)
 
@@ -514,8 +519,10 @@ class Opti(cas.Opti):
         n_params: int = None,
     ) -> cas.MX:
         """
-        Initializes a new parameter (or vector of parameters). You must pass a value (`value`) upon defining a new
-        parameter. Dimensionality is inferred from this value, but it can be overridden; see below for syntax.
+        Initializes a new parameter (or vector of parameters).
+
+        You must pass a value (`value`) upon defining a new parameter. Dimensionality is inferred from this value,
+        but it can be overridden; see below for syntax.
 
         Args:
 
@@ -753,6 +760,7 @@ class Opti(cas.Opti):
         return_callable: bool = False,
         garbage_collect_between_runs: bool = False,
     ) -> np.ndarray | Callable[[cas.MX], np.ndarray]:
+        """Solves the problem for each set of parameter values of a sweep."""
         # Handle defaults
         if solve_kwargs is None:
             solve_kwargs = {}
@@ -856,6 +864,7 @@ class Opti(cas.Opti):
         use_full_filename: bool = False,
         return_string: bool = False,
     ) -> str | None:
+        """Source location where the variable of the given index was declared."""
         ### Check inputs
         if index < 0:
             raise ValueError("Indices must be nonnegative.")
@@ -899,6 +908,7 @@ class Opti(cas.Opti):
     def find_constraint_declaration(
         self, index: int, use_full_filename: bool = False, return_string: bool = False
     ) -> str | None:
+        """Source location where the constraint of the given index was declared."""
         ### Check inputs
         if index < 0:
             raise ValueError("Indices must be nonnegative.")
@@ -948,8 +958,9 @@ class Opti(cas.Opti):
         initialize_duals=True,
     ) -> None:
         """
-        Sets the initial value of all variables in the Opti object to the solution of another Opti instance. Useful
-        for warm-starting an Opti instance based on the result of another instance.
+        Sets the initial value of all variables in the Opti object to the solution of another Opti instance.
+
+        Useful for warm-starting an Opti instance based on the result of another instance.
 
         Args: sol: Takes in the solution object. Assumes that sol corresponds to exactly the same optimization
         problem as this Opti instance, perhaps with different parameter values.
@@ -963,6 +974,7 @@ class Opti(cas.Opti):
             self.set_initial(self.lam_g, sol.value(self.lam_g))
 
     def save_solution(self):
+        """Saves the solution to the cache file."""
         if self.cache_filename is None:
             raise ValueError(
                 """In order to use the save feature, you need to supply a filepath for the cache upon
@@ -993,6 +1005,7 @@ class Opti(cas.Opti):
         return solution_dict
 
     def get_solution_dict_from_cache(self):
+        """Reads the solution from the cache file."""
         if self.cache_filename is None:
             raise ValueError(
                 """In order to use the load feature, you need to supply a filepath for the cache upon
@@ -1158,7 +1171,9 @@ class Opti(cas.Opti):
         _stacklevel: int = 1,
     ) -> None:
         """
-        Adds a constraint to the optimization problem such that:
+        Adds a constraint on a derivative to the optimization problem.
+
+        The constraint is such that:
 
             d(variable) / d(with_respect_to) == derivative
 
@@ -1240,10 +1255,13 @@ class Opti(cas.Opti):
 
 
 class OptiSol:
+    """Solution of an optimization problem."""
     def __init__(self, opti: Opti, cas_optisol: cas.OptiSol):
         """
-        An OptiSol object represents a solution to an optimization problem. This class is a wrapper around CasADi's
-        `OptiSol` class that provides convenient solution query utilities for various Python data types.
+        An OptiSol object represents a solution to an optimization problem.
+
+        This class is a wrapper around CasADi's `OptiSol` class that provides convenient solution query utilities
+        for various Python data types.
 
         Args:
             opti: The `Opti` object that generated this solution.
@@ -1316,8 +1334,9 @@ class OptiSol:
         warn_on_unknown_types: bool = False,
     ) -> Any:
         """
-        Gets the value of a variable (or a data structure) at the solution point. This solution point is the optimum,
-            if the optimization process solved successfully.
+        Gets the value of a variable (or a data structure) at the solution point.
+
+        This solution point is the optimum, if the optimization process solved successfully.
 
         On a computer science level, this method converts a symbolic optimization variable to a concrete float or
             array value. More generally, it converts any Python data structure (along with any of its contents,
@@ -1432,12 +1451,15 @@ class OptiSol:
         return x
 
     def stats(self) -> dict[str, Any]:
+        """Statistics of the solver."""
         return self._sol.stats()
 
     def value_variables(self):
+        """Values of the variables at the solution."""
         return self._sol.value_variables()
 
     def value_parameters(self):
+        """Values of the parameters at the solution."""
         return self._sol.value_parameters()
 
     def show_infeasibilities(self, tol: float = 1e-3) -> None:

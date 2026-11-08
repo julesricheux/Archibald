@@ -34,7 +34,7 @@ Sailboat performance (VPP) and design library, forked from AeroSandbox. It model
 - **Object model:** geometry and analysis objects inherit from `ArchibaldObject`. Physics models inherit from `ExplicitAnalysis` or `ImplicitAnalysis`.
 - **Naming:** PEP8 with descriptive names. Use keyword arguments unless self-explanatory, and one parameter per line in long signatures and calls.
 - **Mutable defaults:** never in new code; use `None`. Some older signatures in `Sailboat` still have them.
-- **Docstrings and type hints:** document purpose, inputs with units in brackets, and returns. The stated standard is Google-style docstrings with `>>>` examples and `X | None` hints, but `geometry/` and `dynamics/hydro/` use NumPy-style docstrings and `Optional`. Match the file you are editing.
+- **Docstrings and type hints:** document purpose, inputs with units in brackets, and returns. Docstrings follow PEP 257 with Google sections (`Args:`, `Returns:`, `>>>` examples): triple double quotes, a one-line summary ending with a period, then a blank line before any description. A multi-line docstring starts on the line after the opening quotes and closes on its own line; a one-liner stays on one line. Every public class, function and method has one. `archibald/numpy/` keeps its own docstrings and is not held to this. Hints: prefer `X | None`; older files in `geometry/` and `dynamics/hydro/` still use `Optional`.
 
 ## Frames and signs
 

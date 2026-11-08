@@ -36,7 +36,9 @@ def critical_mach(fineness_ratio_nose: float) -> float:
 
 def jorgensen_eta(fineness_ratio: float) -> float:
     """
-    A fit for the eta parameter (crossflow lift multiplier) of a fuselage, as described in:
+    A fit for the eta parameter (crossflow lift multiplier) of a fuselage.
+
+    As described in:
 
     Jorgensen, Leland Howard. "Prediction of Static Aerodynamic Characteristics for Slender Bodies
     Alone and with Lifting Surfaces to Very High Angles of Attack". NASA TR R-474. 1977.
@@ -61,7 +63,9 @@ def jorgensen_eta(fineness_ratio: float) -> float:
 
 def fuselage_base_drag_coefficient(mach: float) -> float:
     """
-    A fit for the fuselage base drag coefficient of a cylindrical fuselage, as described in:
+    A fit for the fuselage base drag coefficient of a cylindrical fuselage.
+
+    As described in:
 
     MIL-HDBK-762: DESIGN OF AERODYNAMICALLY STABILIZED FREE ROCKETS:
         * Section 5-5.3.1 Body-of-Revolution Base Drag, Rocket Jet Plume-Off

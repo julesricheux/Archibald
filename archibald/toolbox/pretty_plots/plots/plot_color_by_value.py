@@ -16,8 +16,9 @@ def plot_color_by_value(
     **kwargs
 ):
     """
-    Uses same syntax as matplotlib.pyplot.plot, except that `c` is now an array-like that maps to a specific color
-    pulled from `cmap`. Makes lines that are multicolored based on this `c` value.
+    Uses same syntax as matplotlib.pyplot.plot, except that `c` is now an array-like.
+
+    `c` maps to a specific color pulled from `cmap`. Makes lines that are multicolored based on this `c` value.
 
     Args:
 

@@ -14,7 +14,9 @@ def plot_smooth(
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Plots a curve that interpolates a 2D dataset. Same as matplotlib.pyplot.plot(), with the following changes:
+    Plots a curve that interpolates a 2D dataset.
+
+    Same as matplotlib.pyplot.plot(), with the following changes:
         * uses B-splines to draw a smooth curve rather than a jagged polyline
         * By default, plots in line format `fmt='.-'` rather than `fmt='-'`.
 

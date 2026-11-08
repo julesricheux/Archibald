@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-MICHELL THIN-SHIP THEORY FOR SLENDER HULLS AND MULTIHULLS
+MICHELL THIN-SHIP THEORY FOR SLENDER HULLS AND MULTIHULLS.
 
 Wave resistance of one or n slender hulls, with the interference between
 hulls, from the Michell integral applied to an equivalent parametric hull
@@ -36,7 +36,8 @@ def p_exp(
         Cp,
         **kwargs,
     ):
-    r"""Longitudinal exponent of the equivalent Michell hull.
+    r"""
+    Longitudinal exponent of the equivalent Michell hull.
 
     The half-beam of the equivalent hull is separable:
 
@@ -51,13 +52,11 @@ def p_exp(
 
     (Wigley hull: :math:`p = 2`).
 
-    Parameters
-    ----------
-    Cp : float, Prismatic coefficient [-].
+    Args:
+        Cp: float, Prismatic coefficient [-].
 
-    Returns
-    -------
-    float, Longitudinal exponent p [-].
+    Returns:
+        float, Longitudinal exponent p [-].
     """
     return Cp / (1. - Cp + EPS)
 
@@ -66,7 +65,8 @@ def q_exp(
         Cx,
         **kwargs,
     ):
-    r"""Vertical exponent of the equivalent Michell hull.
+    r"""
+    Vertical exponent of the equivalent Michell hull.
 
     The midship section coefficient of the equivalent hull is
     :math:`C_X = q/(q+1)`, hence
@@ -77,13 +77,11 @@ def q_exp(
     Together with :func:`p_exp` this reproduces the displaced volume
     :math:`\nabla = C_P\,C_X\,L_{WL}\,B_{WL}\,T` of the real hull.
 
-    Parameters
-    ----------
-    Cx : float, Midship section coefficient [-].
+    Args:
+        Cx: float, Midship section coefficient [-].
 
-    Returns
-    -------
-    float, Vertical exponent q [-].
+    Returns:
+        float, Vertical exponent q [-].
     """
     return Cx / (1. - Cx + EPS)
 
@@ -92,7 +90,8 @@ def r_exp(
         Cp,
         **kwargs,
     ):
-    r"""Longitudinal exponent of the equivalent hull for fine hulls (Cp < 0.5).
+    r"""
+    Longitudinal exponent of the equivalent hull for fine hulls (Cp < 0.5).
 
     The family :math:`1 - |\xi|^p` of :func:`p_exp` has a cusp at midship when
     :math:`p < 1`, i.e. :math:`C_P < 0.5` (typically a hull partly lifted out
@@ -105,13 +104,11 @@ def r_exp(
     which is continuous with the first family at :math:`C_P = 0.5`
     (:math:`p = r = 1`, a diamond waterline).
 
-    Parameters
-    ----------
-    Cp : float, Prismatic coefficient [-].
+    Args:
+        Cp: float, Prismatic coefficient [-].
 
-    Returns
-    -------
-    float, Exponent r [-].
+    Returns:
+        float, Exponent r [-].
     """
     return 1. / (Cp + EPS) - 1.
 
@@ -124,7 +121,8 @@ def u_nodes_michell(
         depth_decay=16.,
         **kwargs,
     ):
-    r"""Quadrature nodes and weights of the Michell integral in :math:`u=\tan\theta`.
+    r"""
+    Quadrature nodes and weights of the Michell integral in :math:`u=\tan\theta`.
 
     Using :math:`u = \tan\theta`, :math:`\sec^3\theta\,d\theta = \sqrt{1+u^2}\,du`.
     The integrand decays as :math:`e^{-k_0(1+u^2)T}`, so the integral is truncated at
@@ -135,17 +133,15 @@ def u_nodes_michell(
     with D = ``depth_decay``. The grid scales smoothly with speed
     (differentiable w.r.t. ``stw`` and ``T``).
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    T : float, Largest draught of the hulls [m].
-    g : float, Gravitational acceleration [m/s²].
-    n_u : int, Number of nodes in u.
-    depth_decay : float, Depth decay exponent at the truncation [-].
+    Args:
+        stw: float, Speed through water [kt].
+        T: float, Largest draught of the hulls [m].
+        g: float, Gravitational acceleration [m/s²].
+        n_u: int, Number of nodes in u.
+        depth_decay: float, Depth decay exponent at the truncation [-].
 
-    Returns
-    -------
-    tuple (u, w), Nodes [-] and Simpson weights including du [-].
+    Returns:
+        tuple (u, w), Nodes [-] and Simpson weights including du [-].
     """
     _k0 = k_0(stw=stw, g=g)
     u_max = np.sqrt(depth_decay / (_k0 * T + EPS))
@@ -165,7 +161,8 @@ def kochin_amplitude(
         n_z=25,
         **kwargs,
     ):
-    r"""Real Kochin amplitude :math:`A(u)` of one equivalent hull centred at the origin.
+    r"""
+    Real Kochin amplitude :math:`A(u)` of one equivalent hull centred at the origin.
 
     According to :cite:`michell1898wave`, the wave resistance involves
 
@@ -188,18 +185,16 @@ def kochin_amplitude(
     with :math:`k = k_0\sqrt{1+u^2}`, :math:`\omega = k L_{WL}/2` and
     :math:`a = k_0(1+u^2)`.
 
-    Parameters
-    ----------
-    Lwl, Bwl, T : float, Waterline length, beam and draught [m].
-    Cp, Cx : float, Prismatic and midship section coefficients [-].
-    stw : float, Speed through water [kt].
-    g : float, Gravitational acceleration [m/s²].
-    u_nodes : array, Nodes in u = tan(theta) [-].
-    n_x, n_z : int, Number of nodes of the longitudinal and vertical quadratures.
+    Args:
+        Lwl, Bwl, T: float, Waterline length, beam and draught [m].
+        Cp, Cx: float, Prismatic and midship section coefficients [-].
+        stw: float, Speed through water [kt].
+        g: float, Gravitational acceleration [m/s²].
+        u_nodes: array, Nodes in u = tan(theta) [-].
+        n_x, n_z: int, Number of nodes of the longitudinal and vertical quadratures.
 
-    Returns
-    -------
-    array, Kochin amplitude A(u) [m²].
+    Returns:
+        array, Kochin amplitude A(u) [m²].
     """
     _k0 = k_0(stw=stw, g=g)
     
@@ -244,7 +239,8 @@ def compute_Rw_matrix_michell(
         n_z=25,
         **kwargs,
     ):
-    r"""Michell wave resistance matrix of n hulls (self and interaction terms).
+    r"""
+    Michell wave resistance matrix of n hulls (self and interaction terms).
 
     According to :cite:`michell1898wave`, a single hull has
 
@@ -264,19 +260,17 @@ def compute_Rw_matrix_michell(
     from :func:`kochin_amplitude`. The diagonal is the wave resistance of each
     hull alone, and :math:`R_w = \sum_{ij} R_{ij}`.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl, Bwl, T, Cp, Cx : list of float, Hydrostatic parameters of each hull.
-    x, y : list of float, Longitudinal and transverse position of each hull's
-        centre of buoyancy in the boat frame [m].
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
-    n_u, n_x, n_z : int, Number of quadrature nodes (u, x, z).
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl, Bwl, T, Cp, Cx: list of float, Hydrostatic parameters of each hull.
+        x, y: list of float, Longitudinal and transverse position of each hull's
+            centre of buoyancy in the boat frame [m].
+        rho: float, Water density [kg/m³].
+        g: float, Gravitational acceleration [m/s²].
+        n_u, n_x, n_z: int, Number of quadrature nodes (u, x, z).
 
-    Returns
-    -------
-    list of list, Matrix R[i][j] [N].
+    Returns:
+        list of list, Matrix R[i][j] [N].
     """
     n = len(Lwl)
     T_ref = T[0]
@@ -320,26 +314,25 @@ def compute_Rw_michell(
         g,
         **kwargs,
     ):
-    r"""Wave resistance of a single slender hull by Michell thin-ship theory.
+    r"""
+    Wave resistance of a single slender hull by Michell thin-ship theory.
 
     Equivalent-hull formulation of :func:`compute_Rw_matrix_michell` with one
     hull. It can be used as the ``"Rw"`` entry of a custom resistance process
     for slender hulls, outside the validity range of the Holtrop-Mennen regression.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl : float, Waterline length [m].
-    Bwl : float, Waterline beam [m].
-    T : float, Mean moulded draught [m].
-    Cp : float, Prismatic coefficient [-].
-    Cx : float, Midship section coefficient [-].
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl: float, Waterline length [m].
+        Bwl: float, Waterline beam [m].
+        T: float, Mean moulded draught [m].
+        Cp: float, Prismatic coefficient [-].
+        Cx: float, Midship section coefficient [-].
+        rho: float, Water density [kg/m³].
+        g: float, Gravitational acceleration [m/s²].
 
-    Returns
-    -------
-    float, Wave resistance [N].
+    Returns:
+        float, Wave resistance [N].
     """
     return compute_Rw_matrix_michell(
         stw=stw, Lwl=[Lwl], Bwl=[Bwl], T=[T], Cp=[Cp], Cx=[Cx],
@@ -363,7 +356,8 @@ def compute_dRw_michell(
         s_max=S_MAX,
         **kwargs,
     ):
-    r"""Wave interference matrix between n hulls from Michell theory.
+    r"""
+    Wave interference matrix between n hulls from Michell theory.
 
     Thin-ship theory is better at capturing the *relative* effect of spacing
     and stagger (phase) than the absolute wave resistance. With
@@ -380,22 +374,20 @@ def compute_dRw_michell(
     cross terms are returned. ``dRw`` is symmetric and its row i is the share
     of the interference attributed to hull i (half of each pair).
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl, Bwl, T, Cp, Cx : list of float, Hydrostatic parameters of each hull.
-    x, y : list of float, Positions of each hull's centre of buoyancy [m].
-    rho : float, Water density [kg/m³].
-    g : float, Gravitational acceleration [m/s²].
-    Rw : list of float or None, Individual wave resistance of each hull [N].
-    calibrate : bool, Whether to rescale on the individual Rw.
-    s_max : float, The rescaling factor s_i is kept in [1/s_max, s_max]. It is
-        needed when a hull is hardly wet: its Michell self resistance vanishes
-        while the empirical one does not, and the ratio would diverge.
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl, Bwl, T, Cp, Cx: list of float, Hydrostatic parameters of each hull.
+        x, y: list of float, Positions of each hull's centre of buoyancy [m].
+        rho: float, Water density [kg/m³].
+        g: float, Gravitational acceleration [m/s²].
+        Rw: list of float or None, Individual wave resistance of each hull [N].
+        calibrate: bool, Whether to rescale on the individual Rw.
+        s_max: float, The rescaling factor s_i is kept in [1/s_max, s_max]. It is
+            needed when a hull is hardly wet: its Michell self resistance vanishes
+            while the empirical one does not, and the ratio would diverge.
 
-    Returns
-    -------
-    list of list, Interference matrix dRw[i][j] [N], zero diagonal.
+    Returns:
+        list of list, Interference matrix dRw[i][j] [N], zero diagonal.
     """
     n = len(Lwl)
     R = compute_Rw_matrix_michell(

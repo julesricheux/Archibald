@@ -125,6 +125,7 @@ class MassProperties(ArchibaldObject):
     def __getitem__(self, index) -> "MassProperties":
         """
         Indexes one item from each attribute of an MassProperties instance.
+
         Returns a new MassProperties instance.
 
         Args:
@@ -197,18 +198,14 @@ class MassProperties(ArchibaldObject):
         return length
 
     def __array__(self, dtype="O"):
-        """
-        Allows NumPy array creation without infinite recursion in __len__ and __getitem__.
-        """
+        """Allows NumPy array creation without infinite recursion in __len__ and __getitem__."""
         return np.fromiter([self], dtype=dtype).reshape(())
 
     def __neg__(self) -> "MassProperties":
         return -1 * self
 
     def __add__(self, other: "MassProperties") -> "MassProperties":
-        """
-        Combines one MassProperties object with another.
-        """
+        """Combines one MassProperties object with another."""
         if not isinstance(other, MassProperties):
             raise TypeError(
                 "MassProperties objects can only be added to other MassProperties objects."
@@ -257,15 +254,14 @@ class MassProperties(ArchibaldObject):
             return self.__add__(other)
 
     def __sub__(self, other: "MassProperties") -> "MassProperties":
-        """
-        Subtracts one MassProperties object from another. (opposite of __add__() )
-        """
+        """Subtracts one MassProperties object from another. (opposite of __add__() )."""
         return self.__add__(-other)
 
     def __mul__(self, other: float) -> "MassProperties":
         """
-        Returns a new MassProperties object that is equivalent to if you had summed together N (with `other`
-        interpreted as N) identical MassProperties objects.
+        Returns a new MassProperties object equivalent to summing together N identical MassProperties objects.
+
+        `other` is interpreted as N.
         """
         return MassProperties(
             mass=self.mass * other,
@@ -281,21 +277,17 @@ class MassProperties(ArchibaldObject):
         )
 
     def __rmul__(self, other: float) -> "MassProperties":
-        """
-        Allows multiplication of a scalar by a MassProperties object. Makes multiplication commutative.
-        """
+        """Allows multiplication of a scalar by a MassProperties object. Makes multiplication commutative."""
         return self.__mul__(other)
 
     def __truediv__(self, other: float) -> "MassProperties":
-        """
-        Returns a new MassProperties object that is equivalent to if you had divided the mass of the current
-        MassProperties object by a factor.
-        """
+        """Returns a new MassProperties object equivalent to dividing the mass of this one by a factor."""
         return self.__mul__(1 / other)
 
     def allclose(
         self, other: "MassProperties", rtol=1e-5, atol=1e-8, equal_nan=False
     ) -> bool:
+        """Whether all mass properties are close to those of another object."""
         return all(
             [
                 np.allclose(
@@ -322,6 +314,7 @@ class MassProperties(ArchibaldObject):
 
     @property
     def xyz_cg(self):
+        """Coordinates (x, y, z) of the centre of gravity."""
         return self.x_cg, self.y_cg, self.z_cg
 
     def compute_weight(self, op_point):
@@ -352,6 +345,7 @@ class MassProperties(ArchibaldObject):
 
     @property
     def inertia_tensor(self):
+        """Inertia tensor about the centre of gravity."""
         # Returns the inertia tensor about the component's centroid.
         return np.array(
             [
@@ -387,6 +381,7 @@ class MassProperties(ArchibaldObject):
     ):
         """
         Returns the inertia tensor about an arbitrary point.
+
         Using https://en.wikipedia.org/wiki/Parallel_axis_theorem#Tensor_generalization
 
         Args:
@@ -432,8 +427,7 @@ class MassProperties(ArchibaldObject):
 
     def is_physically_possible(self) -> bool:
         """
-        Checks whether it's possible for this MassProperties object to correspond to the mass properties of a real
-        physical object.
+        Checks whether this MassProperties object can correspond to a real physical object.
 
         Assumes that all physically-possible objects have a positive mass (or density).
 
@@ -482,9 +476,7 @@ class MassProperties(ArchibaldObject):
         return not any(impossible_conditions)
 
     def is_point_mass(self) -> bool:
-        """
-        Returns True if this MassProperties object corresponds to a point mass, False otherwise.
-        """
+        """Returns True if this MassProperties object corresponds to a point mass, False otherwise."""
         return np.allclose(self.inertia_tensor, 0)
 
     def generate_possible_set_of_point_masses(
@@ -493,8 +485,9 @@ class MassProperties(ArchibaldObject):
         check_if_already_a_point_mass: bool = True,
     ) -> List["MassProperties"]:
         """
-        Generates a set of point masses (represented as MassProperties objects with zero inertia tensors), that, when
-        combined, would yield this MassProperties object.
+        Generates a set of point masses that, when combined, would yield this MassProperties object.
+
+        The point masses are represented as MassProperties objects with zero inertia tensors.
 
         Note that there are an infinite number of possible sets of point masses that could yield this MassProperties
         object. This method returns one possible set of point masses, but there are many others.

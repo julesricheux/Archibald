@@ -11,6 +11,7 @@ CL = 0.4
 def test_normal_problem():
     """
     An engineering optimization problem to minimize drag on a rectangular wing using analytical relations.
+
     Lift is effectively fixed (fixed CL, flight speed, and density, with wing area constraint)
     """
     opti = arb.Opti()

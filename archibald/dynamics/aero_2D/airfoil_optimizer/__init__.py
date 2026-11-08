@@ -42,11 +42,7 @@ if __name__ == "__main__":
     unpack = lambda pack: (pack[:n_lower], pack[n_lower:])
 
     def make_airfoil(x):
-        """
-        A function that constructs an airfoil from a packed design vector.
-        :param x:
-        :return:
-        """
+        """A function that constructs an airfoil from a packed design vector."""
         lower, upper = unpack(x)
         return Airfoil(
             name="Optimization Airfoil",
@@ -87,11 +83,7 @@ if __name__ == "__main__":
     def draw(
         airfoil,  # type: Airfoil
     ):
-        """
-        Updates the "current airfoil" line on the plot with the given airfoil.
-        :param airfoil:
-        :return:
-        """
+        """Updates the "current airfoil" line on the plot with the given airfoil."""
         trace_current.set_xdata(airfoil.coordinates[:, 0])
         trace_current.set_ydata(airfoil.coordinates[:, 1])
         plt.draw()
@@ -104,9 +96,13 @@ if __name__ == "__main__":
 
     def augmented_objective(x):
         """
-        Objective function with constraints added via a multiplicative external penalty method
-        :param x: Packed design vector
-        :return: Value of the augmented objective
+        Objective function with constraints added via a multiplicative external penalty method.
+
+        Args:
+            x: Packed design vector
+
+        Returns:
+            Value of the augmented objective
         """
         airfoil = make_airfoil(x)
         xfoil = airfoil.xfoil_cseq(

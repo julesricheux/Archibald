@@ -14,17 +14,20 @@ from typing import Dict, Any, Callable, List
 ### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
 # Useful for broadcasting with matrices later.
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
 class NonlinearLiftingLine(ImplicitAnalysis):
     """
-    An implicit aerodynamics analysis based on lifting line theory, with modifications for nonzero sweep
-    and dihedral + multiple wings.
+    An implicit aerodynamics analysis based on lifting line theory.
+
+    With modifications for nonzero sweep and dihedral + multiple wings.
 
     Nonlinear, and includes viscous effects based on 2D data.
 
@@ -658,6 +661,7 @@ class NonlinearLiftingLine(ImplicitAnalysis):
         return V
 
     def calculate_fuselage_influences(self, points: np.ndarray) -> np.ndarray:
+        """Velocities induced by the fuselages at the given points."""
 
         this_fuse_centerline_points = []  # fuselage sections centres
         this_fuse_radii = []
@@ -795,9 +799,10 @@ class NonlinearLiftingLine(ImplicitAnalysis):
         backend: str = "pyvista",
     ):
         """
-        Draws the solution. Note: Must be called on a SOLVED AeroProblem object.
-        To solve an AeroProblem, use opti.solve(). To substitute a solved solution, use ap = sol(ap).
-        :return:
+        Draws the solution.
+
+        Note: Must be called on a SOLVED AeroProblem object. To solve an AeroProblem, use
+        opti.solve(). To substitute a solved solution, use ap = sol(ap).
         """
         if show_kwargs is None:
             show_kwargs = {}

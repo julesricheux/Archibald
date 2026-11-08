@@ -1,6 +1,7 @@
 """
-Mercier & Savitsky (1973), "Resistance of transom-stern craft in the pre-planing
-regime", Davidson Lab Report 1667 / DTIC AD-764 958.
+Mercier & Savitsky (1973), "Resistance of transom-stern craft in the pre-planing regime".
+
+Davidson Lab Report 1667 / DTIC AD-764 958.
 
 Régression sur 118 carènes (7 séries) :  R/W = f(Fn_vol, L/∇^(1/3), W/(ρ g b³)
 [charge par largeur], angle d'entrée, Atr/Ax).  Domaine : Fn_vol < 2 (usage

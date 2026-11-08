@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EMPIRICAL CATAMARAN INTERFERENCE REGRESSIONS (JAMALUDDIN, AFTER MOLLAND ET AL.)
+EMPIRICAL CATAMARAN INTERFERENCE REGRESSIONS (JAMALUDDIN, AFTER MOLLAND ET AL.).
 
 Closed-form regressions of the viscous and wave interference of catamaran
 demihulls, function of the separation to length ratio S/L (and of the Froude
@@ -57,7 +57,8 @@ def tau_jamaluddin(
         SL,
         **kwargs,
     ):
-    r"""Wave resistance interference factor of a catamaran.
+    r"""
+    Wave resistance interference factor of a catamaran.
 
     According to the regressions of Jamaluddin, fitted at six Froude numbers
     (Fn = 0.19 to 0.65) and S/L = 0.2 to 0.4:
@@ -82,14 +83,12 @@ def tau_jamaluddin(
     difference between that theory and the experiments: it is consistent with
     ``michell`` individual wave resistances, not with regression ones.
 
-    Parameters
-    ----------
-    Fn : float, Froude number [-].
-    SL : float, Separation to length ratio [-].
+    Args:
+        Fn: float, Froude number [-].
+        SL: float, Separation to length ratio [-].
 
-    Returns
-    -------
-    float, Wave interference factor tau [-].
+    Returns:
+        float, Wave interference factor tau [-].
     """
     tau = _TAU_MODEL({"Fn": Fn, "SL": SL})  # S/L below 0.2 is held at 0.2
     w_sl = np.minimum(np.maximum((SL_ZERO - SL) / (SL_ZERO - SL_MAX), 0.), 1.)
@@ -103,7 +102,8 @@ def viscous_interference_ratio(
         SL,
         **kwargs,
     ):
-    r"""Relative increase of the form factor due to the other demihull.
+    r"""
+    Relative increase of the form factor due to the other demihull.
 
     According to the regression of Jamaluddin, who added an S/L term to the
     form factor of Molland et al.:
@@ -122,15 +122,13 @@ def viscous_interference_ratio(
     S/L is bounded below by 0.2 (lower limit of the fit). Fitted for
     L/∇^(1/3) between 6.3 and 9.5.
 
-    Parameters
-    ----------
-    Lwl : float, Waterline length [m].
-    volume : float, Displaced volume [m³].
-    SL : float, Separation to length ratio [-].
+    Args:
+        Lwl: float, Waterline length [m].
+        volume: float, Displaced volume [m³].
+        SL: float, Separation to length ratio [-].
 
-    Returns
-    -------
-    float, Relative viscous interference [-].
+    Returns:
+        float, Relative viscous interference [-].
     """
     SLc = np.maximum(SL, SL_MIN)
     # bounded: a hull that is hardly wet has a vanishing volume
@@ -148,7 +146,8 @@ def compute_dRw_jamaluddin(
         Rw,
         **kwargs,
     ):
-    r"""Wave interference matrix from the regressions of Jamaluddin.
+    r"""
+    Wave interference matrix from the regressions of Jamaluddin.
 
     .. math::
         \Delta R_{w,ij} = R_{w,i}\,\big(\tau_{eff}(Fn_i, S_{ij}/L_{ij}) - 1\big)
@@ -157,17 +156,15 @@ def compute_dRw_jamaluddin(
     ``Rw`` should come from a thin ship method (``"michell"``), and the
     interference fades out above Fn = 0.65 and S/L = 0.4.
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl : list of float, Waterline length of each hull [m].
-    y : list of float, Transverse position of each hull [m].
-    g : float, Gravitational acceleration [m/s²].
-    Rw : list of float, Individual (thin ship) wave resistance of each hull [N].
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl: list of float, Waterline length of each hull [m].
+        y: list of float, Transverse position of each hull [m].
+        g: float, Gravitational acceleration [m/s²].
+        Rw: list of float, Individual (thin ship) wave resistance of each hull [N].
 
-    Returns
-    -------
-    list of list, Interference matrix dRw[i][j] [N], zero diagonal.
+    Returns:
+        list of list, Interference matrix dRw[i][j] [N], zero diagonal.
     """
     n = len(Lwl)
     dRw = [[0. for _ in range(n)] for _ in range(n)]
@@ -187,7 +184,8 @@ def compute_dRf_jamaluddin(
         Rf,
         **kwargs,
     ):
-    r"""Viscous interference from the regression of Jamaluddin.
+    r"""
+    Viscous interference from the regression of Jamaluddin.
 
     .. math::
         \Delta R_{f,i} = R_{f,i}\sum_{j\neq i}
@@ -199,16 +197,14 @@ def compute_dRf_jamaluddin(
     of a slender catamaran reports a larger form factor increase (1.254 to
     1.420), so these figures may be on the low side.
 
-    Parameters
-    ----------
-    Lwl : list of float, Waterline length of each hull [m].
-    volume : list of float, Displaced volume of each hull [m³].
-    y : list of float, Transverse position of each hull [m].
-    Rf : list of float, Individual viscous (frictional) resistance of each hull [N].
+    Args:
+        Lwl: list of float, Waterline length of each hull [m].
+        volume: list of float, Displaced volume of each hull [m³].
+        y: list of float, Transverse position of each hull [m].
+        Rf: list of float, Individual viscous (frictional) resistance of each hull [N].
 
-    Returns
-    -------
-    list of float, Viscous interference of each hull dRf[i] [N].
+    Returns:
+        list of float, Viscous interference of each hull dRf[i] [N].
     """
     n = len(Lwl)
     dRf = [0. for _ in range(n)]

@@ -1,5 +1,5 @@
 """
-Utilities for making better carpet plots
+Utilities for making better carpet plots.
 
 This module relies on Peter D. Sharpe's awesome work on AeroSandbox.
 
@@ -20,7 +20,8 @@ from contextlib import contextmanager
 @contextmanager
 def time_limit(seconds):
     """
-    Allows you to run a block of code with a timeout. This way, you can sweep through points to make a carpet plot
+    Allows you to run a block of code with a timeout. This way, you can sweep through points to make a carpet plot.
+
         without getting stuck on a particular point that may not terminate in a reasonable amount of time.
 
     Only runs on Linux!
@@ -59,6 +60,7 @@ def time_limit(seconds):
 def remove_nans(array):
     """
     Removes NaN values in a 1D array.
+
     Args:
         array: a 1D array of data.
 
@@ -69,11 +71,7 @@ def remove_nans(array):
 
 
 def patch_nans(array):  # TODO remove modification on incoming values; only patch nans
-    """
-    Patches NaN values in a 2D array. Can patch holes or entire regions. Uses Laplacian smoothing.
-    :param array:
-    :return:
-    """
+    """Patches NaN values in a 2D array. Can patch holes or entire regions. Uses Laplacian smoothing."""
     original_nans = np.isnan(array)
 
     def nanfrac(array):

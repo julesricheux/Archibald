@@ -11,9 +11,7 @@ warnings.warn(
 
 
 def default_CL_function(alpha, Re, mach=0, deflection=0):
-    """
-    Lift coefficient.
-    """
+    """Lift coefficient."""
     Cl_inc = np.pi * np.sind(2 * alpha)
     beta = (1 - mach) ** 2
 
@@ -22,9 +20,7 @@ def default_CL_function(alpha, Re, mach=0, deflection=0):
 
 
 def default_CD_function(alpha, Re, mach=0, deflection=0):
-    """
-    Drag coefficient.
-    """
+    """Drag coefficient."""
     Cf = Cf_flat_plate(Re_L=Re, method="hybrid-sharpe-convex")
 
     ### Form factor model from Raymer, "Aircraft Design". Section 12.5, Eq. 12.30
@@ -39,9 +35,7 @@ def default_CD_function(alpha, Re, mach=0, deflection=0):
 
 
 def default_CM_function(alpha, Re, mach=0, deflection=0):
-    """
-    Pitching moment coefficient, as measured about quarter-chord.
-    """
+    """Pitching moment coefficient, as measured about quarter-chord."""
     return np.zeros_like(alpha)
 
 

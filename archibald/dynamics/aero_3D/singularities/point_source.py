@@ -13,9 +13,7 @@ def calculate_induced_velocity_point_source(
     viscous_radius=0,
 ) -> [Union[float, np.ndarray], Union[float, np.ndarray], Union[float, np.ndarray]]:
     """
-    Calculates the induced velocity at a point:
-        [x_field, y_field, z_field]
-    in a 3D potential-flow flowfield.
+    Calculates the induced velocity at a point [x_field, y_field, z_field] in a 3D potential-flow flowfield.
 
     In this flowfield, the following singularity elements are assumed:
         * A single point source
@@ -61,9 +59,7 @@ def calculate_induced_velocity_point_source(
     r_squared = dx**2 + dy**2 + dz**2
 
     def smoothed_x_15_inv(x):
-        """
-        Approximates x^(-1.5) with a function that sharply goes to 0 in the x -> 0 limit.
-        """
+        """Approximates x^(-1.5) with a function that sharply goes to 0 in the x -> 0 limit."""
         if not np.all(viscous_radius == 0):
             return x / (x**2.5 + viscous_radius**2.5)
         else:

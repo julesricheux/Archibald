@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Oct 27 23:38:18 2024
+Created on Sun Oct 27 23:38:18 2024.
 
 @author: jrich
 """
@@ -15,27 +15,28 @@ from archibald.toolbox.string_formatting import axis_string_to_array
 #%%
 
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 def smooth_clip(x, a, b, beta=10.0):
     r"""
-    Smooth and differentiable clipping function bounded between [a, b] 
-    using np.softplus, suitable for gradient-based optimization (IPOPT).
-    
-    Parameters
-    ----------
-    x : float or ndarray, Input value(s) to clip.
-    a : float, Lower bound.
-    b : float, Upper bound.
-    beta : float, Steepness factor for the transition smoothing (higher = sharper).
-    
-    Returns
-    -------
-    float or ndarray, Smoothed and clipped values.
+    Smooth and differentiable clipping function bounded between [a, b].
+
+    Uses np.softplus, suitable for gradient-based optimization (IPOPT).
+
+    Args:
+        x: float or ndarray, Input value(s) to clip.
+        a: float, Lower bound.
+        b: float, Upper bound.
+        beta: float, Steepness factor for the transition smoothing (higher = sharper).
+
+    Returns:
+        float or ndarray, Smoothed and clipped values.
     """
     # 1. Smooth lower bound (smooth maximum with 'a')
     # Equivalent to: max(x, a) smoothly smoothed out
@@ -52,6 +53,7 @@ def complete_base_from_waterplane_normal(
     ):
     """
     Compute the local ux and uy vectors from a waterplane normal, considered as uz, to complete the base.
+
     ux is taken in the global ZX plane to remain on the hull centerline.
 
     """
@@ -83,16 +85,14 @@ def wl_edge_intersection(
     """
     Compute the waterplane intersection point along the directed edge Pa→Pb.
 
-    Parameters
-    ----------
-    Pa : (nF, 3) array — first endpoint of each edge
-    Pb : (nF, 3) array — second endpoint of each edge
-    da : (nF,)   array — signed distance of Pa to the waterplane (>0 wet)
-    db : (nF,)   array — signed distance of Pb to the waterplane (>0 wet)
+    Args:
+        Pa: (nF, 3) array — first endpoint of each edge
+        Pb: (nF, 3) array — second endpoint of each edge
+        da: (nF,)   array — signed distance of Pa to the waterplane (>0 wet)
+        db: (nF,)   array — signed distance of Pb to the waterplane (>0 wet)
 
-    Returns
-    -------
-    Q  : (nF, 3) array — intersection point (equals Pa when no crossing)
+    Returns:
+        Q: (nF, 3) array — intersection point (equals Pa when no crossing)
     """
     t = da / (da - db + 1e-12)              # (nF,)
     t = np.clip(t, 0., 1.)
@@ -106,17 +106,16 @@ def wl_soft_crossing_weight(
 ):
     """
     Soft indicator ≈ 1 when the edge crosses the waterplane, ≈ 0 otherwise.
+
     Differentiable everywhere.
 
-    Parameters
-    ----------
-    da        : (nF,) signed distance of first endpoint  (>0 wet)
-    db        : (nF,) signed distance of second endpoint (>0 wet)
-    sharpness : steepness of the sigmoid transition
+    Args:
+        da: (nF,) signed distance of first endpoint  (>0 wet)
+        db: (nF,) signed distance of second endpoint (>0 wet)
+        sharpness: steepness of the sigmoid transition
 
-    Returns
-    -------
-    w : (nF,) soft crossing weight in [0, 1]
+    Returns:
+        w: (nF,) soft crossing weight in [0, 1]
     """
     return (
           np.sigmoid( da * sharpness) * np.sigmoid(-db * sharpness)
@@ -130,6 +129,7 @@ def _weighted_slope(
 ):
     """
     Closed-form weighted least-squares slope for v = a*u + b.
+
     Returns a = cov(u,v) / var(u), both weighted.
     """
     W      = np.sum(w) + 1e-12
@@ -148,18 +148,17 @@ def wl_soft_extremum(
 ):
     """
     Differentiable soft maximum (or minimum) of x, masked by weights.
+
     Uses the log-sum-exp trick for numerical stability.
 
-    Parameters
-    ----------
-    x       : (N,) array of values
-    weights : (N,) non-negative soft mask
-    alpha   : sharpness — higher → closer to true max/min
-    mode    : "max" or "min"
+    Args:
+        x: (N,) array of values
+        weights: (N,) non-negative soft mask
+        alpha: sharpness — higher → closer to true max/min
+        mode: "max" or "min"
 
-    Returns
-    -------
-    scalar soft extremum
+    Returns:
+        scalar soft extremum
     """
     sign = 1. if mode == "max" else -1.
     logits = sign * alpha * x + np.log(weights + 1e-12)
@@ -176,28 +175,27 @@ def wl_intersection_points(
         fdist,
 ):
     """
-    Shared kernel: compute candidate waterplane intersection points for every
-    face edge and project them onto the in-plane (ux, uy) frame.
+    Shared kernel: compute candidate waterplane intersection points for every face edge.
+
+    Then project them onto the in-plane (ux, uy) frame.
 
     Called by all waterplane integral functions to avoid redundant computation.
 
-    Parameters
-    ----------
-    mesh  : ArchibaldMesh
-    point : (1, 3) waterplane reference point
-    normal: (1, 3) waterplane normal (unit)
-    ux    : (1, 3) longitudinal in-plane basis vector
-    uy    : (1, 3) transverse  in-plane basis vector
-    fdist : (nF, 3) signed distances of face vertices to the waterplane
-            (positive = wet, i.e. below the waterplane)
+    Args:
+        mesh: ArchibaldMesh
+        point: (1, 3) waterplane reference point
+        normal: (1, 3) waterplane normal (unit)
+        ux: (1, 3) longitudinal in-plane basis vector
+        uy: (1, 3) transverse  in-plane basis vector
+        fdist: (nF, 3) signed distances of face vertices to the waterplane
+                (positive = wet, i.e. below the waterplane)
 
-    Returns
-    -------
-    u01, v01 : (nF,) in-plane coordinates of edge-01 intersection
-    u12, v12 : (nF,) in-plane coordinates of edge-12 intersection
-    u20, v20 : (nF,) in-plane coordinates of edge-20 intersection
-    w01, w12, w20 : (nF,) soft crossing weights per edge
-    Q01, Q12, Q20 : (nF, 3) 3-D intersection points
+    Returns:
+        u01, v01: (nF,) in-plane coordinates of edge-01 intersection
+        u12, v12: (nF,) in-plane coordinates of edge-12 intersection
+        u20, v20: (nF,) in-plane coordinates of edge-20 intersection
+        w01, w12, w20: (nF,) soft crossing weights per edge
+        Q01, Q12, Q20: (nF, 3) 3-D intersection points
     """
     P  = mesh.vertices[mesh.faces]              # (nF, 3, 3)
     P0, P1, P2 = P[:, 0, :], P[:, 1, :], P[:, 2, :]   # each (nF, 3)
@@ -237,29 +235,27 @@ def wl_extents(
         alpha=50.,
 ):
     """
-    Differentiable waterline length (Lwl), beam (Bwl), and fore/aft reference
-    positions (u_fpp, u_app) computed via soft extrema over all waterplane
-    intersection sample points.
+    Differentiable waterline length (Lwl), beam (Bwl), and fore/aft reference positions (u_fpp, u_app).
 
-    Parameters
-    ----------
-    mesh   : ArchibaldMesh
-    point  : (1, 3) waterplane reference point
-    normal : (1, 3) waterplane normal
-    ux     : (1, 3) longitudinal in-plane basis vector
-    uy     : (1, 3) transverse  in-plane basis vector
-    fdist  : (nF, 3) signed vertex distances (positive = wet)
-    alpha  : sharpness of soft extrema (higher → closer to true max/min)
+    Computed via soft extrema over all waterplane intersection sample points.
 
-    Returns
-    -------
-    Lwl   : scalar — waterline length
-    Bwl   : scalar — waterline beam
-    u_fpp : scalar — longitudinal coordinate of the fore perpendicular
-    u_app : scalar — longitudinal coordinate of the aft  perpendicular
-    u_all : (3*nF,) — pooled longitudinal coordinates of all sample points
-    v_all : (3*nF,) — pooled transverse  coordinates of all sample points
-    w_all : (3*nF,) — pooled soft crossing weights
+    Args:
+        mesh: ArchibaldMesh
+        point: (1, 3) waterplane reference point
+        normal: (1, 3) waterplane normal
+        ux: (1, 3) longitudinal in-plane basis vector
+        uy: (1, 3) transverse  in-plane basis vector
+        fdist: (nF, 3) signed vertex distances (positive = wet)
+        alpha: sharpness of soft extrema (higher → closer to true max/min)
+
+    Returns:
+        Lwl: scalar — waterline length
+        Bwl: scalar — waterline beam
+        u_fpp: scalar — longitudinal coordinate of the fore perpendicular
+        u_app: scalar — longitudinal coordinate of the aft  perpendicular
+        u_all: (3*nF,) — pooled longitudinal coordinates of all sample points
+        v_all: (3*nF,) — pooled transverse  coordinates of all sample points
+        w_all: (3*nF,) — pooled soft crossing weights
     """
     u01, v01, u12, v12, u20, v20, w01, w12, w20, _, _, _ = \
         wl_intersection_points(mesh, point, normal, ux, uy, fdist)
@@ -289,29 +285,27 @@ def wl_extents(
 
 def wet_clip_properties(P0, P1, P2, d0, d1, d2, eps=1e-9, return_segments=False):
     r"""
-    Exact clipping of triangles by a plane, written without any branching so it
-    stays differentiable (CasADi MX/SX or numpy) and C1 in the signed distances.
+    Exact clipping of triangles by a plane, written without any branching.
+
+    It stays differentiable (CasADi MX/SX or numpy) and C1 in the signed distances.
 
     Replaces the sigmoid/fmax face weights, whose gradient had spikes of several
     mm of width at every vertex crossing (hence the endless equilibrium hunting).
 
-    Parameters
-    ----------
-    P0, P1, P2 : (nF, 3) triangle vertices
-    d0, d1, d2 : (nF,)   signed distances of the vertices (> 0 wet)
+    Args:
+        P0, P1, P2: (nF, 3) triangle vertices
+        d0, d1, d2: (nF,)   signed distances of the vertices (> 0 wet)
 
-    Returns
-    -------
-    f : (nF,)   exact wet area fraction of each triangle, in [0, 1]
-    m : (nF, 3) first moment of the wet part, i.e. f * (centroid of the wet part)
-                (expressed per unit triangle area). Dry part moment is G - m,
-                with G the triangle centroid.
+    Returns:
+        f: (nF,)   exact wet area fraction of each triangle, in [0, 1]
+        m: (nF, 3) first moment of the wet part, i.e. f * (centroid of the wet part)
+                    (expressed per unit triangle area). Dry part moment is G - m,
+                    with G the triangle centroid.
 
-    Notes
-    -----
-    A pyramid whose apex is on the waterplane and whose base is a part of a
-    triangle has volume  f * (tetra volume of the whole triangle).  So the
-    submerged volume is exactly  sum(f * tet)  when ref_point lies on the plane.
+    Notes:
+        A pyramid whose apex is on the waterplane and whose base is a part of a
+        triangle has volume  f * (tetra volume of the whole triangle).  So the
+        submerged volume is exactly  sum(f * tet)  when ref_point lies on the plane.
     """
     # Branchless sort of the three distances (ties broken by index, so the order is always total)
     B01 = 1.0 * (d0 <= d1)
@@ -369,9 +363,10 @@ def wet_clip_properties(P0, P1, P2, d0, d1, d2, eps=1e-9, return_segments=False)
 def soft_extremum_masked(x, mask, alpha, sign=1.):
     """
     Smooth max (sign=+1) or min (sign=-1) of x over the points where mask = 1.
+
     Weighted mean of the points near the extremum, with weights exp(sign*alpha*x):
-    differentiable, and a point with mask = 0 can never contaminate the result.
-    ``alpha`` has units of 1/length: tie it to the mesh size (e.g. 30 / average edge length).
+    differentiable, and a point with mask = 0 can never contaminate the result. ``alpha`` has
+    units of 1/length: tie it to the mesh size (e.g. 30 / average edge length).
     """
     logits = sign * alpha * x - 1e6 * (1. - mask)
     e = np.exp(logits - np.max(logits))
@@ -387,8 +382,10 @@ def soft_value_at_extremum(x, y, mask, alpha, sign=1.):
 
 def wl_entry_angle(S1, S2, mix, point, ux, uy, u_fpp, v_cl, lo, hi, edge_sharp, eps=1e-9):
     r"""
-    Half entry angle (deg) of the waterline, from a weighted least-squares line  |y - y_cl| = a + b x
-    fitted to the waterline abaft the FPP, over the window  lo <= x <= hi  (x = distance abaft the FPP).
+    Half entry angle (deg) of the waterline, from a weighted least-squares line.
+
+    The line  |y - y_cl| = a + b x  is fitted to the waterline abaft the FPP, over the window
+    lo <= x <= hi  (x = distance abaft the FPP).
 
     The waterline is the exact polyline cut by the plane in each crossed face (S1 -> S2), integrated
     with a 2-point Gauss rule and weighted by segment length. It is therefore independent of how many
@@ -414,8 +411,9 @@ def wl_entry_angle(S1, S2, mix, point, ux, uy, u_fpp, v_cl, lo, hi, edge_sharp, 
 
 def wl_crossing_extents(P0, P1, P2, d0, d1, d2, point, ux, uy, alpha):
     """
-    Waterline extents from the actual edge/waterplane crossing points (no vertex
-    window, no dependence on the reference point). Soft extrema smooth the
+    Waterline extents from the actual edge/waterplane crossing points.
+
+    No vertex window, no dependence on the reference point. Soft extrema smooth the
     switch of the extreme point from one edge to another.
 
     Returns Lwl, Bwl, u_fpp, u_app (all relative to ``point`` along ux / uy), then the pooled
@@ -442,9 +440,9 @@ def wl_crossing_extents(P0, P1, P2, d0, d1, d2, point, ux, uy, alpha):
 class ArchibaldPolygon(ArchibaldObject):
     """
     Polygon description.
-    
+
     Allows approximated though differentiable hydrostatics computations.
-    
+
     """
     def __init__(
         self,
@@ -463,13 +461,16 @@ class ArchibaldPolygon(ArchibaldObject):
         
     @property
     def vertices(self):
+        """Vertices of the polygon."""
         return self._vertices
     
     @property
     def edges(self):
+        """Edges of the polygon, as pairs of vertex indices."""
         return self._edges
     
     def reset_data(self):
+        """Clears the cached geometric data."""
         # Extract vertices of each face for later operations
         self._nV = self.vertices.shape[0]
         self._nE = self.edges.shape[0]
@@ -494,10 +495,7 @@ class ArchibaldPolygon(ArchibaldObject):
         }
         
     def compute_cross_product(self):
-        """
-        Compute the cross products between the edges of all triangular faces.
-
-        """
+        """Compute the cross products between the edges of all triangular faces."""
         # Extract vertices of each face
         v0, v1, v2 = self._v0, self._v1, self._v2
         
@@ -509,10 +507,7 @@ class ArchibaldPolygon(ArchibaldObject):
         self._data['cross_product'] = np.cross(edge1, edge2)
         
     def compute_triangle_normals(self):
-        """
-        Compute the normals of all triangular faces.
-
-        """        
+        """Compute the normals of all triangular faces."""        
         if self._data['cross_product'] is None:
             self.compute_cross_product()
             
@@ -520,28 +515,19 @@ class ArchibaldPolygon(ArchibaldObject):
         
         
     def compute_edge_centers(self):
-        """
-        Compute the center of each polygon edge.
-
-        """
+        """Compute the center of each polygon edge."""
         self._data['edge_centers'] = (self._v0 + self._v1) / 2.0
     
     
     def compute_edge_lengths(self):
-        """
-        Compute the length of each polygon edge.
-
-        """
+        """Compute the length of each polygon edge."""
         v0, v1 = self._v0, self._v1
         
         self._data['edge_lengths'] = np.linalg.norm(v1 - v0, axis=1)
     
 
     def compute_perimeter(self):
-        """
-        Compute the polygon perimeter.
-
-        """
+        """Compute the polygon perimeter."""
         if self._data['edge_lengths'] is None:
             self.compute_edge_lengths()
             
@@ -549,10 +535,7 @@ class ArchibaldPolygon(ArchibaldObject):
     
     
     def compute_triangle_centers(self):
-        """
-        Compute the centers of all triangular faces.
-
-        """
+        """Compute the centers of all triangular faces."""
         # Extract vertices of each face
         v0, v1, v2 = self._v0, self._v1, self._v2
         
@@ -560,10 +543,7 @@ class ArchibaldPolygon(ArchibaldObject):
         
         
     def compute_triangle_areas(self):
-        """
-        Compute the areas of all triangular faces.
-
-        """        
+        """Compute the areas of all triangular faces."""        
         if self._data['normals'] is None:
             self.compute_triangle_normals()
             
@@ -574,10 +554,7 @@ class ArchibaldPolygon(ArchibaldObject):
         
         
     def weighted_area(self, weight=1.):
-        """
-        Compute the mesh area. May be weighted.
-
-        """
+        """Compute the mesh area. May be weighted."""
         if self._data['triangle_areas'] is None:
             self.compute_triangle_areas()
         
@@ -588,10 +565,7 @@ class ArchibaldPolygon(ArchibaldObject):
         return np.sum(tri_areas)
 
     def weighted_area_centroid(self, weight=1.):
-        """
-        Compute the mesh volume centroid. May be weighted.
-
-        """
+        """Compute the mesh volume centroid. May be weighted."""
         if self._data['triangle_centers'] is None:
             self.compute_triangle_centers()
         if self._data['triangle_areas'] is None:
@@ -608,6 +582,7 @@ class ArchibaldPolygon(ArchibaldObject):
     
     @property
     def normals(self):
+        """Normals of the polygon."""
         if self._data['normals'] is None:
             self.compute_triangle_normals()
         
@@ -615,6 +590,7 @@ class ArchibaldPolygon(ArchibaldObject):
     
     @property
     def area(self):
+        """Area of the polygon."""
         if self._data['area'] is None:
             self._data['area'] = self.weighted_area(weight=1.)
         
@@ -622,6 +598,7 @@ class ArchibaldPolygon(ArchibaldObject):
     
     @property
     def area_centroid(self):
+        """Centroid of the area of the polygon."""
         if self._data['area_centroid'] is None:
             self._data['area_centroid'] = self.weighted_area_centroid(weight=1.)
         
@@ -629,16 +606,14 @@ class ArchibaldPolygon(ArchibaldObject):
     
     @property
     def perimeter(self):
+        """Perimeter of the polygon."""
         if self._data['perimeter'] is None:
             self.compute_perimeter()
         
         return self._data['perimeter']
     
     def compute_bounds(self):
-        """
-        Compute the mesh bounding box in all 3 directions.
-
-        """
+        """Compute the mesh bounding box in all 3 directions."""
         v = self.vertices
         
         x_min = np.min(v[:,0])
@@ -656,10 +631,7 @@ class ArchibaldPolygon(ArchibaldObject):
         
     @property
     def bounds(self):
-        """
-        Return the mesh bounding box in all 3 directions.
-
-        """
+        """Return the mesh bounding box in all 3 directions."""
         if self._data['bounds'] is None:
             self.compute_bounds()
             
@@ -675,6 +647,7 @@ class ArchibaldPolygon(ArchibaldObject):
             backend: str = 'pyvista',
             show: bool = True,
         ):
+        """Draws the polygon."""
         
         if backend=="pyvista":
         
@@ -707,9 +680,9 @@ class ArchibaldPolygon(ArchibaldObject):
 class ArchibaldMesh(ArchibaldObject):
     """
     Differentiable mesh description. Vertices may be described by both numpy or CasADI objects.
-    
+
     Allows approximated though differentiable hydrostatics computations.
-    
+
     """
     
     # TODO: add a refine_mesh method to adapt coarser meshes
@@ -731,14 +704,17 @@ class ArchibaldMesh(ArchibaldObject):
         
     @property
     def vertices(self):
+        """Vertices of the mesh, shape (n, 3)."""
         return self._vertices
     
     @property
     def faces(self):
+        """Triangular faces of the mesh, as vertex indices."""
         return self._faces
     
     @property
     def edges(self):
+        """Unique edges of the mesh, as pairs of vertex indices."""
         if self._data['edges'] is None:
             self.compute_edges()
             
@@ -746,6 +722,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def edges_lengths(self):
+        """Lengths of the edges."""
         if self._data['edges_lengths'] is None:
             self.compute_edges_lengths()
             
@@ -753,6 +730,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def average_length(self):
+        """Average length of the edges."""
         if self._data['average_length'] is None:
             self.compute_average_length()
             
@@ -773,6 +751,7 @@ class ArchibaldMesh(ArchibaldObject):
         self.reset_data()
         
     def reset_data(self):
+        """Clears the cached geometric data."""
         # Extract vertices of each face for later operations
         self._v0 = self.vertices[self.faces[:, 0], :]
         self._v1 = self.vertices[self.faces[:, 1], :]
@@ -796,6 +775,7 @@ class ArchibaldMesh(ArchibaldObject):
         }
         
     def compute_edges(self):
+        """Computes the unique edges of the mesh."""
         # Generate all edges for each triangle (3 edges per face)
         edges = np.concatenate([
             self.faces[:, [0, 1]],
@@ -810,10 +790,7 @@ class ArchibaldMesh(ArchibaldObject):
         self._data['edges'] = np.unique(edges, axis=0)
         
     def compute_edges_lengths(self):
-        """
-        Compute the length of each mesh edge.
-
-        """
+        """Compute the length of each mesh edge."""
         if self._data['edges'] is None:
             self.compute_edges()
             
@@ -823,20 +800,14 @@ class ArchibaldMesh(ArchibaldObject):
         self._data['edges_lengths'] = np.linalg.norm(v1 - v0, axis=1)
         
     def compute_average_length(self):
-        """
-        Compute the average mesh edge length.
-
-        """
+        """Compute the average mesh edge length."""
         if self._data['edges_lengths'] is None:
             self.compute_edges_lengths()
         
         self._data['average_length'] = np.mean(self.edges_lengths)
         
     def compute_cross_product(self):
-        """
-        Compute the cross products between the edges of all triangular faces.
-
-        """
+        """Compute the cross products between the edges of all triangular faces."""
         # Extract vertices of each face
         v0, v1, v2 = self._v0, self._v1, self._v2
         
@@ -848,10 +819,7 @@ class ArchibaldMesh(ArchibaldObject):
         self._data['cross_product'] = np.cross(edge1, edge2)
         
     def compute_triangle_normals(self):
-        """
-        Compute the normals of all triangular faces.
-
-        """        
+        """Compute the normals of all triangular faces."""        
         if self._data['cross_product'] is None:
             self.compute_cross_product()
             
@@ -859,10 +827,7 @@ class ArchibaldMesh(ArchibaldObject):
         
         
     def compute_triangle_centers(self):
-        """
-        Compute the centers of all triangular faces.
-
-        """
+        """Compute the centers of all triangular faces."""
         # Extract vertices of each face
         v0, v1, v2 = self._v0, self._v1, self._v2
         
@@ -870,10 +835,7 @@ class ArchibaldMesh(ArchibaldObject):
         
         
     def compute_triangle_areas(self):
-        """
-        Compute the areas of all triangular faces.
-
-        """        
+        """Compute the areas of all triangular faces."""        
         if self._data['normals'] is None:
             self.compute_triangle_normals()
             
@@ -884,10 +846,7 @@ class ArchibaldMesh(ArchibaldObject):
         
         
     def compute_tetrahedron_centers(self):
-        """
-        Compute the centers of all tetrahedrons formed by faces and origin.
-
-        """
+        """Compute the centers of all tetrahedrons formed by faces and origin."""
         # Extract vertices of each face
         v0, v1, v2 = self._v0, self._v1, self._v2
         
@@ -898,10 +857,7 @@ class ArchibaldMesh(ArchibaldObject):
         self,
         ref_point: Union[np.ndarray, List] = [0., 0., 0.],
     ):
-        """
-        Compute the signed volumes of all tetrahedrons formed by faces and origin.
-
-        """
+        """Compute the signed volumes of all tetrahedrons formed by faces and origin."""
         if self._data['cross_product'] is None:
             self.compute_cross_product()
         
@@ -919,10 +875,7 @@ class ArchibaldMesh(ArchibaldObject):
         point: Union[np.ndarray, List],
         normal: Union[np.ndarray, List, str],
     ):
-        """
-        Compute the oriented distances of each vertex to a given plane, represented by a point and a normal.
-
-        """
+        """Compute the oriented distances of each vertex to a given plane, represented by a point and a normal."""
         if type(normal) is str:
             normal = axis_string_to_array(normal)
         # NB
@@ -939,10 +892,7 @@ class ArchibaldMesh(ArchibaldObject):
         point: Union[np.ndarray, List],
         normal: Union[np.ndarray, List, str],
     ):
-        """
-        Compute the oriented distances of each vertex to a given plane, represented by a point and a normal.
-
-        """
+        """Compute the oriented distances of each vertex to a given plane, represented by a point and a normal."""
         if type(normal) is str:
             normal = axis_string_to_array(normal)
         # NB
@@ -970,7 +920,7 @@ class ArchibaldMesh(ArchibaldObject):
 
         Returns:
         - frontal_area: Scalar representing the frontal area of the mesh.
-        
+
         """
         if type(direction) is str:
             direction = axis_string_to_array(direction)
@@ -997,7 +947,7 @@ class ArchibaldMesh(ArchibaldObject):
     ):
         """
         Compute the centroid of the frontal area of a mesh in a given direction.
-        
+
         Each face is located at its center and weighted by its contribution to the
         frontal area (same weights as in ``frontal_area``), so the result is the
         approximate centre of effort of the projected area.
@@ -1008,7 +958,7 @@ class ArchibaldMesh(ArchibaldObject):
 
         Returns:
         - frontal_area_centroid: (1, 3) array.
-        
+
         """
         if type(direction) is str:
             direction = axis_string_to_array(direction)
@@ -1040,10 +990,7 @@ class ArchibaldMesh(ArchibaldObject):
         ref_point: Union[np.ndarray, List] = [0., 0., 0.],
         recompute_tetrahedron_volumes: bool = False,
     ):
-        """
-        Compute the mesh volume. May be weighted.
-
-        """
+        """Compute the mesh volume. May be weighted."""
         if recompute_tetrahedron_volumes or self._data['tetrahedron_volumes'] is None:
             self.compute_tetrahedron_volumes(ref_point)
         
@@ -1059,10 +1006,7 @@ class ArchibaldMesh(ArchibaldObject):
         ref_point: Union[np.ndarray, List] = [0., 0., 0.],
         recompute_tetrahedron_volumes: bool = False,
     ):
-        """
-        Compute the mesh volume centroid. May be weighted.
-
-        """
+        """Compute the mesh volume centroid. May be weighted."""
         if recompute_tetrahedron_volumes or self._data['tetrahedron_volumes'] is None:
             self.compute_tetrahedron_volumes(ref_point)
             
@@ -1088,10 +1032,7 @@ class ArchibaldMesh(ArchibaldObject):
         self,
         weight: Union[np.ndarray, float] = 1.,
     ):
-        """
-        Compute the mesh area. May be weighted.
-
-        """
+        """Compute the mesh area. May be weighted."""
         if self._data['triangle_areas'] is None:
             self.compute_triangle_areas()
         
@@ -1105,10 +1046,7 @@ class ArchibaldMesh(ArchibaldObject):
             self,
             weight: Union[np.ndarray, float] = 1.,
         ):
-        """
-        Compute the mesh volume centroid. May be weighted.
-
-        """
+        """Compute the mesh volume centroid. May be weighted."""
         if self._data['triangle_centers'] is None:
             self.compute_triangle_centers()
         if self._data['triangle_areas'] is None:
@@ -1125,6 +1063,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def volume(self):
+        """Volume enclosed by the mesh."""
         if self._data['volume'] is None:
             self._data['volume'] = self.weighted_volume(weight=1.)
         
@@ -1132,6 +1071,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def volume_centroid(self):
+        """Centroid of the volume enclosed by the mesh."""
         if self._data['volume_centroid'] is None:
             self._data['volume_centroid'] = self.weighted_volume_centroid(weight=1.)
         
@@ -1139,6 +1079,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def area(self):
+        """Surface area of the mesh."""
         if self._data['area'] is None:
             self._data['area'] = self.weighted_area(weight=1.)
         
@@ -1146,6 +1087,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def area_centroid(self):
+        """Centroid of the surface of the mesh."""
         if self._data['area_centroid'] is None:
             self._data['area_centroid'] = self.weighted_area_centroid(weight=1.)
         
@@ -1153,6 +1095,7 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def normals(self):
+        """Normals of the faces."""
         if self._data['normals'] is None:
             self.compute_triangle_normals()
         
@@ -1167,10 +1110,7 @@ class ArchibaldMesh(ArchibaldObject):
     #     return Ixx
     
     def compute_bounds(self):
-        """
-        Compute the mesh bounding box in all 3 directions.
-
-        """
+        """Compute the mesh bounding box in all 3 directions."""
         v = self.vertices
         
         x_min = np.min(v[:,0])
@@ -1188,10 +1128,7 @@ class ArchibaldMesh(ArchibaldObject):
         
     @property
     def bounds(self):
-        """
-        Return the mesh bounding box in all 3 directions.
-
-        """
+        """Return the mesh bounding box in all 3 directions."""
         if self._data['bounds'] is None:
             self.compute_bounds()
             
@@ -1199,14 +1136,17 @@ class ArchibaldMesh(ArchibaldObject):
     
     @property
     def n_vertices(self):
+        """Number of vertices."""
         return self.vertices.shape[0]
     
     @property
     def n_faces(self):
+        """Number of faces."""
         return self.faces.shape[0]
     
     @property
     def n_edges(self):
+        """Number of edges."""
         return self.edges.shape[0]
         
     def __repr__(self):
@@ -1227,18 +1167,16 @@ class ArchibaldMesh(ArchibaldObject):
         """
         Smooth wet weights of the faces with respect to a waterplane.
 
-        Parameters
-        ----------
-        point  : (1, 3) reference point on the waterplane
-        normal : (1, 3) waterplane outward normal
+        Args:
+            point: (1, 3) reference point on the waterplane
+            normal: (1, 3) waterplane outward normal
 
-        Returns
-        -------
-        weights : (n_faces,) ~ 1 for wet faces, ~ 0 for dry faces
-        vdist   : (n_vertices, 1) vertices signed distances, > 0 for wet, < 0 for dry
-        fdist   : (n_faces, 3) vertices signed distances, shape similar to self.faces
+        Returns:
+            weights: (n_faces,) ~ 1 for wet faces, ~ 0 for dry faces
+            vdist: (n_vertices, 1) vertices signed distances, > 0 for wet, < 0 for dry
+            fdist: (n_faces, 3) vertices signed distances, shape similar to self.faces
 
-        Shared by ``hydrostatics`` (weights) and ``aerostatics`` (1 - weights).
+            Shared by ``hydrostatics`` (weights) and ``aerostatics`` (1 - weights).
 
         """
         # vertices signed distances from the waterplane, shape similar to self.faces
@@ -1291,15 +1229,13 @@ class ArchibaldMesh(ArchibaldObject):
         """
         Compute hydrostatic quantities for the mesh at the given waterplane.
 
-        Parameters
-        ----------
-        point            : (1, 3) or (3,) reference point on the waterplane
-        normal           : (1, 3), (3,) or str — waterplane outward normal
+        Args:
+            point: (1, 3) or (3,) reference point on the waterplane
+            normal: (1, 3), (3,) or str — waterplane outward normal
 
-        Returns
-        -------
-        dict with hydrostatics properties as its keys
-            
+        Returns:
+            dict with hydrostatics properties as its keys
+
         """
         
         if type(normal) is str:
@@ -1595,8 +1531,9 @@ class ArchibaldMesh(ArchibaldObject):
             mesh_scale: float = None,
         ):
         """
-        Angle (deg) between the keel line and the horizontal (the waterplane), measured from the
-        bottom of the transom. Positive when the keel line rises towards the bow.
+        Angle (deg) between the keel line and the horizontal (the waterplane), measured from the bottom of the transom.
+
+        Positive when the keel line rises towards the bow.
 
         - Keel line: lower envelope of the bottom (downward-facing) faces, i.e. at each longitudinal
           station the deepest point of the surface. Each face edge is interpolated at the station and a
@@ -1607,24 +1544,21 @@ class ArchibaldMesh(ArchibaldObject):
           line at ``n_stations`` stations spread over ``window`` (fractions of Lwl forward of the transom).
         Everything is expressed in the waterplane frame, so heel and trim are included.
 
-        Parameters
-        ----------
-        window         : (lo, hi), fractions of Lwl forward of the transom bottom over which the line is fitted
-        n_stations     : number of stations (>= 2)
-        keel_sharpness : the smooth maxima use ``keel_sharpness * soft_alpha / mesh_scale``. Higher is more
-                         accurate (less bias); the keel envelope does not switch edges in normal use,
-                         so a high value does not hurt smoothness.
+        Args:
+            window: (lo, hi), fractions of Lwl forward of the transom bottom over which the line is fitted
+            n_stations: number of stations (>= 2)
+            keel_sharpness: the smooth maxima use ``keel_sharpness * soft_alpha / mesh_scale``. Higher is more
+                             accurate (less bias); the keel envelope does not switch edges in normal use,
+                             so a high value does not hurt smoothness.
 
-        Returns
-        -------
-        dict : keel_angle (deg), transom_bottom_depth (depth of the transom bottom below the waterplane),
-               u_transom, keel_u / keel_depth ((n_stations, 1) profile, u measured from ``point``).
+        Returns:
+            dict: keel_angle (deg), transom_bottom_depth (depth of the transom bottom below the waterplane),
+                   u_transom, keel_u / keel_depth ((n_stations, 1) profile, u measured from ``point``).
 
-        Notes
-        -----
-        The lowest surfaces of the mesh are taken as the keel: fins, bulbs or rudders that are part of the
-        mesh would be picked up too.
-        
+        Notes:
+            The lowest surfaces of the mesh are taken as the keel: fins, bulbs or rudders that are part of the
+            mesh would be picked up too.
+
         """
         point, normal, ux, uy, vdist, Lm, alpha, Lwl, u_fpp, u_app = self._attitude_frame(
             point, normal, soft_alpha, mesh_scale
@@ -1716,21 +1650,18 @@ class ArchibaldMesh(ArchibaldObject):
         count) are averaged with a Gaussian kernel in the longitudinal position and a local linear
         correction, so the value is accurate at the ends (transom) as well as inside.
 
-        Parameters
-        ----------
-        locations : fractions of Lwl measured from the aft end of the waterline (0 = transom for an
-                    immersed transom, 1 = FPP)
-        max_angle : faces steeper than this (deg) are not part of the bottom
-        bandwidth : (a, b): kernel standard deviation = a * Lwl + b * mesh edge length
+        Args:
+            locations: fractions of Lwl measured from the aft end of the waterline (0 = transom for an
+                        immersed transom, 1 = FPP)
+            max_angle: faces steeper than this (deg) are not part of the bottom
+            bandwidth: (a, b): kernel standard deviation = a * Lwl + b * mesh edge length
 
-        Returns
-        -------
-        dict : locations, deadrise ((n, 1) deg), u (longitudinal position of each location from ``point``)
+        Returns:
+            dict: locations, deadrise ((n, 1) deg), u (longitudinal position of each location from ``point``)
 
-        Notes
-        -----
-        On a round-bilge hull this is the area-weighted mean slope of the bottom up to ``max_angle``.
-        
+        Notes:
+            On a round-bilge hull this is the area-weighted mean slope of the bottom up to ``max_angle``.
+
         """
         point, normal, ux, uy, vdist, Lm, alpha, Lwl, u_fpp, u_app = self._attitude_frame(
             point, normal, soft_alpha, mesh_scale
@@ -1782,37 +1713,35 @@ class ArchibaldMesh(ArchibaldObject):
             normal: Union[np.ndarray, List, str] = "z",
         ):
         """
-        Compute aerostatic quantities for the mesh above the given waterplane,
-        i.e. the geometric properties of the emerged part (topsides, deck,
+        Compute aerostatic quantities for the mesh above the given waterplane.
+
+        These are the geometric properties of the emerged part (topsides, deck,
         superstructures) needed to evaluate its aerodynamic drag.
-        
+
         Mirrors ``hydrostatics``: same waterplane definition, same smooth
         wet/dry weighting (dry weights = 1 - wet weights), and same key names
         whenever the quantity is the aerial counterpart of a hydrostatic one.
-        
+
         Projected areas and their centroids are given along the waterplane axes
         (ux : forward, uy : transverse), so heel and trim of the operating point
         are already accounted for.
 
-        Parameters
-        ----------
-        point            : (1, 3) or (3,) reference point on the waterplane
-        normal           : (1, 3), (3,) or str — waterplane outward normal
+        Args:
+            point: (1, 3) or (3,) reference point on the waterplane
+            normal: (1, 3), (3,) or str — waterplane outward normal
 
-        Returns
-        -------
-        dict with aerostatics properties as its keys. All centroids are (1, 3)
-        arrays expressed in the mesh frame.
-        
-        Notes
-        -----
-        - ``volume`` and ``cov`` are meaningful only if the mesh is closed above
-          the waterplane (deck included).
-        - Projected areas use the same closed-surface convention as
-          ``frontal_area``. They remain valid for front and side views of a mesh
-          whose deck is left open (dinghy), but not for a top view.
-        - No occlusion is modelled: concave shapes overestimate the projected areas.
-            
+        Returns:
+            dict with aerostatics properties as its keys. All centroids are (1, 3)
+            arrays expressed in the mesh frame.
+
+        Notes:
+            - ``volume`` and ``cov`` are meaningful only if the mesh is closed above
+              the waterplane (deck included).
+            - Projected areas use the same closed-surface convention as
+              ``frontal_area``. They remain valid for front and side views of a mesh
+              whose deck is left open (dinghy), but not for a top view.
+            - No occlusion is modelled: concave shapes overestimate the projected areas.
+
         """
         
         if type(normal) is str:
@@ -1940,6 +1869,7 @@ class ArchibaldMesh(ArchibaldObject):
             point,
             normal
         ):
+        """Section of the mesh by a plane."""
         
         dist = self.vertices_distances_to_plane(point, normal)
         
@@ -2005,6 +1935,7 @@ class ArchibaldMesh(ArchibaldObject):
             op_point: OperatingPoint,
             inverse: bool = False,
         ):
+        """Moves the vertices with the transformations of an operating point, in place."""
     
         self.vertices = op_point.apply_transformations(self.vertices, inverse=inverse)
             
@@ -2027,6 +1958,7 @@ class ArchibaldMesh(ArchibaldObject):
         ax=None,
         set_axis_visibility = None,
     ):
+        """Draws the mesh, optionally with a plane."""
         
         if backend == 'pyvista':
             import pyvista as pv

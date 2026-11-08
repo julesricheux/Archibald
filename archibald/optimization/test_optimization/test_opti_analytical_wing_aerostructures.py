@@ -96,10 +96,12 @@ def test_gpkit_style_solve():
 
 def test_geometric_program_solve():
     """
-    This still solves the problem like a geometric program (at least in the sense that the variables are
-    log-transformed; note that the constraints aren't so it's not a true geometric program), but it removes redundant
-    variables where possible. Basically you only need to add design variables for implicit things like total aircraft
-    weight; no need to add unnecessary variables for explicit things like wing weight.
+    This still solves the problem like a geometric program, but it removes redundant variables where possible.
+
+    It is a geometric program at least in the sense that the variables are log-transformed; note that the
+    constraints aren't so it's not a true geometric program. Basically you only need to add design variables
+    for implicit things like total aircraft weight; no need to add unnecessary variables for explicit things
+    like wing weight.
     """
     opti = arb.Opti()  # initialize an optimization environment
 
@@ -143,8 +145,9 @@ def test_geometric_program_solve():
 
 def test_non_log_transformed_solve():
     """
-    This is how you would solve the problem without any kind of log-transformation, and honestly, probably how you
-    should solve this problem. Yes, log-transforming things into a geometric program makes everything convex,
+    This is how you would solve the problem without any kind of log-transformation.
+
+    Honestly, this is probably how you should solve this problem. Yes, log-transforming things into a geometric program makes everything convex,
     which is nice - however, even non-transformed, the problem is unimodal so IPOPT will find the global minimum.
 
     Forgoing the log-transform also makes the backend math faster, so it's kind of a trade-off. I tend to lean

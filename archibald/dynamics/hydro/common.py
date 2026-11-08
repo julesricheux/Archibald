@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun  3 21:51:50 2026
+Created on Wed Jun  3 21:51:50 2026.
 
 @author: jules
 """
@@ -13,18 +13,17 @@ def Cf_hull(
         **kwargs,
     ):
     """
-    Computes the friction-drag coefficient of a bare hull following ITTC78
+    Computes the friction-drag coefficient of a bare hull following ITTC78.
+
     https://www.ittc.info/media/8017/75-02-03-014.pdf
-    
+
     Modified for continuity at Re=0.
 
-    Parameters
-    ----------
-    Re (float): Hull Reynolds number
+    Args:
+        Re (float): Hull Reynolds number
 
-    Returns
-    -------
-    float: Bare hull friction-drag coefficient
+    Returns:
+        float: Bare hull friction-drag coefficient
 
     """
     
@@ -40,9 +39,7 @@ def transom_resistance(
         **kwargs,
     ):
     # TODO find reference.
-    """
-    Calculate transom resistance.
-    """
+    """Calculate transom resistance."""
     ctr = 0.2 * (1 - (0.2 * FrT)) # transom drag coefficient
     ctr_ReLu = np.softplus(ctr, beta=1e3)
     Rtr = 0.5 * rho * (Vms ** 2) * Atr * ctr_ReLu

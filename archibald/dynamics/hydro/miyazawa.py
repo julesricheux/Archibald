@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-MIYAZAWA VISCOUS INTERFERENCE BETWEEN HULLS (BODY INTERFERENCE)
+MIYAZAWA VISCOUS INTERFERENCE BETWEEN HULLS (BODY INTERFERENCE).
 
 Closed-form estimate of the increase of the viscous resistance of a hull due to
 the velocity augmentation between hulls. No tank data needed, but it comes
@@ -22,7 +22,8 @@ def compute_dRf_miyazawa(
         Rf,
         **kwargs,
     ):
-    r"""Viscous interference of each hull due to the presence of the other hulls.
+    r"""
+    Viscous interference of each hull due to the presence of the other hulls.
 
     According to the review of :cite:`insel1992investigation` of the work of
     Miyazawa, the viscous (wake traverse) resistance of a catamaran is
@@ -44,15 +45,13 @@ def compute_dRf_miyazawa(
     touch). Insel & Molland measured a velocity augmentation of up to about
     10 % between demihulls, hence a friction increase of the same order.
 
-    Parameters
-    ----------
-    Bwl : list of float, Waterline beam of each hull [m].
-    y : list of float, Transverse position of each hull [m].
-    Rf : list of float, Individual viscous (frictional) resistance of each hull [N].
+    Args:
+        Bwl: list of float, Waterline beam of each hull [m].
+        y: list of float, Transverse position of each hull [m].
+        Rf: list of float, Individual viscous (frictional) resistance of each hull [N].
 
-    Returns
-    -------
-    list of float, Viscous interference of each hull dRf[i] [N].
+    Returns:
+        list of float, Viscous interference of each hull dRf[i] [N].
     """
     n = len(Bwl)
     dRf = [0. for _ in range(n)]

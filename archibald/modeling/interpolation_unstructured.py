@@ -48,8 +48,9 @@ class UnstructuredInterpolatedModel(InterpolatedModel):
         interpolated_model_kwargs: dict[str, Any] | None = None,
     ):
         """
-        Creates the interpolator. Note that data must be unstructured (i.e., point cloud) for general N-dimensional
-        interpolation.
+        Creates the interpolator.
+
+        Note that data must be unstructured (i.e., point cloud) for general N-dimensional interpolation.
 
         Note that if data is either 1D or structured,
 

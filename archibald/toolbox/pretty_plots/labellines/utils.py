@@ -28,6 +28,7 @@ def ensure_float(value):
 
 # From https://www.geeksforgeeks.org/maximum-bipartite-matching/
 class GFG:
+    """Bipartite graph, for maximum bipartite matching."""
     def __init__(self, graph):
 
         # residual graph
@@ -38,6 +39,7 @@ class GFG:
     # A DFS based recursive function that returns true if a matching for vertex
     # u is possible
     def bpm(self, u, matchR, seen):
+        """Tries to find a match for applicant u, by depth-first search."""
 
         # Try every job one by one
         for v in range(self.jobs):
@@ -62,6 +64,7 @@ class GFG:
 
     # Returns maximum number of matching
     def maxBPM(self):
+        """Maximum bipartite matching of the graph."""
         # An array to keep track of the applicants assigned to jobs. The value
         # of matchR[i] is the applicant number assigned to job i, the value -1
         # indicates nobody is assigned.
@@ -81,17 +84,14 @@ class GFG:
 
 
 def maximum_bipartite_matching(graph: np.ndarray) -> np.ndarray:
-    """Finds the maximum bipartite matching of a graph
+    """
+    Finds the maximum bipartite matching of a graph.
 
-    Parameters
-    ----------
-    graph : np.ndarray
-        The graph, represented as a boolean matrix
+    Args:
+        graph (np.ndarray): The graph, represented as a boolean matrix
 
-    Returns
-    -------
-    order : np.ndarray
-        The order in which to traverse the graph to visit a maximum of nodes
+    Returns:
+        order (np.ndarray): The order in which to traverse the graph to visit a maximum of nodes
     """
     g = GFG(graph)
     _, order = g.maxBPM()
@@ -99,7 +99,10 @@ def maximum_bipartite_matching(graph: np.ndarray) -> np.ndarray:
 
 
 def always_iterable(obj, base_type=(str, bytes)):
-    """If *obj* is iterable, return an iterator over its items::
+    """
+    Return an iterator over *obj*, whether or not it is iterable.
+
+    If *obj* is iterable, return an iterator over its items::
 
         >>> obj = (1, 2, 3)
         >>> list(always_iterable(obj))

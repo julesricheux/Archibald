@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created 2023-07-04
+Created 2023-07-04.
 
 Useful math tools for Archibald
 
@@ -21,6 +21,7 @@ import archibald.numpy as np
 #%% FUNCTIONS
 
 def read_coefs(name, delim='\t', skipRows=0, columns=[]):
+    """Reads a table of coefficients from a delimited text file."""
     TAB = list()
     
     with open(name, 'r') as file:
@@ -34,10 +35,12 @@ def read_coefs(name, delim='\t', skipRows=0, columns=[]):
 
 
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
@@ -45,14 +48,12 @@ def rotation_matrix(vector, angle):
     """
     Computes the rotation matrix for given axis and angle.
 
-    Parameters
-    ----------
-    vector ((3,) array): rotation axis
-    angle (float): rotation angle in deg
+    Args:
+        vector ((3,) array): rotation axis
+        angle (float): rotation angle in deg
 
-    Returns
-    -------
-    (3,3) array: corresponding rotation matrix
+    Returns:
+        (3,3) array: corresponding rotation matrix
 
     """
     
@@ -79,14 +80,12 @@ def rotate_x(vec3d, angle):
     """
     Rotates a 3D vector around the x-axis.
 
-    Parameters
-    ----------
-    vec3d ((3,) array): vector to rotate
-    angle (float): rotation angle in deg
+    Args:
+        vec3d ((3,) array): vector to rotate
+        angle (float): rotation angle in deg
 
-    Returns
-    -------
-    (3,) array: rotated vector
+    Returns:
+        (3,) array: rotated vector
 
     """
     
@@ -99,18 +98,16 @@ def rotate_x(vec3d, angle):
 
 def rotate(x, axis, angle, x0=None):
     """
-    
+    Rotates x about the axis passing through the point x0.
 
-    Parameters
-    ----------
-    x : ndarray
-    x0 : ndarray
-    axis : ((3,) array)
-    angle : float
+    Args:
+        x: ndarray
+        x0: ndarray
+        axis: ((3,) array)
+        angle: float
 
-    Returns
-    -------
-    Rotation of x about the axis passing through the point x0
+    Returns:
+        Rotation of x about the axis passing through the point x0
 
     """
     if x0 is None:
@@ -120,6 +117,7 @@ def rotate(x, axis, angle, x0=None):
 
 
 def set_normal(heel, trim):
+    """Waterplane normal for given heel and trim angles [deg]."""
     z0 = np.array([0,0,1])
     y0 = np.array([0,1,0])
     
@@ -173,16 +171,14 @@ def compute_AW(tws, twa, V):
     """
     Computes apparent wind from true wind.
 
-    Parameters
-    ----------
-    tws : float. True wind speed in m/s
-    twa : float. True wind angle in deg
-    V : float. Boat speed in m/s
+    Args:
+        tws: float. True wind speed in m/s
+        twa: float. True wind angle in deg
+        V: float. Boat speed in m/s
 
-    Returns
-    -------
-    Apparent wind speed in m/s
-    Apparent wind angle in deg
+    Returns:
+        Apparent wind speed in m/s
+        Apparent wind angle in deg
 
     """
     
@@ -215,21 +211,14 @@ def compute_TW(aws, awa, V):
     """
     Computes true wind from apparent wind, vectorized.
 
-    Parameters
-    ----------
-    aws : array-like
-        Apparent wind speed [m/s]
-    awa : array-like
-        Apparent wind angle [deg]
-    V : array-like
-        Boat speed [m/s] (positive along +x, forward)
+    Args:
+        aws (array-like): Apparent wind speed [m/s]
+        awa (array-like): Apparent wind angle [deg]
+        V (array-like): Boat speed [m/s] (positive along +x, forward)
 
-    Returns
-    -------
-    tws : ndarray
-        True wind speed [m/s]
-    twa : ndarray
-        True wind angle [deg] (math convention, CCW from x-axis)
+    Returns:
+        tws (ndarray): True wind speed [m/s]
+        twa (ndarray): True wind angle [deg] (math convention, CCW from x-axis)
     """
     aws = np.asarray(aws)
     awa = np.asarray(awa)
@@ -256,15 +245,13 @@ def compute_TW(aws, awa, V):
 
 def kts2ms(Vkts):
     """
-    Converts knots to m/s
+    Converts knots to m/s.
 
-    Parameters
-    ----------
-    Vkts : float. Speed in knots
+    Args:
+        Vkts: float. Speed in knots
 
-    Returns
-    -------
-    float: speed in m/s
+    Returns:
+        float: speed in m/s
 
     """
     return Vkts * 1.852 / 3.6
@@ -272,24 +259,20 @@ def kts2ms(Vkts):
 
 def ms2kts(Vms):
     """
-    Converts m/s to knots
+    Converts m/s to knots.
 
-    Parameters
-    ----------
-    Vkts : float. Speed in m/s
+    Args:
+        Vkts: float. Speed in m/s
 
-    Returns
-    -------
-    float: speed in knots
+    Returns:
+        float: speed in knots
 
     """
     return Vms / 1.852 * 3.6
 
 
 def build_casadi_interpolant_from_path_from_dataset(ds, column, method='linear'):
-    """
-    NB: dataset coordinates must be a grid.
-    """
+    """NB: dataset coordinates must be a grid."""
     x = [ds.coords[coord].values for coord in ds.coords]
     y = ds[column].to_numpy().ravel(order='F')
 
@@ -300,6 +283,7 @@ def build_casadi_interpolant_from_path_from_dataset(ds, column, method='linear')
 
 
 def build_casadi_interpolant_from_path(path, column, method='linear'):
+    """Builds a CasADi interpolant from a column of a dataset file."""
     
     ds = xr.load_dataset(path)
     
@@ -307,33 +291,22 @@ def build_casadi_interpolant_from_path(path, column, method='linear'):
 
 
 def ReLU(x):
-    """
-    Rectified Linear Unit function.
-
-    """
+    """Rectified Linear Unit function."""
     return np.fmax(x, 0.)
 
 
 def GeLU(x):
-    """
-    Approximation of the Gaussian Error Linear Units function.
-
-    """
+    """Approximation of the Gaussian Error Linear Units function."""
     return 0.5*x*(1+np.tanh(np.sqrt(2/np.pi)*(x+0.044715*x**3)))
 
 
 def smooth_ramp(x):
-    """
-    Tanh ramp.
-    """
+    """Tanh ramp."""
     return (np.tanh(2*x + 1.) + 1.) / 2.
 
 
 def ramp(x, tol=1e-3):
-    """
-    Ramp function going from 0 at x=-tol to 1 at x=0
-
-    """
+    """Ramp function going from 0 at x=-tol to 1 at x=0."""
     return np.fmin(1.,
                     np.fmax(0.,
                             (x+tol)/tol))
@@ -366,10 +339,12 @@ def rotate_points(points, matrix, center):
 
 
 def rotate_single_vector(vector, matrix, center):
+    """Rotates a vector by a matrix about a centre."""
     return np.sum(np.add(np.add(wide(vector), -wide(center)) @ matrix, wide(center)), axis=0)
 
 
 def sym_array(x, fac=1.):
+    """Mirrors an array about its first element, the mirrored part scaled by `fac`."""
     return np.hstack((x[::-1] * fac,
                       x[1:]))
 
@@ -381,19 +356,14 @@ def waterplane_normal(
     """
     Compute the unit normal vector of the waterplane given heel and trim angles.
 
-    Parameters
-    ----------
-    heel_deg : float
-        Heel angle in degrees (rotation around ship longitudinal axis, roll).
-        Positive heel = starboard down.
-    trim_deg : float
-        Trim angle in degrees (rotation around ship transverse axis, pitch).
-        Positive trim = bow down.
+    Args:
+        heel_deg (float): Heel angle in degrees (rotation around ship longitudinal axis, roll).
+            Positive heel = starboard down.
+        trim_deg (float): Trim angle in degrees (rotation around ship transverse axis, pitch).
+            Positive trim = bow down.
 
-    Returns
-    -------
-    np.ndarray
-        Normal vector of the waterplane (unit vector, shape (3,)).
+    Returns:
+        np.ndarray: Normal vector of the waterplane (unit vector, shape (3,)).
     """
 
     # Convert to radians

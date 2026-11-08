@@ -45,21 +45,15 @@ class Propulsor(ArchibaldObject):
         return f"Propulsor '{self.name}' (xyz_c: {self.xyz_c}, radius: {self.radius})"
 
     def xsec_area(self) -> float:
-        """
-        Returns the cross-sectional area of the propulsor, in m^2.
-        """
+        """Returns the cross-sectional area of the propulsor, in m^2."""
         return np.pi * self.radius ** 2
 
     def xsec_perimeter(self) -> float:
-        """
-        Returns the cross-sectional perimeter of the propulsor, in m.
-        """
+        """Returns the cross-sectional perimeter of the propulsor, in m."""
         return 2 * np.pi * self.radius
 
     def volume(self) -> float:
-        """
-        Returns the volume of the propulsor, in m^3.
-        """
+        """Returns the volume of the propulsor, in m^3."""
         return self.xsec_area() * self.length
 
     def compute_frame(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -93,6 +87,7 @@ class Propulsor(ArchibaldObject):
                                 theta: Union[float, np.ndarray] = None,
                                 l_over_length: Union[float, np.ndarray] = None,
                                 ) -> Tuple[Union[float, np.ndarray]]:
+        """Coordinates of points on the propulsor disk."""
         ### Set defaults
         if theta is None:
             theta = np.linspace(

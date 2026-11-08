@@ -9,6 +9,7 @@ import warnings
 
 
 class KulfanAirfoil(Airfoil):
+    """Airfoil parameterized by Kulfan (CST) weights."""
     def __init__(
         self,
         name: str = "Untitled",
@@ -72,6 +73,7 @@ class KulfanAirfoil(Airfoil):
 
     @property
     def kulfan_parameters(self):
+        """Kulfan parameters of the airfoil, as a dict."""
         return {
             "lower_weights": self.lower_weights,
             "upper_weights": self.upper_weights,
@@ -81,6 +83,7 @@ class KulfanAirfoil(Airfoil):
 
     @property
     def coordinates(self) -> np.ndarray:
+        """Coordinates of the airfoil, computed from the Kulfan parameters."""
         return self.to_airfoil().coordinates
 
     @coordinates.setter
@@ -97,6 +100,7 @@ class KulfanAirfoil(Airfoil):
         n_coordinates_per_side=200,
         spacing_function_per_side=np.cosspace,
     ) -> Airfoil:
+        """Converts to a coordinate-based Airfoil."""
         x_upper = spacing_function_per_side(1, 0, n_coordinates_per_side)[:-1]
         upper = self.upper_coordinates(x_over_c=x_upper)
 
@@ -112,6 +116,7 @@ class KulfanAirfoil(Airfoil):
         n_points_per_side: int = 100,
         spacing_function_per_side=np.cosspace,
     ) -> "Airfoil":
+        """Returns a coordinate-based Airfoil with the given number of points per side."""
         return self.to_airfoil(
             n_coordinates_per_side=n_points_per_side,
             spacing_function_per_side=spacing_function_per_side,
@@ -122,7 +127,9 @@ class KulfanAirfoil(Airfoil):
         return_dict: bool = False,
     ) -> Union["KulfanAirfoil", Dict[str, Union["KulfanAirfoil", float]]]:
         """
-        Returns a copy of the Airfoil with a new set of `coordinates`, such that:
+        Returns a copy of the Airfoil with a new set of `coordinates`.
+
+        The new coordinates are such that:
             - The leading edge (LE) is at (0, 0)
             - The trailing edge (TE) is at (1, 0)
             - The chord length is equal to 1
@@ -182,6 +189,7 @@ class KulfanAirfoil(Airfoil):
             }
 
     def draw(self, *args, draw_markers=False, **kwargs):
+        """Draws the airfoil."""
         return self.to_airfoil().draw(*args, draw_markers=draw_markers, **kwargs)
 
     def get_aero_from_neuralfoil(
@@ -196,6 +204,7 @@ class KulfanAirfoil(Airfoil):
         control_surfaces: List["ControlSurface"] = None,
         include_360_deg_effects: bool = True,
     ) -> Dict[str, Union[float, np.ndarray]]:
+        """Aerodynamic coefficients of the airfoil from NeuralFoil."""
         ### Validate inputs
         if (np.length(self.lower_weights) != 8) or (np.length(self.upper_weights) != 8):
             raise NotImplementedError(
@@ -472,6 +481,7 @@ class KulfanAirfoil(Airfoil):
         self,
         x_over_c: Union[float, np.ndarray] = np.linspace(1, 0, 101),
     ) -> np.ndarray:
+        """Coordinates of the upper surface at the given x/c."""
         x_over_c = np.array(x_over_c)
 
         # Class function
@@ -528,6 +538,7 @@ class KulfanAirfoil(Airfoil):
         self,
         x_over_c: Union[float, np.ndarray] = np.linspace(0, 1, 101),
     ) -> np.ndarray:
+        """Coordinates of the lower surface at the given x/c."""
         x_over_c = np.array(x_over_c)
 
         # Class function
@@ -578,6 +589,7 @@ class KulfanAirfoil(Airfoil):
         self,
         x_over_c: Union[float, np.ndarray] = np.linspace(0, 1, 101),
     ) -> Union[float, np.ndarray]:
+        """Local camber at the given x/c."""
         upper = self.upper_coordinates(x_over_c=x_over_c)
         lower = self.lower_coordinates(x_over_c=x_over_c)
 
@@ -590,6 +602,7 @@ class KulfanAirfoil(Airfoil):
         self,
         x_over_c: Union[float, np.ndarray] = np.linspace(0, 1, 101),
     ) -> Union[float, np.ndarray]:
+        """Local thickness at the given x/c."""
         upper = self.upper_coordinates(x_over_c=x_over_c)
         lower = self.lower_coordinates(x_over_c=x_over_c)
 
@@ -599,6 +612,7 @@ class KulfanAirfoil(Airfoil):
             return upper[:, 1] - lower[:, 1]
 
     def LE_radius(self, relative_softness: float = 0.03):
+        """Leading edge radius of the airfoil, relative to the chord."""
         # LE_radius_upper = np.where(
         #     self.upper_weights[0] > 0,
         #     self.upper_weights[0] ** 2,
@@ -620,6 +634,7 @@ class KulfanAirfoil(Airfoil):
         )
 
     def TE_angle(self):
+        """Trailing edge angle [deg]."""
         return np.degrees(
             np.arctan(self.upper_weights[-1])
             - np.arctan(self.lower_weights[-1])
@@ -627,6 +642,7 @@ class KulfanAirfoil(Airfoil):
         )
 
     def area(self):
+        """Area of the airfoil, relative to the chord squared."""
 
         def get_area_of_side(weights):
             from scipy.special import beta, comb
@@ -725,6 +741,7 @@ class KulfanAirfoil(Airfoil):
         airfoil: Union["KulfanAirfoil", Airfoil],
         blend_fraction: float = 0.5,
     ) -> "KulfanAirfoil":
+        """Blends the Kulfan parameters with those of another airfoil."""
         if not isinstance(airfoil, KulfanAirfoil):
             try:
                 airfoil = airfoil.to_kulfan_airfoil()

@@ -2,7 +2,7 @@
 """
 Propeller geometry and performance models.
 
-This module provides classes and functions for defining propeller geometry and 
+This module provides classes and functions for defining propeller geometry and
 calculating performance, with a focus on B-series (Wageningen) propellers.
 """
 
@@ -247,9 +247,7 @@ def write_airfoil_polars(
 
 
 class Propeller:
-    """
-    Base class for propeller geometry and performance.
-    """
+    """Base class for propeller geometry and performance."""
     def __init__(
         self,
         name: str = 'Untitled_propeller',
@@ -295,30 +293,37 @@ class Propeller:
 
     @property
     def center(self) -> np.ndarray:
+        """Centre of the propeller disk."""
         return self._center
     
     @property
     def axis(self) -> np.ndarray:
+        """Axis of the propeller shaft."""
         return self._axis
     
     @property
     def blades_number(self) -> int:
+        """Number of blades."""
         return self._z
         
     @property
     def diameter(self) -> float:
+        """Diameter [m]."""
         return self._d
         
     @property
     def radius(self) -> float:
+        """Radius [m]."""
         return self._r
         
     @property
     def blade_area_ratio(self) -> float:
+        """Expanded blade area ratio Ae/A0."""
         return self._ae_ao
         
     @property
     def pitch_ratio(self) -> float:
+        """Pitch ratio P/D."""
         return self._p_d
 
     @pitch_ratio.setter
@@ -328,16 +333,16 @@ class Propeller:
 
     @property
     def pitch_angle(self) -> float:
+        """Pitch angle [deg]."""
         return self._p_angle
     
     @property
     def area(self) -> float:
+        """Disk area [m²]."""
         return np.pi * self._r**2
     
     def reset(self) -> None:
-        """
-        Cancels all previous transformations.
-        """
+        """Cancels all previous transformations."""
         self._center = copy.copy(self._center_0)
         self._axis = copy.copy(self._axis_0)
     
@@ -356,9 +361,7 @@ class Propeller:
         self._axis = axis
 
     def translate(self, xyz: Iterable[float]) -> None:
-        """
-        Translates the propeller center.
-        """
+        """Translates the propeller center."""
         xyz = np.array(xyz)
         if np.length(xyz) != 3:
             raise ValueError("Passed array must have 3 elements.")
@@ -456,9 +459,7 @@ class Propeller:
         center: np.ndarray | list | None = None,
         matrix: np.ndarray | None = None,
     ) -> None:
-        """
-        Rotates the propeller globally.
-        """
+        """Rotates the propeller globally."""
         if matrix is None:
             matrix = np.rotation_matrix_3D(np.deg2rad(angle), axis)
         
@@ -470,9 +471,7 @@ class Propeller:
         axis: np.ndarray | list | str,
         matrix: np.ndarray | None = None,
     ) -> None:
-        """
-        Rotates the propeller around its center.
-        """
+        """Rotates the propeller around its center."""
         if matrix is None:
             matrix = np.rotation_matrix_3D(np.deg2rad(angle), axis)
         
@@ -480,9 +479,7 @@ class Propeller:
 
 
 class BSeriesPropeller(Propeller):
-    """
-    B-Series (Wageningen) Propeller implementation.
-    """
+    """B-Series (Wageningen) Propeller implementation."""
     def __init__(
         self,
         name: str = 'Untitled_Bseries_propeller',
@@ -580,6 +577,7 @@ class BSeriesPropeller(Propeller):
     
     # EXPERIMENTAL
     def build_blade_sections(self, r: np.ndarray, thickness_law: np.ndarray | None = None, chord_law: np.ndarray | None = None):
+        """Builds the blade sections at the given radii."""
         if thickness_law is None:
             if chord_law is None:
                 chord_law = self.chord_law(r)
@@ -591,6 +589,7 @@ class BSeriesPropeller(Propeller):
     
     # EXPERIMENTAL
     def write_sections_polars(self, r: np.ndarray | None = None, sections: list | None = None, suffix: str = ''):
+        """Writes the polars of the blade sections."""
         if r is not None or sections is not None:
             if sections is None:
                 sections = self.build_blade_sections(r)
@@ -602,6 +601,7 @@ class BSeriesPropeller(Propeller):
     
     # EXPERIMENTAL
     def write_pyBEMT_input(self, n_sections: int = 10, directory: str = './pyBEMT/pybemt/airfoils/', generator: bool = False):
+        """Writes the input files of pyBEMT for this propeller."""
         r = np.linspace(0.20, 0.999, n_sections)
         suffix = '-gen' if generator else ''
         

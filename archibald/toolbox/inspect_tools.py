@@ -154,9 +154,7 @@ def get_source_code_from_location(
             parenthesis_level = 0  # Track the number of "(" and ")" characters, so you know when the function call is complete
 
             def add_line() -> None:
-                """
-                Adds the subsequent line to the caller source lines (`caller_source_lines`). In-place.
-                """
+                """Adds the subsequent line to the caller source lines (`caller_source_lines`). In-place."""
                 line = f.readline()
 
                 if strip_lines:
@@ -346,6 +344,7 @@ def codegen(
 ) -> tuple[str, set[str]]:
     """
     Attempts to generate a string of Python code that, when evaluated, would produce the same value as the input.
+
     Also generates the required imports for the code to run.
 
     In other words, in general, the following should evaluate True:

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Water properties against ITTC Recommended Procedure 7.5-02-01-03, Fresh Water and
-Seawater Properties, revision 02 (2011), at atmospheric pressure:
+Water properties against ITTC Recommended Procedure 7.5-02-01-03.
+
+Fresh Water and Seawater Properties, revision 02 (2011), at atmospheric pressure:
     Table 1: fresh water, by temperature.
     Table 3: standard seawater, absolute salinity 35.16504 g/kg, by temperature.
     Table 4: seawater at 15 °C, by absolute salinity.

@@ -97,6 +97,7 @@ def ax_is_3d(ax: matplotlib.axes.Axes = None) -> bool:
 
 
 def set_preset_3d_view_angle(preset_view: str) -> None:
+    """Sets the view angle of the current 3D axes to a preset."""
     ax = plt.gca()
 
     if not ax_is_3d(ax):

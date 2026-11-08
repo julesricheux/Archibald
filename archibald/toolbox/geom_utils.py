@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created 04/07/2023
-Last update: 03/01/2024
+Created 04/07/2023 Last update: 03/01/2024.
 
 Useful geometrical tools for archibald
 
@@ -30,6 +29,7 @@ _VALID_DXF_TYPES = [
 ]
 
 def build_spline(control_points, degree, n=200):
+    """Points of a B-spline through the given control points."""
 
     control_points = np.array(control_points)
     tck, u = itrp.splprep(control_points.T, k=degree)
@@ -41,6 +41,7 @@ def build_spline(control_points, degree, n=200):
 
 
 def build_bezier(ctrl, n=200):
+    """Points of a Bézier curve with the given control points."""
     
     m = len(ctrl) - 1
     d = len(ctrl[0])
@@ -59,6 +60,7 @@ def build_bezier(ctrl, n=200):
 
 
 def evaluate_curve(points, z_coordinate):
+    """Point of a curve closest to the given z coordinate."""
     
     closest_point_idx = np.argmin(np.abs(points[2] - z_coordinate))
     closest_point = (points[0][closest_point_idx], points[1][closest_point_idx], points[2][closest_point_idx])
@@ -67,6 +69,7 @@ def evaluate_curve(points, z_coordinate):
 
 
 def spline_to_le_chords(leControl, leDeg, teControl, teDeg, nSections, direction='Z'):
+    """Leading edges and chords of sections between two splines."""
     
     leCurve = build_spline(leControl, leDeg)
     teCurve = build_spline(teControl, teDeg)
@@ -104,6 +107,7 @@ def spline_to_le_chords(leControl, leDeg, teControl, teDeg, nSections, direction
 
 
 def bezier_to_le_chords(leControl, teControl, nSections):
+    """Leading edges and chords of sections between two Bézier curves."""
     
     leCurve = build_bezier(leControl)
     teCurve = build_bezier(teControl)
@@ -127,6 +131,7 @@ def bezier_to_le_chords(leControl, teControl, nSections):
 
 
 def read_dxf(filename, nSections, method='bezier'):
+    """Reads the leading and trailing edge curves from a DXF file."""
     
     doc = ezdxf.readfile(filename)
     msp = doc.modelspace()
@@ -180,6 +185,7 @@ def read_dxf(filename, nSections, method='bezier'):
             
 
 def dxf_to_le_chords(filename, nSections, method='bezier', direction='Z'):
+    """Leading edges and chords of sections from the curves of a DXF file."""
     
     leControl, leDeg, teControl, teDeg = read_dxf(filename, nSections, method)
     
@@ -207,18 +213,16 @@ def outline_to_le_chords(filename, nSections, margin=1e-3, flattening=1e-3):
     the outline is cut by the plane z = const: the most forward crossing is the
     leading edge, the most aft one the trailing edge (x forward).
 
-    Parameters
-    ----------
-    filename : str, DXF file.
-    nSections : int, number of sections, evenly spaced in z.
-    margin : float, distance [m] kept from the lowest and highest points of the
-        outline, where the chord would vanish.
-    flattening : float, maximum distance [m] between a curve and its polyline.
+    Args:
+        filename: str, DXF file.
+        nSections: int, number of sections, evenly spaced in z.
+        margin: float, distance [m] kept from the lowest and highest points of the
+            outline, where the chord would vanish.
+        flattening: float, maximum distance [m] between a curve and its polyline.
 
-    Returns
-    -------
-    le : array (nSections, 3), leading edge points, from bottom to top [m].
-    chords : array (nSections,), chords [m].
+    Returns:
+        le: array (nSections, 3), leading edge points, from bottom to top [m].
+        chords: array (nSections,), chords [m].
     """
     msp = ezdxf.readfile(filename).modelspace()
     polylines = []
@@ -268,4 +272,5 @@ def outline_to_le_chords(filename, nSections, margin=1e-3, flattening=1e-3):
 
 # DEPRECATED
 def world_to_vlm(coords3D):
+    """Converts coordinates from the world frame to the VLM frame."""
     return np.transpose(np.vstack([-coords3D[:,0], coords3D[:,2], coords3D[:,1]]))

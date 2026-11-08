@@ -1,6 +1,4 @@
-"""
-An illustration of the various fit types that can be used during function regression, and what they look like.
-"""
+"""An illustration of the various fit types that can be used during function regression, and what they look like."""
 
 from archibald.modeling.fitting import FittedModel
 import archibald.numpy as np

@@ -147,9 +147,13 @@ def Cf_flat_plate(Re_L: float, method="hybrid-sharpe-convex") -> float:
 def Cl_flat_plate(alpha, Re_c=None):
     """
     Returns the approximate lift coefficient of a flat plate, following thin airfoil theory.
-    :param alpha: Angle of attack [deg]
-    :param Re_c: Reynolds number, normalized to the length of the flat plate.
-    :return: Approximate lift coefficient.
+
+    Args:
+        alpha: Angle of attack [deg]
+        Re_c: Reynolds number, normalized to the length of the flat plate.
+
+    Returns:
+        Approximate lift coefficient.
     """
     if Re_c is not None:
         from warnings import warn
@@ -180,6 +184,7 @@ import warnings
 
 
 def Cl_2412(alpha, Re_c):
+    """Lift coefficient of a NACA 2412 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a NACA 2412 airfoil, 2D XFoil data
     # Within -2 < alpha < 12 and 10^5 < Re_c < 10^7, has R^2 = 0.9892
 
@@ -191,6 +196,7 @@ def Cl_2412(alpha, Re_c):
 
 
 def Cd_profile_2412(alpha, Re_c):
+    """Profile drag coefficient of a NACA 2412 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a NACA 2412 airfoil in incompressible flow.
     # Within -2 < alpha < 12 and 10^5 < Re_c < 10^7, has R^2 = 0.9713
 
@@ -222,6 +228,7 @@ def Cd_profile_2412(alpha, Re_c):
 
 
 def Cl_e216(alpha, Re_c):
+    """Lift coefficient of an Eppler 216 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a Eppler 216 (e216) airfoil, 2D XFoil data. Incompressible flow.
     # Within -2 < alpha < 12 and 10^4 < Re_c < 10^6, has R^2 = 0.9994
     # Likely valid from -6 < alpha < 12 and 10^4 < Re_c < Inf.
@@ -261,6 +268,7 @@ def Cl_e216(alpha, Re_c):
 
 
 def Cd_profile_e216(alpha, Re_c):
+    """Profile drag coefficient of an Eppler 216 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a Eppler 216 (e216) airfoil, 2D XFoil data. Incompressible flow.
     # Within -2 < alpha < 12 and 10^4 < Re_c < 10^6, has R^2 = 0.9995
     # Likely valid from -6 < alpha < 12 and 10^4 < Re_c < 10^6.
@@ -302,12 +310,17 @@ def Cd_profile_e216(alpha, Re_c):
 def Cd_wave_e216(Cl, mach, sweep=0.0):
     r"""
     A curve fit I did to Eppler 216 airfoil data.
-    Within -0.4 < CL < 0.75 and 0 < mach < ~0.9, has R^2 = 0.9982.
-    See: C:\Projects\GitHub\firefly_aerodynamics\MSES Interface\analysis\e216
-    :param Cl: Lift coefficient
-    :param mach: Mach number
-    :param sweep: Sweep angle, in deg
-    :return: Wave drag coefficient.
+
+    Within -0.4 < CL < 0.75 and 0 < mach < ~0.9, has R^2 = 0.9982. See:
+    C:\Projects\GitHub\firefly_aerodynamics\MSES Interface\analysis\e216
+
+    Args:
+        Cl: Lift coefficient
+        mach: Mach number
+        sweep: Sweep angle, in deg
+
+    Returns:
+        Wave drag coefficient.
     """
 
     warnings.warn(
@@ -338,6 +351,7 @@ def Cd_wave_e216(Cl, mach, sweep=0.0):
 
 
 def Cl_rae2822(alpha, Re_c):
+    """Lift coefficient of a RAE 2822 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a RAE2822 airfoil, 2D XFoil data. Incompressible flow.
     # Within -2 < alpha < 12 and 10^4 < Re_c < 10^6, has R^2 = 0.9857
     # Likely valid from -6 < alpha < 12 and 10^4 < Re_c < 10^6.
@@ -375,6 +389,7 @@ def Cl_rae2822(alpha, Re_c):
 
 
 def Cd_profile_rae2822(alpha, Re_c):
+    """Profile drag coefficient of a RAE 2822 airfoil, from a fit to XFoil data (deprecated)."""
     # A curve fit I did to a RAE2822 airfoil, 2D XFoil data. Incompressible flow.
     # Within -2 < alpha < 12 and 10^4 < Re_c < 10^6, has R^2 = 0.9995
     # Likely valid from -6 < alpha < 12 and 10^4 < Re_c < Inf.
@@ -416,12 +431,17 @@ def Cd_profile_rae2822(alpha, Re_c):
 def Cd_wave_rae2822(Cl, mach, sweep=0.0):
     r"""
     A curve fit I did to RAE2822 airfoil data.
-    Within -0.4 < CL < 0.75 and 0 < mach < ~0.9, has R^2 = 0.9982.
-    See: C:\Projects\GitHub\firefly_aerodynamics\MSES Interface\analysis\rae2822
-    :param Cl: Lift coefficient
-    :param mach: Mach number
-    :param sweep: Sweep angle, in deg
-    :return: Wave drag coefficient.
+
+    Within -0.4 < CL < 0.75 and 0 < mach < ~0.9, has R^2 = 0.9982. See:
+    C:\Projects\GitHub\firefly_aerodynamics\MSES Interface\analysis\rae2822
+
+    Args:
+        Cl: Lift coefficient
+        mach: Mach number
+        sweep: Sweep angle, in deg
+
+    Returns:
+        Wave drag coefficient.
     """
 
     warnings.warn(

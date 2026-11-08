@@ -25,6 +25,7 @@ def plot_with_bootstrapped_uncertainty(
     x_log_scale: bool = False,
     y_log_scale: bool = False,
 ):
+    """Plots a spline fit of the data with bootstrapped confidence intervals."""
     x = np.array(x)
     y = np.array(y)
 

@@ -1,5 +1,6 @@
 """
 Validation : l'équilibre est fermé ICI (IPOPT via CasADi), jamais dans les méthodes.
+
 Cas : Shoemaker Model 29 (Savitsky & Brown / Alourdas) b=16in, beta=20°, W=80 lb.
 """
 import sys; sys.path.insert(0, '.')

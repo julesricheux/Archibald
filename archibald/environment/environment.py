@@ -40,11 +40,13 @@ def _check_validity_range(_value, _range):
 
 class Fluid():
     """
+    Common features of the fluids of an environment.
+
     Citation:
         Adapted from:         atmosphere.Atmosphere in AeroSandbox
         Author:               Peter D Sharpe
         Date of Retrieval:    17/10/2024
-        
+
     """
     def __init__(
             self,
@@ -52,10 +54,7 @@ class Fluid():
             valid_temperature_range: tuple = (None, None), # Celsius
             method: str = "differentiable",
         ):
-        """
-        Abstract class for common fluid features.
-
-        """
+        """Abstract class for common fluid features."""
         self.temperature = temperature
         self.temperature_K = temperature + u.kelvin
         self._valid_temperature_range = valid_temperature_range
@@ -79,31 +78,23 @@ class Fluid():
             )
         
     def set_temperature(self, temperature: float = 15.):
+        """Sets the temperature [°C] of the fluid."""
         self.temperature = temperature
         self.temperature_K = temperature + u.kelvin
     
     @property
     def density(self):
-        """
-        Returns the density, in kg/m^3.
-        
-        """
+        """Returns the density, in kg/m^3."""
         return 1.
     
     @property
     def dynamic_viscosity(self):
-        """
-        Returns the dynamic viscosity (mu)
-        
-        """
+        """Returns the dynamic viscosity (mu)."""
         return 1.
     
     @property
     def kinematic_viscosity(self):
-        """
-        Returns the kinematic viscosity (nu)
-        
-        """
+        """Returns the kinematic viscosity (nu)."""
         return self.dynamic_viscosity / self.density
 
 
@@ -112,7 +103,7 @@ class Water(Fluid):
     Describes water properties to be used in an environment.
 
     Based on Sharqawy et al. (2010)
-    
+
     Based on UNESCO EOS-80, recommended by ITTC 2011.
 
     Notes:
@@ -164,6 +155,7 @@ class Water(Fluid):
         self,
         salinity: float = 35.,
     ):
+        """Sets the absolute salinity [g/kg] of the water."""
         self.salinity = salinity
 
     @property
@@ -232,9 +224,9 @@ class Water(Fluid):
 
         Based on Sharqawy et al. (2010). Thermophysical properties of seawater:
         a review of existing correlations and data.
-        
+
         Used in ITTC 2011 Recommended Procedures (https://ittc.info/media/4048/75-02-01-03.pdf)
-        
+
         Validity:
         - 0 < T < 180 °C
         - 0 < S < 150 g/kg
@@ -275,7 +267,7 @@ class Air(Fluid):
     
     """
     Describes air properties to be used in an environment.
-    
+
     Notes:
         - Temperature in °C
     """
@@ -316,13 +308,12 @@ class Air(Fluid):
         return f"Air ({string}, method: '{self.method}')"
         
     def set_pressure(self, pressure: float = 101325.):
+        """Sets the pressure [Pa] of the air."""
         self.pressure = pressure     
             
     @property
     def density(self):
-        """
-        Returns the density, in kg/m^3.
-        """
+        """Returns the density, in kg/m^3."""
         rho = self.pressure / (self.temperature_K * gas_constant_air)
 
         return rho
@@ -353,6 +344,7 @@ class Air(Fluid):
         
              
 class Environment():
+    """Water and air of the environment of a boat."""
     def __init__(self,
                  water_temperature: float = 15., # Celsius
                  water_salinity: float = 35., # g/kg

@@ -49,8 +49,10 @@ class InterpolatedModel(SurrogateModel):
         fill_value=np.nan,  # Default behavior: return NaN for all inputs outside data range.
     ):
         """
-        Create the interpolator. Note that data must be structured (i.e., gridded on a hypercube) for general
-        N-dimensional interpolation.
+        Create the interpolator.
+
+        Note that data must be structured (i.e., gridded on a hypercube) for general N-dimensional
+        interpolation.
 
         Args:
             x_data_coordinates: The coordinates of each axis of the cube; essentially, the independent variable(s):

@@ -5,6 +5,7 @@ from typing import Union
 
 
 class Polygon(ArchibaldObject):
+    """Closed 2D polygon."""
     def __init__(self,
                  coordinates: np.ndarray
                  ):
@@ -44,9 +45,7 @@ class Polygon(ArchibaldObject):
         return self.coordinates[:, 1]
 
     def n_points(self) -> int:
-        """
-        Returns the number of points/vertices/coordinates of the polygon.
-        """
+        """Returns the number of points/vertices/coordinates of the polygon."""
         try:
             return len(self.coordinates)
         except TypeError:
@@ -61,6 +60,7 @@ class Polygon(ArchibaldObject):
               ) -> 'Polygon':
         """
         Scales a Polygon about the origin.
+
         Args:
             scale_x: Amount to scale in the x-direction.
             scale_y: Amount to scale in the y-direction.
@@ -80,6 +80,7 @@ class Polygon(ArchibaldObject):
                   ) -> 'Polygon':
         """
         Translates a Polygon by a given amount.
+
         Args:
             translate_x: Amount to translate in the x-direction
             translate_y: Amount to translate in the y-direction
@@ -132,9 +133,7 @@ class Polygon(ArchibaldObject):
         )
 
     def area(self) -> float:
-        """
-        Returns the area of the polygon.
-        """
+        """Returns the area of the polygon."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1
@@ -147,9 +146,7 @@ class Polygon(ArchibaldObject):
         return A
 
     def perimeter(self) -> float:
-        """
-        Returns the perimeter of the polygon.
-        """
+        """Returns the perimeter of the polygon."""
         dx = np.diff(self.x())
         dy = np.diff(self.y())
         ds = (
@@ -160,9 +157,7 @@ class Polygon(ArchibaldObject):
         return np.sum(ds)
 
     def centroid(self) -> np.ndarray:
-        """
-        Returns the centroid of the polygon as a 1D np.ndarray of length 2.
-        """
+        """Returns the centroid of the polygon as a 1D np.ndarray of length 2."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1
@@ -179,9 +174,7 @@ class Polygon(ArchibaldObject):
         return centroid
 
     def Ixx(self):
-        """
-        Returns the nondimensionalized Ixx moment of inertia, taken about the centroid.
-        """
+        """Returns the nondimensionalized Ixx moment of inertia, taken about the centroid."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1
@@ -202,9 +195,7 @@ class Polygon(ArchibaldObject):
         return Iuu
 
     def Iyy(self):
-        """
-        Returns the nondimensionalized Iyy moment of inertia, taken about the centroid.
-        """
+        """Returns the nondimensionalized Iyy moment of inertia, taken about the centroid."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1
@@ -225,9 +216,7 @@ class Polygon(ArchibaldObject):
         return Ivv
 
     def Ixy(self):
-        """
-        Returns the nondimensionalized product of inertia, taken about the centroid.
-        """
+        """Returns the nondimensionalized product of inertia, taken about the centroid."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1
@@ -248,9 +237,7 @@ class Polygon(ArchibaldObject):
         return Iuv
 
     def J(self):
-        """
-        Returns the nondimensionalized polar moment of inertia, taken about the centroid.
-        """
+        """Returns the nondimensionalized polar moment of inertia, taken about the centroid."""
         x = self.x()
         y = self.y()
         x_n = np.roll(x, -1)  # x_next, or x_i+1

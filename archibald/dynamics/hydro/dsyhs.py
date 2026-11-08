@@ -12,19 +12,18 @@ from archibald.dynamics.hydro.common import Cf_hull, transom_resistance
 
 def smooth_clip(x, a, b, beta=10.0):
     r"""
-    Smooth and differentiable clipping function bounded between [a, b] 
-    using np.softplus, suitable for gradient-based optimization (IPOPT).
-    
-    Parameters
-    ----------
-    x : float or ndarray, Input value(s) to clip.
-    a : float, Lower bound.
-    b : float, Upper bound.
-    beta : float, Steepness factor for the transition smoothing (higher = sharper).
-    
-    Returns
-    -------
-    float or ndarray, Smoothed and clipped values.
+    Smooth and differentiable clipping function bounded between [a, b].
+
+    Uses np.softplus, suitable for gradient-based optimization (IPOPT).
+
+    Args:
+        x: float or ndarray, Input value(s) to clip.
+        a: float, Lower bound.
+        b: float, Upper bound.
+        beta: float, Steepness factor for the transition smoothing (higher = sharper).
+
+    Returns:
+        float or ndarray, Smoothed and clipped values.
     """
     # 1. Smooth lower bound (smooth maximum with 'a')
     # Equivalent to: max(x, a) smoothly smoothed out
@@ -181,9 +180,8 @@ def compute_Rf_dsyhs(
         **kwargs,
     ):
     """
-    Calculates the frictional resistance (Rf) based on the 
-    Delft Systematic Yacht Hull series methodology.
-    
+    Calculates the frictional resistance (Rf) based on the Delft Systematic Yacht Hull series methodology.
+
     Parameters:
     -----------
     Re : float, Reynolds number (dimensionless).
@@ -191,7 +189,7 @@ def compute_Rf_dsyhs(
     Aws : float, Wetted surface area of the hull (typically in m^2).
     Atr : float, Transom area of the hull (typically in m^2).
     stw : float,  Speed through water in knots.
-        
+
     Returns:
     --------
     Rf : float
@@ -221,9 +219,8 @@ def compute_Rw_dsyhs(
         **kwargs,
     ):
     """
-    Calculates the residuary resistance (Rw) based on the 
-    Delft Systematic Yacht Hull series polynomial equation.
-    
+    Calculates the residuary resistance (Rw) based on the Delft Systematic Yacht Hull series polynomial equation.
+
     Parameters:
     -----------
     Fr      : float, Froude number (valid range roughly 0.15 - 0.75)
@@ -238,7 +235,7 @@ def compute_Rw_dsyhs(
     LCF_fpp : float, Longitudinal Center of Flotation from fpp [m]
     T       : float, Canoe body draft [m]
     Cx      : float, Midship section coefficient
-    
+
     Returns:
     --------
     Rw     : float, Residuary resistance [N]
@@ -304,10 +301,10 @@ def compute_Raw_dsyhs(
         **kwargs,
     ):
     """
-    Calculates the added resistance in waves (R_aw) based on the 
-    Delft Systematic Yacht Hull series empirical formula, utilizing
-    custom 3D interpolators for the 'a' and 'b' coefficients.
-    
+    Calculates the added resistance in waves (R_aw) based on the Delft Systematic Yacht Hull series empirical formula.
+
+    Utilizes custom 3D interpolators for the 'a' and 'b' coefficients.
+
     Parameters:
     -----------
     rho      : float or ndarray
@@ -332,7 +329,7 @@ def compute_Raw_dsyhs(
         Instantiated 3D interpolator object for the 'a' coefficient.
     interp_b : InterpolatedModel
         Instantiated 3D interpolator object for the 'b' coefficient.
-        
+
     Returns:
     --------
     R_aw : float or ndarray
@@ -369,6 +366,7 @@ def compute_Raw_dsyhs(
 def compute_Rrr_dsyhs(
         **kwargs,
     ):
+    """Roughness resistance, not implemented yet."""
     pass #TODO implement roughness influence
     
     
@@ -380,9 +378,7 @@ def compute_Rtr_dsyhs(
         g,
         **kwargs,
     ):
-    """
-    Calculate transom resistance.
-    """
+    """Calculate transom resistance."""
     
     Vms = stw * u.kt
     

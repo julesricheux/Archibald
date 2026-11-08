@@ -1,6 +1,5 @@
 """
-Created 12/10/2024
-Last update: 18/10/2024
+Created 12/10/2024 Last update: 18/10/2024.
 
 @author: Jules Richeux
 @contributors: -
@@ -32,9 +31,7 @@ def calculate_induced_velocity_horseshoe(
         vortex_core_radius: float = 0,
 ) -> [Union[float, np.ndarray], Union[float, np.ndarray], Union[float, np.ndarray]]:
     """
-    Calculates the induced velocity at a point:
-        [x_field, y_field, z_field]
-    in a 3D potential-flow flowfield.
+    Calculates the induced velocity at a point [x_field, y_field, z_field] in a 3D potential-flow flowfield.
 
     In this flowfield, the following singularity elements are assumed:
         * A single horseshoe vortex consisting of a bound leg and two trailing legs
@@ -106,7 +103,7 @@ def calculate_induced_velocity_horseshoe(
 
     # Handle the special case where the field point is on one of the legs (either bound or trailing)
     def smoothed_inv(x):
-        "Approximates 1/x with a function that sharply goes to 0 in the x -> 0 limit."
+        """Approximates 1/x with a function that sharply goes to 0 in the x -> 0 limit."""
         if not np.all(vortex_core_radius == 0):
             return x / (x ** 2 + vortex_core_radius ** 2)
         else:

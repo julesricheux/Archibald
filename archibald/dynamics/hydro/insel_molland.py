@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-INSEL-MOLLAND CATAMARAN INTERFERENCE FACTORS (TABULATED)
+INSEL-MOLLAND CATAMARAN INTERFERENCE FACTORS (TABULATED).
 
 Experimental wave and viscous interference factors of demihulls, function of
 the Froude number and of the separation to length ratio S/L. The tables are not
@@ -28,7 +28,8 @@ def compute_dRw_insel_molland(
         tau_table,
         **kwargs,
     ):
-    r"""Wave interference from tabulated experimental factors.
+    r"""
+    Wave interference from tabulated experimental factors.
 
     According to :cite:`insel1992investigation`, the catamaran resistance is
     expressed with an interference factor :math:`\tau` applied to the wave
@@ -47,20 +48,18 @@ def compute_dRw_insel_molland(
     .. math::
         \Delta R_{w,ij} = R_{w,i}\,\big(\tau(Fn_i, S_{ij}/L_{ij}) - 1\big)
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl : list of float, Waterline length of each hull [m].
-    y : list of float, Transverse position of each hull [m].
-    g : float, Gravitational acceleration [m/s²].
-    Rw : list of float, Individual wave resistance of each hull [N].
-    fn_grid, sl_grid : list of float, Increasing grids of Fn and S/L [-].
-    tau_table : list of list, ``tau_table[i][j]`` at (fn_grid[i], sl_grid[j]) [-].
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl: list of float, Waterline length of each hull [m].
+        y: list of float, Transverse position of each hull [m].
+        g: float, Gravitational acceleration [m/s²].
+        Rw: list of float, Individual wave resistance of each hull [N].
+        fn_grid, sl_grid: list of float, Increasing grids of Fn and S/L [-].
+        tau_table: list of list, ``tau_table[i][j]`` at (fn_grid[i], sl_grid[j]) [-].
 
-    Returns
-    -------
-    list of list, Interference matrix dRw[i][j] [N], zero diagonal (not
-    necessarily symmetric if the hulls differ).
+    Returns:
+        list of list, Interference matrix dRw[i][j] [N], zero diagonal (not
+        necessarily symmetric if the hulls differ).
     """
     tau_model = table_model(fn_grid, sl_grid, tau_table)
     n = len(Lwl)
@@ -86,7 +85,8 @@ def compute_dRf_insel_molland(
         visc_table,
         **kwargs,
     ):
-    r"""Viscous interference from tabulated experimental factors.
+    r"""
+    Viscous interference from tabulated experimental factors.
 
     The viscous interference of :cite:`insel1992investigation` changes the form
     factor from :math:`1+k` to :math:`1+\beta k`, :math:`\beta` accounting for the
@@ -97,19 +97,17 @@ def compute_dRf_insel_molland(
     .. math::
         \Delta R_{f,i} = R_{f,i}\sum_{j\neq i}\big(m(Fn_i, S_{ij}/L_{ij}) - 1\big)
 
-    Parameters
-    ----------
-    stw : float, Speed through water [kt].
-    Lwl : list of float, Waterline length of each hull [m].
-    y : list of float, Transverse position of each hull [m].
-    g : float, Gravitational acceleration [m/s²].
-    Rf : list of float, Individual frictional resistance of each hull [N].
-    fn_grid, sl_grid : list of float, Increasing grids of Fn and S/L [-].
-    visc_table : list of list, Multiplier m at (fn_grid[i], sl_grid[j]) [-].
+    Args:
+        stw: float, Speed through water [kt].
+        Lwl: list of float, Waterline length of each hull [m].
+        y: list of float, Transverse position of each hull [m].
+        g: float, Gravitational acceleration [m/s²].
+        Rf: list of float, Individual frictional resistance of each hull [N].
+        fn_grid, sl_grid: list of float, Increasing grids of Fn and S/L [-].
+        visc_table: list of list, Multiplier m at (fn_grid[i], sl_grid[j]) [-].
 
-    Returns
-    -------
-    list of float, Viscous interference of each hull dRf[i] [N].
+    Returns:
+        list of float, Viscous interference of each hull dRf[i] [N].
     """
     visc_model = table_model(fn_grid, sl_grid, visc_table)
     n = len(Lwl)

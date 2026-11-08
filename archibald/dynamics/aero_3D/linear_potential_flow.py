@@ -14,10 +14,12 @@ from abc import abstractmethod, ABC
 ### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
 # Useful for broadcasting with matrices later.
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
@@ -25,6 +27,7 @@ immutable_dataclass = partial(dataclass, frozen=True, repr=False)
 
 
 class LinearPotentialFlow(ExplicitAnalysis):
+    """Linear potential flow analysis of a planform (under construction)."""
 
     def __init__(
         self,
@@ -193,6 +196,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     @immutable_dataclass
     class Elements(ABC):
+        """Base class of a collection of discretization elements."""
         parent_component: ArchibaldObject
         start_index: int
         end_index: int
@@ -224,6 +228,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     @immutable_dataclass
     class PanelElements(Elements, ABC):
+        """Quadrilateral panel elements."""
         front_left_vertices: np.ndarray  # Nx3 array of panel corners
         back_left_vertices: np.ndarray  # Nx3 array of panel corners
         back_right_vertices: np.ndarray  # Nx3 array of panel corners
@@ -234,45 +239,55 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
         @cached_property
         def crosses(self):
+            """Cross products of the panel diagonals."""
             diag1 = self.front_right_vertices - self.back_left_vertices
             diag2 = self.front_left_vertices - self.back_right_vertices
             return np.cross(diag1, diag2)
 
         @cached_property
         def cross_norms(self):
+            """Norms of the cross products of the panel diagonals."""
             return np.linalg.norm(self.crosses, axis=1)
 
         @cached_property
         def areas(self) -> np.ndarray:
+            """Areas of the panels."""
             return self.cross_norms / 2
 
         @cached_property
         def normal_directions(self):
+            """Unit normal vectors of the panels."""
             return self.crosses / tall(self.cross_norms)
 
     @immutable_dataclass
     class WingHorseshoeVortexElements(PanelElements):
+        """Horseshoe vortex elements of a wing."""
         trailing_vortex_direction: np.ndarray  # Nx3 array of trailing vortex directions
         vortex_core_radius: float  # [meters]
 
         @cached_property
         def left_vortex_vertices(self):
+            """Left ends of the bound vortices, at the panel quarter chords."""
             return 0.75 * self.front_left_vertices + 0.25 * self.back_left_vertices
 
         @cached_property
         def right_vortex_vertices(self):
+            """Right ends of the bound vortices, at the panel quarter chords."""
             return 0.75 * self.front_right_vertices + 0.25 * self.back_right_vertices
 
         @cached_property
         def vortex_centers(self):
+            """Centres of the bound vortices."""
             return (self.left_vortex_vertices + self.right_vortex_vertices) / 2
 
         @cached_property
         def vortex_bound_legs(self):
+            """Bound leg vectors of the vortices."""
             return self.right_vortex_vertices - self.left_vortex_vertices
 
         @cached_property
         def collocation_points(self):
+            """Collocation points, at the panel three-quarter chords."""
             return 0.5 * (
                 0.25 * self.front_left_vertices + 0.75 * self.back_left_vertices
             ) + 0.5 * (
@@ -285,6 +300,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
             vortex_strengths: np.ndarray,
             sum_across_elements: bool = True,
         ) -> Tuple[np.ndarray]:
+            """Velocity induced by the horseshoe vortices at the given points."""
             u_induced, v_induced, w_induced = calculate_induced_velocity_horseshoe(
                 x_field=tall(points[:, 0]),
                 y_field=tall(points[:, 1]),
@@ -309,15 +325,18 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     @immutable_dataclass
     class WingLiftingLineElements(WingHorseshoeVortexElements):
+        """Lifting line elements of a wing."""
         CL0: np.ndarray  # length N array of zero-angle-of-attack lift coefficients
         CLa: np.ndarray  # length N array of lift slopes (1/rad)
 
         @property
         def collocation_points(self):
+            """Not implemented for lifting line elements."""
             raise NotImplementedError
 
     @immutable_dataclass
     class FuselagePrescribedSourceLineElements(Elements):
+        """Source line elements of prescribed strength along a fuselage."""
         front_vertices: np.ndarray
         back_vertices: np.ndarray
         strength: np.ndarray
@@ -413,12 +432,14 @@ class LinearPotentialFlow(ExplicitAnalysis):
 
     @cached_property
     def N_elements(self):
+        """Total number of discretization elements."""
         return sum(
             [len(element_collection) for element_collection in self.discretization]
         )
 
     @cached_property
     def AIC(self):
+        """Aerodynamic influence coefficient matrix."""
 
         A = np.empty((self.N_elements, self.N_elements)) * np.nan
 
@@ -469,9 +490,11 @@ class LinearPotentialFlow(ExplicitAnalysis):
         raise NotImplementedError
 
     def get_induced_velocity_at_points(self, points: np.ndarray) -> np.ndarray:
+        """Not implemented yet."""
         raise NotImplementedError
 
     def get_velocity_at_points(self, points: np.ndarray) -> np.ndarray:
+        """Not implemented yet."""
         raise NotImplementedError
 
     def get_streamlines(
@@ -480,6 +503,7 @@ class LinearPotentialFlow(ExplicitAnalysis):
         n_steps: int = 300,
         length: float = None,
     ):
+        """Not implemented yet."""
         raise NotImplementedError
 
     def draw(
@@ -493,9 +517,11 @@ class LinearPotentialFlow(ExplicitAnalysis):
         recalculate_streamlines=False,
         backend: str = "pyvista",
     ):
+        """Not implemented yet."""
         raise NotImplementedError
 
     def draw_three_view(self):
+        """Not implemented yet."""
         raise NotImplementedError
 
 

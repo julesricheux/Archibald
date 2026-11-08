@@ -223,8 +223,9 @@ def show_plot(
 
                         class LogAutoMinorLocator(mt.AutoMinorLocator):
                             """
-                            Dynamically find minor tick positions based on the positions of
-                            major ticks. The scale must be linear with major ticks evenly spaced.
+                            Dynamically find minor tick positions based on the positions of major ticks.
+
+                            The scale must be linear with major ticks evenly spaced.
                             """
 
                             def __call__(self):
@@ -423,6 +424,7 @@ def set_ticks(
     z_major: Union[float, int] = None,
     z_minor: Union[float, int] = None,
 ):
+    """Sets the major and minor tick spacings of the current axes."""
     ax = plt.gca()
     if x_major is not None:
         ax.xaxis.set_major_locator(mt.MultipleLocator(base=x_major))

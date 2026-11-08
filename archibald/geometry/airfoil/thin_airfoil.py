@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul  1 17:36:38 2026
+Created on Wed Jul  1 17:36:38 2026.
 
 @author: jrich
 """
@@ -39,9 +39,11 @@ def _leading_edge_camber(xc, mc) -> np.ndarray:
 
 def _camberline(x, xc, mc) -> np.ndarray:
     """
-    Computes a quartic camber line, parameterized by the nondimensional location of maximum camber (`xc`) and
-    the camber magnitude (`mc`). Satisfies zero camber at the leading and trailing edges, with maximum camber
-    `mc` located at `x = xc`.
+    Computes a quartic camber line.
+
+    It is parameterized by the nondimensional location of maximum camber (`xc`) and the camber magnitude
+    (`mc`). Satisfies zero camber at the leading and trailing edges, with maximum camber `mc` located at
+    `x = xc`.
 
     Args:
         x: Nondimensional chordwise coordinates at which to evaluate the camber line. A 1D array.
@@ -151,8 +153,9 @@ class ThinAirfoil(KulfanAirfoil):
         n_points_per_side: int,
     ) -> np.ndarray:
         """
-        Computes the (x, y) coordinates of a thin airfoil, by adding a camber line (see `_camberline`) to the
-        half-thickness distribution of `base_airfoil`.
+        Computes the (x, y) coordinates of a thin airfoil.
+
+        Adds a camber line (see `_camberline`) to the half-thickness distribution of `base_airfoil`.
 
         Args:
             xc: Nondimensional chordwise location of maximum camber.

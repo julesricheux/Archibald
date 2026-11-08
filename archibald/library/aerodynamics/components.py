@@ -81,6 +81,7 @@ def CDA_control_surface_gaps(
 ) -> float:
     """
     Computes the drag area (CDA) of the gaps associated with a typical wing control surface.
+
     (E.g., aileron, flap, elevator, rudder).
 
     The drag area (CDA) is defined as: CDA == D / q, where:
@@ -209,6 +210,7 @@ def CDA_perpendicular_sheet_metal_joint(
 ):
     """
     Computes the drag area (CDA) of a sheet metal joint that is perpendicular to the flow.
+
         (E.g., spanwise on the wing, or circumferential on the fuselage).
 
     The drag area (CDA) is defined as: CDA == D / q, where:

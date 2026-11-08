@@ -103,6 +103,7 @@ class AeroBuildup(ExplicitAnalysis):
 
     @dataclass
     class AeroComponentResults:
+        """Aerodynamic results of one component, in reference, geometry, body and wind axes."""
         s_ref: float  # Reference area [m^2]
         c_ref: float  # Reference chord [m]
         b_ref: float  # Reference span [m]
@@ -139,80 +140,60 @@ class AeroBuildup(ExplicitAnalysis):
 
         @property
         def F_b(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of forces in body axes [N]
-            """
+            """An [x, y, z] list of forces in body axes [N]."""
             return self.op_point.convert_axes(
                 *self.F_g, from_axes="geometry", to_axes="body"
             )
 
         @property
         def F_w(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of forces in wind axes [N]
-            """
+            """An [x, y, z] list of forces in wind axes [N]."""
             return self.op_point.convert_axes(
                 *self.F_g, from_axes="geometry", to_axes="wind"
             )
 
         @property
         def M_b(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of moments about body axes [Nm]
-            """
+            """An [x, y, z] list of moments about body axes [Nm]."""
             return self.op_point.convert_axes(
                 *self.M_g, from_axes="geometry", to_axes="body"
             )
 
         @property
         def M_w(self) -> List[Union[float, np.ndarray]]:
-            """
-            An [x, y, z] list of moments about wind axes [Nm]
-            """
+            """An [x, y, z] list of moments about wind axes [Nm]."""
             return self.op_point.convert_axes(
                 *self.M_g, from_axes="geometry", to_axes="wind"
             )
 
         @property
         def L(self) -> Union[float, np.ndarray]:
-            """
-            The lift force [N]. Definitionally, this is in wind axes.
-            """
+            """The lift force [N]. Definitionally, this is in wind axes."""
             return -self.F_w[2]
 
         @property
         def Y(self) -> Union[float, np.ndarray]:
-            """
-            The side force [N]. Definitionally, this is in wind axes.
-            """
+            """The side force [N]. Definitionally, this is in wind axes."""
             return self.F_w[1]
 
         @property
         def D(self) -> Union[float, np.ndarray]:
-            """
-            The drag force [N]. Definitionally, this is in wind axes.
-            """
+            """The drag force [N]. Definitionally, this is in wind axes."""
             return -self.F_w[0]
 
         @property
         def l_b(self) -> Union[float, np.ndarray]:
-            """
-            The rolling moment [Nm] in body axes. Positive is roll-right.
-            """
+            """The rolling moment [Nm] in body axes. Positive is roll-right."""
             return self.M_b[0]
 
         @property
         def m_b(self) -> Union[float, np.ndarray]:
-            """
-            The pitching moment [Nm] in body axes. Positive is nose-up.
-            """
+            """The pitching moment [Nm] in body axes. Positive is nose-up."""
             return self.M_b[1]
 
         @property
         def n_b(self) -> Union[float, np.ndarray]:
-            """
-            The yawing moment [Nm] in body axes. Positive is nose-right.
-            """
+            """The yawing moment [Nm] in body axes. Positive is nose-right."""
             return self.M_b[2]
 
     def run(
@@ -666,6 +647,7 @@ class AeroBuildup(ExplicitAnalysis):
         def compute_section_aerodynamics(sect_id: int, mirror_across_XZ: bool = False):
             """
             Computes the forces and moments about self.xyz_ref on a given wing section.
+
             Args:
 
                 sect_id: Wing section id. An int that can be from 0 to len(wing.xsecs) - 2.

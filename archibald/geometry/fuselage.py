@@ -120,6 +120,7 @@ class Fuselage(ArchibaldObject):
                  n_points: int = 5,
                  spacing: Callable[[float, float, int], np.ndarray] = np.cosspace,
                  ) -> "Fuselage":
+        """Adds lofted cross-sections to the fuselage (under construction)."""
         raise NotImplementedError # Function under construction!
         ### Set defaults
         if from_xsec is None:
@@ -181,11 +182,7 @@ class Fuselage(ArchibaldObject):
         return new_fuse
 
     def area_wetted(self) -> float:
-        """
-        Returns the wetted area of the fuselage.
-
-        :return:
-        """
+        """Returns the wetted area of the fuselage."""
         area = 0
 
         perimeters = [xsec.xsec_perimeter() for xsec in self.xsecs]
@@ -230,8 +227,9 @@ class Fuselage(ArchibaldObject):
 
     def area_base(self) -> float:
         """
-        Returns the area of the base (i.e. "trailing edge") of the fuselage. Useful for certain types of drag
-        calculation.
+        Returns the area of the base (i.e. "trailing edge") of the fuselage.
+
+        Useful for certain types of drag calculation.
 
         Returns:
         """
@@ -242,7 +240,9 @@ class Fuselage(ArchibaldObject):
             assumed_shape="cylinder",
     ) -> float:
         """
-        Approximates the fineness ratio using the volume and length. The fineness ratio of a fuselage is defined as:
+        Approximates the fineness ratio using the volume and length.
+
+        The fineness ratio of a fuselage is defined as:
 
             FR = length / max_diameter
 
@@ -271,9 +271,9 @@ class Fuselage(ArchibaldObject):
 
     def length(self) -> float:
         """
-        Returns the total front-to-back length of the fuselage. Measured as the difference between the x-coordinates
-        of the leading and trailing cross-sections.
-        :return:
+        Returns the total front-to-back length of the fuselage.
+
+        Measured as the difference between the x-coordinates of the leading and trailing cross-sections.
         """
         return np.fabs(self.xsecs[-1].xyz_c[0] - self.xsecs[0].xyz_c[0])
 
@@ -545,8 +545,9 @@ class Fuselage(ArchibaldObject):
                            spacing_function: Callable[[float, float, float], np.ndarray] = np.linspace
                            ) -> "Fuselage":
         """
-        Generates a new Fuselage that subdivides the existing sections of this Fuselage into several smaller ones. Splits
-        each section into N=`ratio` smaller subsections by inserting new cross-sections (xsecs) as needed.
+        Generates a new Fuselage that subdivides the existing sections of this Fuselage into several smaller ones.
+
+        Splits each section into N=`ratio` smaller subsections by inserting new cross-sections (xsecs) as needed.
 
         This can allow for finer aerodynamic resolution of sectional properties in certain analyses.
 
@@ -615,9 +616,7 @@ class Fuselage(ArchibaldObject):
 
 
 class FuselageXSec(ArchibaldObject):
-    """
-    Definition for a fuselage cross-section ("X-section").
-    """
+    """Definition for a fuselage cross-section ("X-section")."""
 
     def __init__(self,
                  xyz_c: Union[np.ndarray, List[float]] = None,
@@ -792,7 +791,7 @@ class FuselageXSec(ArchibaldObject):
 
     def xsec_perimeter(self):
         """
-        Computes the FuselageXSec's perimeter. ("Circumference" in the case of a circular cross-section.)
+        Computes the FuselageXSec's perimeter. ("Circumference" in the case of a circular cross-section.).
 
         The computation method is a closed-form approximation for the perimeter of a superellipse. The exact equation
         for the perimeter of a superellipse is quite long and is not repeated here for brevity; a Google search will
@@ -934,8 +933,9 @@ class FuselageXSec(ArchibaldObject):
                           preserve="area"
                           ) -> float:
         """
-        Computes an equivalent radius for non-circular cross-sections. This may be necessary when doing analysis that
-        uses axisymmetric assumptions.
+        Computes an equivalent radius for non-circular cross-sections.
+
+        This may be necessary when doing analysis that uses axisymmetric assumptions.
 
         Can either hold area or perimeter fixed, depending on whether cross-sectional area or wetted area is more
         important.

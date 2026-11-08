@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Wind load on the above-water part of a ship, after Blendermann (1994),
+Wind load on the above-water part of a ship, after Blendermann (1994).
+
 "Parameter identification of wind loads on ships", J. Wind Eng. Ind. Aerodyn. 51.
 
 Wind tunnel based loading functions, with four parameters identified for each
@@ -60,21 +61,20 @@ def get_ship_parameters(
         kappa=None,
     ):
     """
-    Blendermann parameters of a ship, from a type of ``BLENDERMANN_SHIP_TYPES``
-    and/or explicit values, which have priority over the type.
+    Blendermann parameters of a ship, from a type of ``BLENDERMANN_SHIP_TYPES`` and/or explicit values.
 
-    Parameters
-    ----------
-    ship_type : str or None, key of ``BLENDERMANN_SHIP_TYPES``.
-    CDt : float, Transverse resistance coefficient (referred to the lateral area).
-    CDlAF_head : float, Longitudinal resistance coefficient in a head wind (referred to the frontal area).
-    CDlAF_stern : float, Same for a following wind. Default CDlAF_head.
-    delta : float, Cross-force parameter.
-    kappa : float, Rolling-moment factor.
+    Explicit values have priority over the type.
 
-    Returns
-    -------
-    dict with keys CDt, CDlAF_head, CDlAF_stern, delta, kappa.
+    Args:
+        ship_type: str or None, key of ``BLENDERMANN_SHIP_TYPES``.
+        CDt: float, Transverse resistance coefficient (referred to the lateral area).
+        CDlAF_head: float, Longitudinal resistance coefficient in a head wind (referred to the frontal area).
+        CDlAF_stern: float, Same for a following wind. Default CDlAF_head.
+        delta: float, Cross-force parameter.
+        kappa: float, Rolling-moment factor.
+
+    Returns:
+        dict with keys CDt, CDlAF_head, CDlAF_stern, delta, kappa.
     """
     p = {}
     if ship_type is not None:
@@ -123,30 +123,28 @@ def compute_Fhull_blendermann(
     ):
     """
     Wind load on the above-water part of a ship, Blendermann (1994) model.
-    
+
     The apparent wind is evaluated at the height of the centroid of the lateral
     area. Blendermann coefficients come from uniform flow wind tunnel tests:
     use ``wind_alpha=0`` for a consistent uniform wind.
-    
+
     The force is applied at the centroid of the lateral area, shifted
     longitudinally by -0.18 * Loa * (e - pi/2) as in the yaw moment function
     (forward for a bow wind, aft for a stern wind), and at the height kappa * sH
     above the waterplane, which gives the rolling moment of the model.
-    
-    Parameters
-    ----------
-    stw, tws, twa, rho_air : see ``compute_Fhull_orc``.
-    Ax : float, Frontal area above the waterplane AF [m^2].
-    Ay : float, Lateral area above the waterplane AL [m^2].
-    Loa : float, Overall length [m].
-    cey : (1, 3) array, Centroid of the lateral area, in the water axes [m].
-    ship_type, CDt, CDlAF_head, CDlAF_stern, delta, kappa : see ``get_ship_parameters``.
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce, dxce : Force components [N], height of the application point above
-        the waterplane [m], and its longitudinal offset from the lateral centroid [m].
+    Args:
+        stw, tws, twa, rho_air: see ``compute_Fhull_orc``.
+        Ax: float, Frontal area above the waterplane AF [m^2].
+        Ay: float, Lateral area above the waterplane AL [m^2].
+        Loa: float, Overall length [m].
+        cey: (1, 3) array, Centroid of the lateral area, in the water axes [m].
+        ship_type, CDt, CDlAF_head, CDlAF_stern, delta, kappa: see ``get_ship_parameters``.
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
+
+    Returns:
+        Fx, Fy, zce, dxce: Force components [N], height of the application point above
+            the waterplane [m], and its longitudinal offset from the lateral centroid [m].
     """
     
     p = get_ship_parameters(

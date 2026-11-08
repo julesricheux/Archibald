@@ -82,6 +82,7 @@ def _section(h, b, beta_deg, rho, kf, k_sp=300.):
 # ---------------------------------------------------------------- torseur
 def strip_wrench(stw, rho, g, nu, zeta, trim, sections, xcg_tr, zcg_base,
                  zeta_rate=0., trim_rate=0., kf=1.0, l_relief=0., dCf=0.):
+    """Forces and moments on a planing hull by strip theory, summed over the sections."""
     U = np.softplus(speed_ms(stw), beta=1e3) + 1e-6
     sec = prepare_sections(sections)
     trim = trim * (np.pi / 180.)             # ANGLES EN DEGRES en entrée (comme `ie`, savitsky)
@@ -124,6 +125,7 @@ def _w(stw, rho, g, nu, kw):
 
 
 def compute_Rf_strip(stw, rho, g, nu, **kwargs):
+    """Frictional resistance [N] from strip theory."""
     return _w(stw, rho, g, nu, kwargs)["Rf"]
 
 
@@ -140,5 +142,6 @@ def compute_Fz_strip(stw, rho, g, nu, **kwargs):
 
 
 def compute_My_strip(stw, rho, g, nu, **kwargs):
+    """Pitching moment [N.m] from strip theory, with the hydrostatic part if asked."""
     o = _w(stw, rho, g, nu, kwargs)
     return o["My_dyn"] + (o["My_hs"] if kwargs.get("include_hydrostatic", False) else 0.)

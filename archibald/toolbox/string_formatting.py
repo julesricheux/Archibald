@@ -23,7 +23,7 @@ def eng_string(
     add_space_after_number: bool = None,
 ) -> str:
     """
-    Taken from: https://stackoverflow.com/questions/17973278/python-decimal-engineering-notation-for-mili-10e-3-and-micro-10e-6/40691220
+    Taken from: https://stackoverflow.com/questions/17973278/python-decimal-engineering-notation-for-mili-10e-3-and-micro-10e-6/40691220.
 
     Returns float/int value <x> formatted in a simplified engineering format -
     using an exponent that is a multiple of 3.
@@ -121,7 +121,7 @@ def latex_sci_notation_string(
 
 def hash_string(string: str) -> int:
     """
-    Hashes a string into a quasi-random 32-bit integer! (Based on an MD5 checksum algorithm.)
+    Hashes a string into a quasi-random 32-bit integer! (Based on an MD5 checksum algorithm.).
 
     Usual warnings apply: it's MD5, don't use this for anything intended to be cryptographically secure.
     """
@@ -188,9 +188,9 @@ def wrap_text_ignoring_mathtext(
     width: int = 70,
 ) -> str:
     r"""
-    Reformat the single paragraph in 'text' to fit in lines of no more
-    than 'width' columns, and return a new string containing the entire
-    wrapped paragraph.  Tabs are expanded and other
+    Reformat the single paragraph in 'text' to fit in lines of no more than 'width' columns.
+
+    Return a new string containing the entire wrapped paragraph.  Tabs are expanded and other
     whitespace characters converted to space.
 
     Similar to `textwrap.fill`, but keeps any mathtext blocks contiguous and unaltered. Mathtext blocks are segments of `text` that are between $ markers, to indicate LaTeX-like formatting. Dollar-sign literals (\$) do not trigger Mathtext, and that is respected here as well.
@@ -268,6 +268,7 @@ def wrap_text_ignoring_mathtext(
 
 
 def axis_string_to_array(direction):
+    """Unit vector of an axis given by its name ('x', 'y' or 'z')."""
     if direction == 'x':
         return np.array([1.,0.,0.])
     elif direction == 'y':

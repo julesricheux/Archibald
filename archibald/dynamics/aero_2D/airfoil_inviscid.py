@@ -63,6 +63,7 @@ class AirfoilInviscid(ImplicitAnalysis):
         x_field,
         y_field,
     ) -> [np.ndarray, np.ndarray]:
+        """Velocity components (u, v) at the given field points."""
         ### Analyze the freestream
         u_freestream = self.op_point.velocity * np.cosd(self.op_point.alpha)
         v_freestream = self.op_point.velocity * np.sind(self.op_point.alpha)
@@ -188,6 +189,7 @@ class AirfoilInviscid(ImplicitAnalysis):
         self.Cl = 2 * self.total_vorticity
 
     def draw_streamlines(self, res=200, show=True):
+        """Draws the streamlines around the airfoils."""
         import matplotlib.pyplot as plt
         import archibald.toolbox.pretty_plots as p
 
@@ -252,6 +254,7 @@ class AirfoilInviscid(ImplicitAnalysis):
             plt.show()
 
     def draw_cp(self, show=True):
+        """Draws the pressure coefficient along the airfoils."""
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(1, 1, figsize=(6.4, 4.8), dpi=200)

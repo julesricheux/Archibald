@@ -25,10 +25,12 @@ import archibald.numpy as np
 #%% FUNCTIONS
 
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
@@ -38,9 +40,10 @@ def rotation_matrix(
         leeway: float = 0.,
     ):
     """
-    Computes the standard naval/aeronautics rotation matrix (Z-Y-X convention)
-    to rotate points based on leeway, trim, and heel angles.
-    
+    Computes the standard naval/aeronautics rotation matrix (Z-Y-X convention).
+
+    It rotates points based on leeway, trim, and heel angles.
+
     Parameters:
     -----------
     heel_deg : float
@@ -49,7 +52,7 @@ def rotation_matrix(
         Trim angle (Pitch) in degrees. Positive is bow down.
     leeway_deg : float
         Leeway angle (Yaw) in degrees. Positive is leeway to starboard.
-        
+
     Returns:
     --------
     R : numpy.ndarray
@@ -95,6 +98,7 @@ def rotation_matrix(
 #%% CLASSES
 
 class OperatingPoint():
+    """Operating point of a boat: environment, speeds, wind and attitude."""
     def __init__(
             self,
             environment: Environment = Environment(),
@@ -173,43 +177,28 @@ class OperatingPoint():
     
     @property
     def stw(self):
-        """
-        Returns speed through water in knots.
-        
-        """
+        """Returns speed through water in knots."""
         return self._stw / u.knot
     
     @property
     def tws0(self):
-        """
-        Returns true wind speed in knots at reference height z0.
-        
-        """
+        """Returns true wind speed in knots at reference height z0."""
         return self._tws0 / u.knot
     
     @property
     def twa(self):
-        """
-        Returns true wind angle in degrees.
-        
-        """
+        """Returns true wind angle in degrees."""
         return self._twa
     
     def _tws(self, z=None):
-        """
-        Returns true wind speed at height z in m/s.
-        
-        """
+        """Returns true wind speed at height z in m/s."""
         if z is None:
             return self._tws0
         
         return grad_wind(self._tws0, z, self.z0, self.a)
     
     def _aws(self, z=None):
-        """
-        Returns apparent wind speed at height z in m/s.
-        
-        """
+        """Returns apparent wind speed at height z in m/s."""
         tws = self._tws(z)
         twa = self._twa
         stw = self._stw
@@ -217,10 +206,7 @@ class OperatingPoint():
         return np.sqrt(tws**2 + stw**2 + 2*tws*stw*np.cosd(twa))
     
     def awa(self, z=None):
-        """
-        Returns apparent wind angle in degree at height z in degrees.
-        
-        """
+        """Returns apparent wind angle in degree at height z in degrees."""
         tws = self._tws(z)
         twa = self._twa
         stw = self._stw
@@ -229,32 +215,20 @@ class OperatingPoint():
     
     @property
     def awa0(self):
-        """
-        Returns apparent wind angle in degrees at reference height z0.
-        
-        """
+        """Returns apparent wind angle in degrees at reference height z0."""
         return self.awa(z=self.z0)
     
     def tws(self, z=None):
-        """
-        Returns true wind speed at height z in knots.
-        
-        """
+        """Returns true wind speed at height z in knots."""
         return self._tws(z) / u.knot
     
     def aws(self, z=None):
-        """
-        Returns apparent wind speed in knots at height z in knots.
-        
-        """
+        """Returns apparent wind speed in knots at height z in knots."""
         return self._aws(z) / u.knot
     
     @property
     def aws0(self):
-        """
-        Returns apparent wind speed in knots at reference height z0.s.
-        
-        """
+        """Returns apparent wind speed in knots at reference height z0.s."""
         return self.aws(z=self.z0)
 
     @property
@@ -407,6 +381,7 @@ class OperatingPoint():
     def __getitem__(self, index: int) -> "OperatingPoint":
         """
         Indexes one item from each attribute of an OperatingPoint instance.
+
         Returns a new OperatingPoint instance.
 
         Args:
@@ -449,7 +424,8 @@ class OperatingPoint():
 
     def air_dynamic_pressure(self, z = None):
         """
-        Dynamic pressure of the working fluid
+        Dynamic pressure of the working fluid.
+
         Returns:
             float: Dynamic pressure of the working fluid. [Pa]
         """
@@ -462,7 +438,8 @@ class OperatingPoint():
 
     def water_dynamic_pressure(self):
         """
-        Dynamic pressure of the working fluid
+        Dynamic pressure of the working fluid.
+
         Returns:
             float: Dynamic pressure of the working fluid. [Pa]
         """        
@@ -471,8 +448,12 @@ class OperatingPoint():
     def air_reynolds(self, reference_length, z=None):
         """
         Computes a Reynolds number with respect to a given reference length.
-        :param reference_length: A reference length you choose [m]
-        :return: Reynolds number [unitless]
+
+        Args:
+            reference_length: A reference length you choose [m]
+
+        Returns:
+            Reynolds number [unitless]
         """
         density = self.environment.air.density
         viscosity = self.environment.air.dynamic_viscosity
@@ -482,8 +463,12 @@ class OperatingPoint():
     def water_reynolds(self, reference_length):
         """
         Computes a Reynolds number with respect to a given reference length.
-        :param reference_length: A reference length you choose [m]
-        :return: Reynolds number [unitless]
+
+        Args:
+            reference_length: A reference length you choose [m]
+
+        Returns:
+            Reynolds number [unitless]
         """
         density = self.environment.water.density
         viscosity = self.environment.water.dynamic_viscosity
@@ -498,8 +483,9 @@ class OperatingPoint():
                      to_axes: str,
                      ) -> Tuple[float, float, float]:
         """
-        Converts a vector [x_from, y_from, z_from], as given in the `from_axes` frame, to an equivalent vector [x_to,
-        y_to, z_to], as given in the `to_axes` frame.
+        Converts a vector [x_from, y_from, z_from], as given in the `from_axes` frame, to an equivalent vector.
+
+        The equivalent vector [x_to, y_to, z_to] is as given in the `to_axes` frame.
 
         Both `from_axes` and `to_axes` should be a string, one of:
             * "geometry"
@@ -602,6 +588,7 @@ class OperatingPoint():
         return r
 
     def compute_rotation_velocity_geometry_axes(self, points):
+        """Velocity due to the rotation rates at an (N, 3) array of points."""
         # Computes the effective velocity-due-to-rotation at a set of points.
         # Input: a Nx3 array of points
         # Output: a Nx3 array of effective velocities
@@ -633,7 +620,7 @@ class OperatingPoint():
         ):
         """
         Applies the operating point's transformation to a geometry.
-        
+
         Parameters:
         -----------
         geometry : np.ndarray or List

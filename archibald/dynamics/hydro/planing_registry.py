@@ -55,6 +55,7 @@ PLANING_METHODS = PLANING_RESISTANCE_METHODS
 def compose(methods, **choices):
     """
     Assemble des composantes de méthodes différentes.
+
         compose(DEFAULT_RESISTANCE_METHODS, Rf="savitsky", Rw="savitsky", Rtr="savitsky")
     Attention : si Rf et Rw viennent de méthodes différentes, vérifier qu'ils
     représentent la même décomposition (Rf avec surface/longueur mouillées dynamiques).
@@ -65,9 +66,10 @@ def compose(methods, **choices):
 def blend_methods(methods, low, high, x0, x1, key="Fn_vol"):
     """
     Méthode composite : (1-w) * low + w * high, w = smoothstep(Fn_vol, x0, x1).
-    Exemple : blend_methods(M, "dsyhs", "savitsky", 1.8, 2.6).
-    Les composantes présentes dans les deux méthodes sont mélangées ; les autres
-    sont reprises telles quelles.
+
+    Exemple : blend_methods(M, "dsyhs", "savitsky", 1.8, 2.6). Les composantes
+    présentes dans les deux méthodes sont mélangées ; les autres sont reprises
+    telles quelles.
     """
     def make(fl, fh):
         def f(stw, rho, g, nu, volume, **kw):

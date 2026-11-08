@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Common tools for the aerodynamic drag of the above-water part of a boat
-(topsides, superstructures, crew).
+Common tools for the aerodynamic drag of the above-water part of a boat (topsides, superstructures, crew).
 
-Conventions
------------
-- Boat axes : x forward, y to port, z up (right-handed).
-- Wind angles (twa, awa) are in degrees, measured from the bow.
-  They are positive when the wind comes from starboard.
-- Wind speeds (tws) and boat speed (stw) are in knots, as ``stw`` elsewhere.
-- Every windage method returns ``(Fx, Fy, zce)``:
-    Fx  : force along x [N], positive forward (negative in a headwind)
-    Fy  : force along y [N], positive to port (positive for a wind from starboard)
-    zce : height of the centre of effort above the waterplane [m]
+Conventions:
+    - Boat axes : x forward, y to port, z up (right-handed).
+    - Wind angles (twa, awa) are in degrees, measured from the bow.
+      They are positive when the wind comes from starboard.
+    - Wind speeds (tws) and boat speed (stw) are in knots, as ``stw`` elsewhere.
+    - Every windage method returns ``(Fx, Fy, zce)``:
+        Fx  : force along x [N], positive forward (negative in a headwind)
+        Fy  : force along y [N], positive to port (positive for a wind from starboard)
+        zce : height of the centre of effort above the waterplane [m]
 """
 
 import archibald.numpy as np
@@ -28,22 +26,21 @@ def apparent_wind(
         wind_alpha=1./7.,
     ):
     """
-    Apparent wind at a given height above the water, from the true wind
-    (power-law profile) and the boat speed through the water.
+    Apparent wind at a given height above the water.
 
-    Parameters
-    ----------
-    tws : float, True wind speed at the reference height z_ref [kt].
-    twa : float, True wind angle [deg].
-    stw : float, Speed through water [kt].
-    z : float, Height above the waterplane [m].
-    z_ref : float, Reference height of tws [m].
-    wind_alpha : float, Power-law exponent of the wind profile (0 for a uniform wind).
+    It comes from the true wind (power-law profile) and the boat speed through the water.
 
-    Returns
-    -------
-    aws : Apparent wind speed at height z [m/s].
-    awa : Apparent wind angle at height z [deg].
+    Args:
+        tws: float, True wind speed at the reference height z_ref [kt].
+        twa: float, True wind angle [deg].
+        stw: float, Speed through water [kt].
+        z: float, Height above the waterplane [m].
+        z_ref: float, Reference height of tws [m].
+        wind_alpha: float, Power-law exponent of the wind profile (0 for a uniform wind).
+
+    Returns:
+        aws: Apparent wind speed at height z [m/s].
+        awa: Apparent wind angle at height z [deg].
     """
     # smooth floor to keep the power law differentiable at the water surface
     z_eff = np.softplus(z, beta=1e2) + 1e-2
@@ -78,9 +75,8 @@ def resolve_wind_drag(
     """
     Resolve a drag force D, acting along the apparent wind direction, in the boat axes.
 
-    Returns
-    -------
-    Fx, Fy : Force components [N], see module conventions.
+    Returns:
+        Fx, Fy: Force components [N], see module conventions.
     """
     Fx = -D * np.cosd(awa)
     Fy = D * np.sind(awa)
@@ -100,26 +96,26 @@ def windage_element(
         wind_alpha=1./7.,
     ):
     """
-    Windage force of an element, whose drag area varies with the apparent
-    wind angle between a frontal and a side value (ORC VPP formulation):
+    Windage force of an element.
+
+    Its drag area varies with the apparent wind angle between a frontal and a side value
+    (ORC VPP formulation):
 
         CdA(awa) = CdA_front * |cos(awa)| + CdA_side * |sin(awa)|
 
     The dynamic pressure is evaluated with the apparent wind at the height of
     the centre of effort of the element.
 
-    Parameters
-    ----------
-    CdA_front : float, Drag area for a head wind [m^2].
-    CdA_side : float, Drag area for a beam wind [m^2].
-    zce : float, Height of the centre of effort above the waterplane [m].
-    tws, twa, stw : True wind speed [kt], true wind angle [deg], speed through water [kt].
-    rho_air : float, Air density [kg/m^3].
-    z_ref, wind_alpha : Wind profile, see ``apparent_wind``.
+    Args:
+        CdA_front: float, Drag area for a head wind [m^2].
+        CdA_side: float, Drag area for a beam wind [m^2].
+        zce: float, Height of the centre of effort above the waterplane [m].
+        tws, twa, stw: True wind speed [kt], true wind angle [deg], speed through water [kt].
+        rho_air: float, Air density [kg/m^3].
+        z_ref, wind_alpha: Wind profile, see ``apparent_wind``.
 
-    Returns
-    -------
-    Fx, Fy, zce : see module conventions.
+    Returns:
+        Fx, Fy, zce: see module conventions.
     """
     aws, awa = apparent_wind(
         tws=tws,
@@ -144,8 +140,9 @@ def crew_zce(
         heel,
     ):
     """
-    Default height of the crew centre of effort above the waterplane [m]
-    (ORC VPP): 0.5 m above the deck edge, raised by the heel since the crew sits on the rail.
+    Default height of the crew centre of effort above the waterplane [m] (ORC VPP).
+
+    0.5 m above the deck edge, raised by the heel since the crew sits on the rail.
     """
     return Fb + 0.5 + 0.5 * Boa * smooth_abs_sind(heel)
 
@@ -158,8 +155,10 @@ def resolve_crew_zce(
         heel,
     ):
     """
-    Height of the crew centre of effort above the waterplane [m], by priority:
-    
+    Height of the crew centre of effort above the waterplane [m].
+
+    By priority:
+
     1. ``zce_crew``, if given;
     2. the z coordinate of ``crew_position``, if given. This 3D position is
        expressed in the water axes (heel, trim and draft of the operating point
@@ -168,11 +167,10 @@ def resolve_crew_zce(
     3. the ORC default, see ``crew_zce``, which assumes a crew on the rail
        whatever the side.
 
-    Parameters
-    ----------
-    crew_position : (1, 3) array or None, Position of the crew in the water axes [m].
-    zce_crew : float or None, Explicit height above the waterplane [m].
-    Fb, Boa, heel : Mean freeboard [m], overall beam [m] and heel angle [deg] for the default.
+    Args:
+        crew_position: (1, 3) array or None, Position of the crew in the water axes [m].
+        zce_crew: float or None, Explicit height above the waterplane [m].
+        Fb, Boa, heel: Mean freeboard [m], overall beam [m] and heel angle [deg] for the default.
     """
     if zce_crew is not None:
         return zce_crew

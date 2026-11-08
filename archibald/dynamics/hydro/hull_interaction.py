@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Multihull resistance: individual hulls first, then the interaction between them.
-"""
+"""Multihull resistance: individual hulls first, then the interaction between them."""
 
 import os
 

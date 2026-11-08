@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-VORTEX LATTICE METHOD DESCRIPTION
+VORTEX LATTICE METHOD DESCRIPTION.
 
 Created 21/12/2023
 Last update: 18/10/2024
@@ -48,14 +48,17 @@ import neuralfoil as nf
 ### Define some helper functions that take a vector and make it a Nx1 or 1xN, respectively.
 # Useful for broadcasting with matrices later.
 def tall(array):
+    """Reshapes an array into a column (n, 1)."""
     return np.reshape(array, (-1, 1))
 
 
 def wide(array):
+    """Reshapes an array into a row (1, n)."""
     return np.reshape(array, (1, -1))
 
 
 def normalize(array):
+    """Normalizes each row of an (N, 3) array to a unit vector."""
     magnitude = tall(np.linalg.norm(array, axis=1))
     
     return array / magnitude
@@ -69,8 +72,9 @@ def change_basis(x: Union[float, np.ndarray],
                  to_axes: np.ndarray = np.diag(np.ones(3)),
                  ) -> Tuple[float, float, float]:
     """
-    Converts a vector [x_from, y_from, z_from], as given to an equivalent vector [x_to,
-    y_to, z_to], as given in the `to_axes` frame.
+    Converts a vector [x_from, y_from, z_from] to an equivalent vector [x_to, y_to, z_to].
+
+    The result is as given in the `to_axes` frame.
 
     """
     m0 = from_axes
@@ -115,6 +119,7 @@ def stall_factor(
     alpha_i: Union[float, np.ndarray],
     alpha_stall: Union[float, np.ndarray],
 ):
+    """Smooth factor going from 1 to 0 as the angle of attack exceeds the stall angle."""
     return np.sigmoid(
         0.5*alpha_i + (alpha_stall - np.abs(alpha))
     )
@@ -124,6 +129,7 @@ def soft_stall_factor(
     alpha_e: Union[float, np.ndarray],
     is_soft: Union[float, bool, np.ndarray],
 ):
+    """Smooth factor reducing the force of soft sections at large angles of attack."""
     return 1. - is_soft * np.sigmoid(
         alpha_e / 2. - np.abs(alpha)
         # 4. - np.abs(alpha)
@@ -133,7 +139,7 @@ def soft_stall_factor(
 class VortexLatticeMethod(ExplicitAnalysis):
     """
     An asbtract explicit (linear) vortex-lattice-method aerodynamics analysis.
-    
+
     Citation:
         Adapted from:         aerodynamics.VortexLatticeMethod in AeroSandbox
         Author:               Peter D Sharpe
@@ -213,12 +219,14 @@ class VortexLatticeMethod(ExplicitAnalysis):
         ]) + "\n)"
     
     def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
         return 1.
 
     def water_fraction(self, z):
         """
-        Smooth indicator of the water side of the free surface: 1 under water, 0 in air,
-        0.5 at z = 0, 0.99 at z = -FREE_SURFACE_TRANSITION.
+        Smooth indicator of the water side of the free surface.
+
+        1 under water, 0 in air, 0.5 at z = 0, 0.99 at z = -FREE_SURFACE_TRANSITION.
 
         Args:
             z: heights in the boat motion frame [m].
@@ -227,8 +235,9 @@ class VortexLatticeMethod(ExplicitAnalysis):
 
     def local_density(self, points):
         """
-        Density [kg/m^3] at points (N, 3) of the boat motion frame: water below the free
-        surface, air above, whatever the analysis (sails or appendages).
+        Density [kg/m^3] at points (N, 3) of the boat motion frame.
+
+        Water below the free surface, air above, whatever the analysis (sails or appendages).
         """
         rho_air = self.op_point.environment.air.density
         rho_water = self.op_point.environment.water.density
@@ -236,9 +245,11 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
     def reference_speed(self,
                         z: float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
         return 1.
     
     def draw_horseshoes(self):
+        """Draws the induced velocity field of a single horseshoe vortex, as a check."""
         ##### Check single vortex
         u, v, w = calculate_induced_velocity_horseshoe(
             x_field=0,
@@ -370,6 +381,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         plotter.show()
     
     def mesh_geometry(self):
+        """Builds the panels and strips of the wings, moved by the operating point."""
         ##### Make Panels
         front_left_vertices = []
         back_left_vertices = []
@@ -562,6 +574,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
 
     def calculate_freestream_influences(self):
+        """Normal component of the freestream velocity at each collocation point."""
         
         freestream_velocities = self.get_freestream_velocity_at_points(self.collocation_points)
         freestream_direction = normalize(freestream_velocities)
@@ -576,6 +589,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
     
     def calculate_vortices_influences(self):
+        """Normal velocities induced at the collocation points by unit-strength vortices."""
         u_collocations_unit, v_collocations_unit, w_collocations_unit = calculate_induced_velocity_horseshoe(
             x_field=tall(self.collocation_points[:, 0]),
             y_field=tall(self.collocation_points[:, 1]),
@@ -637,12 +651,14 @@ class VortexLatticeMethod(ExplicitAnalysis):
         return AIC
     
     def sum_by_strips(self, array):
+        """Sums a panel array over the panels of each spanwise strip."""
         split = [np.sum(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
                  for i in range(self.total_spanwise_resolution)]
             
         return np.stack(split)
     
     def mul_by_strips(self, array):
+        """Multiplies a panel array over the panels of each spanwise strip."""
         split = [np.prod(array[self.chordwise_resolution*i: self.chordwise_resolution*(i+1), :], axis=0) \
                  for i in range(self.total_spanwise_resolution)]
             
@@ -650,6 +666,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
     
    
     def viscous_computation(self, alpha_stall, model_size):
+        """Corrects the strip forces with the viscous section data of NeuralFoil."""
         
         # Aerodynamic forces by strips in geometry axes
 
@@ -1252,7 +1269,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                         - The "F_g", "F_b", "F_w", "M_g", "M_b", and "M_w" keys are always lists, which will contain either
                         floats or arrays, again depending on whether the OperatingPoint object is vectorized or not.
 
-                """
+        """
         abbreviations = {
             "alpha": "a",
             "beta" : "b",
@@ -1498,9 +1515,10 @@ class VortexLatticeMethod(ExplicitAnalysis):
              backend: str = "pyvista"
              ):
         """
-        Draws the solution. Note: Must be called on a SOLVED AeroProblem object.
-        To solve an AeroProblem, use opti.solve(). To substitute a solved solution, use ap = sol(ap).
-        :return:
+        Draws the solution.
+
+        Note: Must be called on a SOLVED AeroProblem object. To solve an AeroProblem, use
+        opti.solve(). To substitute a solved solution, use ap = sol(ap).
         """
         if show_kwargs is None:
             show_kwargs = {}
@@ -1605,6 +1623,7 @@ class VortexLatticeMethod(ExplicitAnalysis):
                   cmap: str = 'viridis',
                   speed_bounds: np.ndarray = (None, None),
                   ):
+        """Draws the velocity field in a horizontal plane at height z."""
         
         import matplotlib.pyplot as plt
         
@@ -1784,10 +1803,12 @@ class AeroVortexLatticeMethod(VortexLatticeMethod):
         return freestream_velocities
     
     def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
         return self.op_point.air_dynamic_pressure()
     
     def reference_speed(self,
                         z:float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
         return self.op_point._aws(z)
     
 
@@ -1902,10 +1923,12 @@ class HydroVortexLatticeMethod(VortexLatticeMethod):
         return freestream_velocities
     
     def fluid_dynamic_pressure(self):
+        """Dynamic pressure of the fluid [Pa]."""
         return self.op_point.water_dynamic_pressure()
     
     def reference_speed(self,
                         z: float = None):
+        """Reference speed of the fluid [m/s], at height z for the wind."""
         return self.op_point._stw
     
 

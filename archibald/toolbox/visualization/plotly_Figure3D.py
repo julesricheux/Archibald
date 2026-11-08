@@ -15,8 +15,12 @@ import archibald.numpy as np
 def reflect_over_XZ_plane(input_vector):
     """
     Takes in a vector or an array and flips the y-coordinates.
-    :param input_vector: A vector or list of vectors to flip.
-    :return: Vector with flipped sign on y-coordinate.
+
+    Args:
+        input_vector: A vector or list of vectors to flip.
+
+    Returns:
+        Vector with flipped sign on y-coordinate.
     """
     shape = input_vector.shape
     if len(shape) == 1:
@@ -34,6 +38,7 @@ def reflect_over_XZ_plane(input_vector):
 
 
 class Figure3D:
+    """3D figure of faces, lines and points, drawn with plotly."""
     def __init__(self):
         self.fig = go.Figure()
 
@@ -65,9 +70,13 @@ class Figure3D:
     ):
         """
         Adds a line (or series of lines) to draw.
-        :param points: an iterable with an arbitrary number of items. Each item is a 3D point, represented as an iterable of length 3.
-        :param mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
-        :return: None
+
+        Args:
+            points: an iterable with an arbitrary number of items. Each item is a 3D point, represented as an iterable of length 3.
+            mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
+
+        Returns:
+            None
 
         E.g. add_line([(0, 0, 0), (1, 0, 0)])
         """
@@ -89,9 +98,13 @@ class Figure3D:
     ):
         """
         Adds a line (or series of lines) to draw.
-        :param points: an iterable with an arbitrary number of items. Each item is a 3D point, represented as an iterable of length 3.
-        :param mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
-        :return: None
+
+        Args:
+            points: an iterable with an arbitrary number of items. Each item is a 3D point, represented as an iterable of length 3.
+            mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
+
+        Returns:
+            None
 
         E.g. add_line([(0, 0, 0), (1, 0, 0)])
         """
@@ -115,11 +128,15 @@ class Figure3D:
     ):
         """
         Adds a triangular face to draw.
-        :param points: an iterable with 3 items. Each item is a 3D point, represented as an iterable of length 3.
-        :param intensity: Intensity associated with this face
-        :param outline: Do you want to outline this triangle? [boolean]
-        :param mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
-        :return: None
+
+        Args:
+            points: an iterable with 3 items. Each item is a 3D point, represented as an iterable of length 3.
+            intensity: Intensity associated with this face
+            outline: Do you want to outline this triangle? [boolean]
+            mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
+
+        Returns:
+            None
 
         E.g. add_face([(0, 0, 0), (1, 0, 0), (0, 1, 0)])
         """
@@ -154,11 +171,15 @@ class Figure3D:
     ):
         """
         Adds a quadrilateral face to draw. All points should be (approximately) coplanar if you want it to look right.
-        :param points: an iterable with 4 items. Each item is a 3D point, represented as an iterable of length 3. Points should be given in sequential order.
-        :param intensity: Intensity associated with this face
-        :param outline: Do you want to outline this quad? [boolean]
-        :param mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
-        :return: None
+
+        Args:
+            points: an iterable with 4 items. Each item is a 3D point, represented as an iterable of length 3. Points should be given in sequential order.
+            intensity: Intensity associated with this face
+            outline: Do you want to outline this quad? [boolean]
+            mirror: Should we also draw a version that's mirrored over the XZ plane? [boolean]
+
+        Returns:
+            None
 
         E.g. add_face([(0, 0, 0), (1, 0, 0), (0, 1, 0)])
         """
@@ -197,6 +218,7 @@ class Figure3D:
         colorbar_title="",
         colorscale="viridis",
     ):
+        """Draws the figure."""
         # Draw faces
         self.fig.add_trace(
             go.Mesh3d(
