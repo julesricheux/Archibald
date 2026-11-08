@@ -6,7 +6,7 @@ tail_airfoil = arb.Airfoil("naca0010")
 
 ### Define the 3D geometry you want to analyze/optimize.
 # Here, all distances are in meters and all angles are in degrees.
-airplane = arb.Airplane(
+airplane = arb.Planform(
     name="Peter's Glider",
     xyz_ref=[0, 0, 0],  # CG location
     wings=[

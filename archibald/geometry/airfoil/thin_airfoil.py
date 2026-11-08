@@ -133,6 +133,7 @@ class ThinAirfoil(KulfanAirfoil):
             N1=0.5,
             N2=1.0,
             n_points_per_side=n_points_per_side,
+            normalize_coordinates=False,  # same fit whether xc and mc are numbers or optimization variables
             use_leading_edge_modification=True,
             method="least_squares",
         )

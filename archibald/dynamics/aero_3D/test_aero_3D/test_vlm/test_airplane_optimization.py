@@ -1,62 +1,68 @@
-import archibald as arb
+"""Optimizes the taper and angle of a mirrored wing through the VLM, and compares with a search over the same variables."""
+import contextlib
+import io
+import warnings
+
+import numpy as onp
 import pytest
+
+import archibald as arb
+
+
+def lift_to_drag(trim, taper_ratio):
+    """
+    Computes the lift to drag ratio of a mirrored tapered wing, deep under water.
+
+    Args:
+        trim: Trim [deg]. A negative trim is a positive angle of attack.
+        taper_ratio: Tip chord over root chord.
+
+    Returns: Lift over drag.
+    """
+    planform = arb.Planform(
+        wings=[
+            arb.Wing(
+                symmetric=True,
+                xsecs=[
+                    arb.WingXSec(
+                        xyz_le=[-0.25 * (1 - (1 - taper_ratio) * eta), 2 * eta, 0],
+                        chord=1 - (1 - taper_ratio) * eta,
+                        airfoil=arb.Airfoil("naca0012"),
+                    )
+                    for eta in onp.linspace(0, 1, 5)
+                ],
+            )
+        ]
+    )
+    vlm = arb.HydroVortexLatticeMethod(
+        planform,
+        arb.OperatingPoint(stw=10., trim=trim, dz=-5.),
+        chordwise_resolution=3,
+        spanwise_resolution=1,
+    )
+    force = vlm.run(alpha_stall=20)["F_ab"]
+    return force[2] / -force[0]
 
 
 def test_airplane_optimization():
-    def get_aero(alpha, taper_ratio):
-        airplane = arb.Airplane(
-            wings=[
-                arb.Wing(
-                    symmetric=True,
-                    xsecs=[
-                        arb.WingXSec(
-                            xyz_le=[-0.25, 0, 0],
-                            chord=1,
-                        ),
-                        arb.WingXSec(
-                            xyz_le=[-0.25 * taper_ratio, 1, 0],
-                            chord=taper_ratio,
-                        ),
-                    ],
-                )
-            ]
-        )
-        op_point = arb.OperatingPoint(
-            velocity=1,
-            alpha=alpha,
-        )
+    with warnings.catch_warnings(), contextlib.redirect_stdout(io.StringIO()), onp.errstate(all="ignore"):
+        warnings.simplefilter("ignore")
 
-        vlm = arb.VortexLatticeMethod(
-            airplane,
-            op_point,
-            chordwise_resolution=6,
-            spanwise_resolution=6,
-        )
-        return vlm.run()
+        opti = arb.Opti()
+        trim = opti.variable(init_guess=-4., lower_bound=-15., upper_bound=-1.)
+        taper_ratio = opti.variable(init_guess=0.7, lower_bound=0.2, upper_bound=1.)
+        opti.minimize(-lift_to_drag(trim, taper_ratio))
+        sol = opti.solve(verbose=False, max_iter=60)
 
-    # tr = np.linspace(0.01, 1)
-    # aeros = np.vectorize(get_aero)(tr)
-    # import matplotlib.pyplot as plt
-    # import archibald.toolbox.pretty_plots as p
-    # fig, ax = plt.subplots()
-    # plt.plot(tr, [a['CL'] / a['CD'] for a in aeros])
-    # p.show_plot()
+        best = float(lift_to_drag(float(sol(trim)), float(sol(taper_ratio))))
+        search = [
+            float(lift_to_drag(t, r))
+            for t in onp.linspace(-12., -2., 6)
+            for r in onp.linspace(0.2, 1., 5)
+        ]
 
-    opti = arb.Opti()
-    alpha = opti.variable(0, lower_bound=-90, upper_bound=90)
-    taper_ratio = opti.variable(0.7, lower_bound=0.0001, upper_bound=1)
-    aero = get_aero(alpha, taper_ratio)
-    CD0 = 0.01
-    LD = aero["CL"] / (aero["CD"] + CD0)
-    opti.minimize(-LD)
-    sol = opti.solve()
-
-    assert sol(alpha) == pytest.approx(5.5, abs=1)
+    assert best >= max(search) - 0.01 * abs(max(search))
 
 
 if __name__ == "__main__":
-
-    pytest.main()
-
-
-
+    pytest.main([__file__])

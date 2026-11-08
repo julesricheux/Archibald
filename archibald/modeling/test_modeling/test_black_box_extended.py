@@ -197,7 +197,8 @@ def test_black_box_nonsmooth_function():
     x = opti.variable(init_guess=0)
     opti.minimize(wrapped(x))
 
-    sol = opti.solve(verbose=False)
+    # A finite difference Hessian across the kink is meaningless, and IPOPT stops with Error_In_Step_Computation.
+    sol = opti.solve(verbose=False, options={"ipopt.hessian_approximation": "limited-memory"})
 
     ### Minimum should be at x = 3
     assert np.isclose(sol.value(x), 3, atol=0.2)

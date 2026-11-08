@@ -414,7 +414,18 @@ class VortexLatticeMethod(ExplicitAnalysis):
             strips_chords += [wide(c) for c in wing.sectional_chords(type="planform")]
             strips_areas += [wide(a) for a in wing.area(type="planform", _sectional=True)]
             strips_quarters += [wide(c) for c in wing.aerodynamic_center(0.25, _sectional=True)]
-            
+
+            if wing.symmetric:
+                # mesh_thin_surface adds the left panels after the right ones, root to tip, with their left
+                # and right vertices swapped. So strips_y keeps its sign across the XZ plane, the others mirror.
+                mirror = np.array([[1., -1., 1.]])
+                strips_x += [wide(frame[0]) * mirror for frame in all_frames]
+                strips_y += [-wide(frame[1]) * mirror for frame in all_frames]
+                strips_z += [wide(frame[2]) * mirror for frame in all_frames]
+                strips_chords += [wide(c) for c in wing.sectional_chords(type="planform")]
+                strips_areas += [wide(a) for a in wing.area(type="planform", _sectional=True)]
+                strips_quarters += [wide(c) * mirror for c in wing.aerodynamic_center(0.25, _sectional=True)]
+
             if self.spanwise_resolution > 1:
                 wing = wing.subdivide_sections(
                     ratio=self.spanwise_resolution,
@@ -762,15 +773,18 @@ class VortexLatticeMethod(ExplicitAnalysis):
         
         self.strips_U = strips_U
         self.strips_V = strips_V
-        self.strips_reynolds = self.strips_chords.ravel() * strips_U / self.fluid.kinematic_viscosity
+        self.strips_reynolds = np.ravel(self.strips_chords) * strips_U / self.fluid.kinematic_viscosity
         
         ### Get airfoils by strips
         airfoils = []
-        for i, w in enumerate(self.planform.wings):
+        for w in self.planform.wings:
+            side_airfoils = []
             for i in range(len(w.xsecs)-1):
                 # Add mean strip airfoil for each strip
-                airfoils += [w.xsecs[i].airfoil.blend_with_another_airfoil(w.xsecs[i+1].airfoil)]*\
-                    self.spanwise_resolution*(1+w.symmetric)
+                side_airfoils += [w.xsecs[i].airfoil.blend_with_another_airfoil(w.xsecs[i+1].airfoil)]*\
+                    self.spanwise_resolution
+            # The strips of a symmetric wing are its right side, then its left side, both root to tip
+            airfoils += side_airfoils*(1+w.symmetric)
 
         # The panels put the upper side of a cambered airfoil on the side of the section
         # frame normal. Where that normal was flipped to follow alpha (strips_orientation),

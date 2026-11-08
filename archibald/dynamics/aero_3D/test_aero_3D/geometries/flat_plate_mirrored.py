@@ -1,8 +1,9 @@
 import archibald as arb
+import archibald.numpy as np
 
 airfoil = arb.Airfoil("naca0008")
 
-airplane = arb.Airplane(
+airplane = arb.Planform(
     name="Flat Plate",
     xyz_ref=[0, 0, 0],
     wings=[
@@ -11,17 +12,12 @@ airplane = arb.Airplane(
             symmetric=True,
             xsecs=[
                 arb.WingXSec(
-                    xyz_le=[0, 0, 0],
+                    xyz_le=[0, y, 0],
                     chord=1,
                     twist=0,
                     airfoil=airfoil,
-                ),
-                arb.WingXSec(
-                    xyz_le=[0, 5, 0],
-                    chord=1,
-                    twist=0,
-                    airfoil=airfoil,
-                ),
+                )
+                for y in np.linspace(0, 5, 6)
             ],
         )
     ],
@@ -29,6 +25,3 @@ airplane = arb.Airplane(
 
 if __name__ == "__main__":
     airplane.draw()
-
-
-

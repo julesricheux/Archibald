@@ -1128,7 +1128,7 @@ class Wing(ArchibaldObject):
                 )
 
         if self.symmetric:
-            index_offset = len(points)
+            index_offset = np.length(points)
 
             points = np.concatenate(
                 [points, np.multiply(points, np.array([[1, -1, 1]]))]

@@ -399,13 +399,16 @@ def get_kulfan_parameters(
 
         """
 
-        # if normalize_coordinates:
-        #     coordinates = (
-        #         Airfoil(name="Target Airfoil", coordinates=coordinates)
-        #         .normalize()
-        #         .coordinates
-        # #     )
-        
+        # Cambered NACA sections have x slightly outside [0, 1] (-3e-4 and 1.00017 on naca4412), where x ** N1 is NaN,
+        # and fitting them unnormalized distorts the leading edge. Normalizing branches on the coordinates, so it
+        # only applies to numeric ones: symbolic coordinates must already be normalized.
+        if normalize_coordinates and not np.is_casadi_type(coordinates, recursive=False):
+            coordinates = (
+                Airfoil(name="Target Airfoil", coordinates=coordinates)
+                .normalize()
+                .coordinates
+            )
+
         # coordinates = np.concatenate((wide(x),wide(camber)+wide(thickness)/2)).T
 
         n_coordinates = np.length(coordinates)

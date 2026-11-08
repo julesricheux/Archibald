@@ -3,7 +3,7 @@ import archibald.numpy as np
 
 sd7037 = arb.Airfoil("sd7037")
 
-airplane = arb.Airplane(
+airplane = arb.Planform(
     name="Vanilla",
     xyz_ref=[0.5, 0, 0],
     s_ref=9,
