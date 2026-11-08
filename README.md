@@ -3,8 +3,9 @@
 *by [Jules Richeux](https://github.com/julesricheux)*  <picture><source media="(prefers-color-scheme: dark)" srcset="media/logo-jr-light.png"><img src="media/logo-jr-dark.png" alt="Logo" style="height: 1.2em; vertical-align: middle;"></picture>
 
 [![Tests](https://github.com/julesricheux/Archibald/actions/workflows/run-pytest.yml/badge.svg?branch=develop)](https://github.com/julesricheux/Archibald/actions/workflows/run-pytest.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/architeuthis)](https://pypi.org/project/archibald-design/)
 [![PyPI](https://img.shields.io/pypi/v/archibald-design.svg)](https://pypi.org/project/archibald-design/)
+[![Downloads](https://static.pepy.tech/badge/architeuthis)](https://pepy.tech/projects/archibald-design/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Archibald is a Python 3 library for performance prediction and preliminary design of sailboats, motor boats and ships.** From a hull mesh, sail and foil outlines and a list of masses, it computes how the boat floats, heels, trims and sails.
@@ -78,7 +79,7 @@ Archibald 1.0.0 was widely used in the following student projects:
     -->
 </table>
 
-Used Archibald on a boat of yours? [Tell us about it](https://github.com/julesricheux/Archibald/issues).
+Used Archibald on a boat of yours? [Tell me about it](https://github.com/julesricheux/Archibald/issues).
 
 ## ⚡ What can you do with it?
 
@@ -273,7 +274,7 @@ The papers behind each method are cited in the docstring of its module.
 
 ## 🤝 Contributing
 
-See how you can [help Archibald evolve](CONTRIBUTING.md).
+See how you can [help Archibald evolve](CONTRIBUTING.md) and **star this repository!** ⭐
 
 ## ⚖️ License
 
