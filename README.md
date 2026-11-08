@@ -1,9 +1,6 @@
 # Archibald 2.1.0 ⛵✏️
 
-*by [Jules Richeux](https://github.com/julesricheux)* <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="media/logo-jr-dark.png">
-  <img src="media/logo-jr-light.png" alt="Logo" style="height: 1.2em;">
-</picture>
+*by [Jules Richeux](https://github.com/julesricheux)* <picture><source media="(prefers-color-scheme: dark)" srcset="media/logo-jr-dark.png"><img src="media/logo-jr-light.png" alt="Logo" style="height: 1.2em; vertical-align: middle;"></picture>
 
 [![Tests](https://github.com/julesricheux/Archibald/actions/workflows/run-pytest.yml/badge.svg?branch=develop)](https://github.com/julesricheux/Archibald/actions/workflows/run-pytest.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
