@@ -1,43 +1,47 @@
 # Contributing to Archibald
 
-Thank you for taking the time to look at Archibald. It is a sailboat performance and design library for naval architects and yacht designers. **You do not need to write code to help it.** Most of what makes it better comes from people who know the ships:
+Thank you for taking the time to look at Archibald. It is a sailboat performance and design library for naval architects and yacht designers.
+
+**The most useful thing you can do is [open an issue](https://github.com/julesricheux/Archibald/issues/new)** to flag a problem or suggest an improvement. You do not need to write code, as most users will never work on it directly. What makes Archibald better comes mainly from people who know the ships:
 
 - a number that looks wrong,
 - a paper that says otherwise,
 - a tank test to compare with,
 - a method that is missing.
 
-This page explains how to send these, so that they can be acted on quickly.
+If you would also like to change the code or the data yourself, [pull requests](#contribute-with-a-pull-request) are welcome too.
 
 ## Contents
 
-- [Ways to help](#ways-to-help)
-- [Before you report](#before-you-report)
-- [Reporting a wrong result](#reporting-a-wrong-result)
-- [Sources: the one rule](#sources-the-one-rule)
-- [Confidential designs and data](#confidential-designs-and-data)
-- [Suggesting a method or an improvement](#suggesting-a-method-or-an-improvement)
-- [Providing validation data](#providing-validation-data)
-- [Contributing code](#contributing-code)
-- [Using an AI assistant](#using-an-ai-assistant)
+- [Open an issue](#open-an-issue)
+  - [Before you report](#before-you-report)
+  - [Reporting a wrong result](#reporting-a-wrong-result)
+  - [Suggesting a method or an improvement](#suggesting-a-method-or-an-improvement)
+  - [Sources: the one rule](#sources-the-one-rule)
+  - [Confidential designs and data](#confidential-designs-and-data)
+- [Contribute with a pull request](#contribute-with-a-pull-request)
+  - [Small fixes](#small-fixes)
+  - [Providing validation data](#providing-validation-data)
+  - [Contributing code](#contributing-code)
+  - [Using an AI assistant](#using-an-ai-assistant)
 - [Conduct and license](#conduct-and-license)
 
-## Ways to help
+## Open an issue
 
-Each of these is a useful contribution, roughly in order of how much it helps today:
+[Open an issue](https://github.com/julesricheux/Archibald/issues/new) whenever you have one of these:
 
-| You have... | Do this |
+| You have... | What to include |
 |---|---|
-| A result that looks wrong, or an error message | [Open an issue](https://github.com/julesricheux/Archibald/issues/new): see [Reporting a wrong result](#reporting-a-wrong-result) |
-| A paper, a table or a worked example that a model should match | Open an issue with the reference: see [Sources](#sources-the-one-rule) |
-| Published or measured data | See [Providing validation data](#providing-validation-data). Some models are waiting for exactly that |
-| An idea: a missing method, an awkward input, an unclear output | Open an issue: see [Suggesting a method](#suggesting-a-method-or-an-improvement) |
-| A typo or an unclear sentence in a docstring, an example or this page | Edit it directly on GitHub (pencil icon) and propose the change. No installation needed |
-| Python experience | See [Contributing code](#contributing-code) |
+| A result that looks wrong, or an error message | See [Reporting a wrong result](#reporting-a-wrong-result) |
+| A paper, a table or a worked example that a model should match | The reference: see [Sources](#sources-the-one-rule) |
+| An idea: a missing method, an awkward input, an unclear output | See [Suggesting a method](#suggesting-a-method-or-an-improvement) |
+| Published or measured data | Attach the file: see [Providing validation data](#providing-validation-data). Some models are waiting for exactly that |
 
 Questions are welcome as issues too. If something was hard to understand, others will have the same trouble.
 
-## Before you report
+Issues are public, so please read [Confidential designs and data](#confidential-designs-and-data) before posting anything from a commercial project.
+
+### Before you report
 
 A few minutes here saves a round of questions.
 
@@ -63,7 +67,7 @@ A few minutes here saves a round of questions.
 
 4. **Check the range of validity.** Most resistance methods are regressions on a family of hulls, with a published range: Froude number, L/B, B/T, prismatic coefficient, and so on. A result outside that range is not a bug in the code, but it is worth saying, and the method should warn about it.
 
-## Reporting a wrong result
+### Reporting a wrong result
 
 The best report lets someone else get your number on their own computer in a few minutes, and says why you expected another one. Please include:
 
@@ -90,7 +94,18 @@ You can copy this outline into the issue:
 
 Plots are welcome: a curve against speed or heel often shows the problem at once, such as a hump, a jump or a sign change.
 
-## Sources: the one rule
+### Suggesting a method or an improvement
+
+New methods are welcome, but each one has to be maintained and trusted, so please include:
+
+- **The reference**, as below, ideally with a worked example or published results to check the implementation against.
+- **The range of validity**: hull type, Froude or speed range, form coefficients, and the test basis it was fitted on.
+- **What it adds**: a hull type, a regime or a force component that existing methods do not cover, or better accuracy, shown on a case.
+- **The inputs it needs**, and whether they can be computed from a hull mesh or must be given by the user.
+
+Suggestions about usability are equally welcome: an input that is hard to get, an output in an inconvenient form, an error message that did not help, or an example that would have saved you time.
+
+### Sources: the one rule
 
 **Every formula and every coefficient in Archibald must come from a source that someone else can check.** No value is added from memory, from habit, or because "it is usually about that".
 
@@ -102,7 +117,7 @@ What this means in practice:
 - If a value is a placeholder, for example in an example script, it must be labelled as such in the code (`PLACEHOLDER, NOT SOURCED`). If you see an unlabelled value without a source, that is worth an issue in itself.
 - Your own measurements are a source too. Say how they were obtained, and whether they can be published.
 
-## Confidential designs and data
+### Confidential designs and data
 
 Issues on GitHub are public and stay public. Many contributors work on commercial designs, so:
 
@@ -110,18 +125,15 @@ Issues on GitHub are public and stay public. Many contributors work on commercia
 - Try to show the problem on a geometry shipped with Archibald instead. The examples have a cargo sailboat (Molenez), a 49er and a Nacra 15. A simple box or a Wigley hull also works. A scaled or distorted version of your hull is often enough.
 - If the problem only shows on confidential data, open an issue that describes it without the data. For anything that cannot be public, contact the maintainer at the address in [`pyproject.toml`](pyproject.toml).
 
-## Suggesting a method or an improvement
+## Contribute with a pull request
 
-New methods are welcome, but each one has to be maintained and trusted, so please include:
+If you would like to make a change yourself, pull requests are welcome, from a corrected typo to a new method. The [sources rule](#sources-the-one-rule) applies to them just as it does to issues.
 
-- **The reference**, as above, ideally with a worked example or published results to check the implementation against.
-- **The range of validity**: hull type, Froude or speed range, form coefficients, and the test basis it was fitted on.
-- **What it adds**: a hull type, a regime or a force component that existing methods do not cover, or better accuracy, shown on a case.
-- **The inputs it needs**, and whether they can be computed from a hull mesh or must be given by the user.
+### Small fixes
 
-Suggestions about usability are equally welcome: an input that is hard to get, an output in an inconvenient form, an error message that did not help, or an example that would have saved you time.
+For a typo or an unclear sentence in a docstring, an example or this page, edit the file directly on GitHub (pencil icon) and propose the change. No installation needed.
 
-## Providing validation data
+### Providing validation data
 
 [`examples/03 - Validation`](examples/03%20-%20Validation/) compares the literature models with published data. Some comparisons are waiting for numbers. In its `data/` folder, a CSV file whose header starts with `# TO FILL` is a blank template, and the matching script prints `[INPUT NEEDED]` until it has rows. The README of that folder lists what is missing.
 
@@ -133,11 +145,11 @@ To fill one, you do not need to run anything:
 
 Measured data of your own (tank tests, sea trials, heel tests) is very valuable, as long as you may publish it. Please describe how it was measured and its uncertainty.
 
-## Contributing code
+### Contributing code
 
 You are welcome to fix things yourself. Small, focused pull requests are easiest to review. For a larger change, open an issue first to agree on the approach.
 
-### Setup
+#### Setup
 
 ```bash
 git clone https://github.com/julesricheux/Archibald.git
@@ -150,7 +162,7 @@ A conda environment is described in `environment.yaml`. Optional plotting packag
 
 Work on a branch from `develop`, and open the pull request against `develop`.
 
-### How Archibald is written
+#### How Archibald is written
 
 Archibald is forked from [AeroSandbox](https://github.com/peterdsharpe/AeroSandbox). Like it, the same code runs either on numbers or inside an optimizer (CasADi and IPOPT), which differentiates through it. This shapes a few rules:
 
@@ -160,7 +172,7 @@ Archibald is forked from [AeroSandbox](https://github.com/peterdsharpe/AeroSandb
 - Docstrings give the purpose, every input with its unit in brackets, the returns, and **the source of the formulas**. Match the style of the file you edit.
 - No mutable default arguments, and keyword arguments in long calls.
 
-### Tests
+#### Tests
 
 ```bash
 pytest archibald -q
@@ -170,7 +182,7 @@ Some tests are known to fail: they use the API inherited from AeroSandbox, which
 
 For a method from the literature, the most useful test reproduces a published number, with the reference in the test. Put it in `archibald/dynamics/hydro/test_validation_published.py` or a file like it. Numbers checked there must not move without a reason.
 
-### Before opening the pull request
+#### Before opening the pull request
 
 - [ ] The change has a source, cited in the docstring.
 - [ ] A test covers it, ideally against published values.
@@ -179,7 +191,7 @@ For a method from the literature, the most useful test reproduces a published nu
 - [ ] New dependencies, if any, are declared in `pyproject.toml`, `requirements.txt` and `environment.yaml`.
 - [ ] The description says what changed in the results, with numbers before and after, if any result moved.
 
-## Using an AI assistant
+### Using an AI assistant
 
 You may use an AI assistant to write a script, a fix or a report. [`CLAUDE.md`](CLAUDE.md) describes the conventions of the code for such tools. The same rule applies to its output: **an AI assistant is not a source.** Coefficients, formulas and references it suggests must be checked against the original document before they go into a report or a pull request, because invented but plausible values are a real risk. Please say in the pull request if an assistant wrote a significant part of it.
 

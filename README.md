@@ -33,28 +33,71 @@ pip install archibald-design
 
 **[What it does](#what-can-you-do-with-it)** · **[Projects](#projects-built-with-archibald)** · **[Methods](#whats-inside)** · **[A first equilibrium](#a-first-equilibrium)** · **[Getting started](#getting-started)** · **[Validation](#how-far-can-you-trust-it)**
 
+## Projects built with Archibald
+
+Archibald 1.0.0 was widely used in the following student projects:
+
+<table>
+    <tr>
+        <td width="33%" valign="top">
+            <p align="center">
+                MOLENEZ II - Sailing general cargo ship for Ponant Islands feeding
+            </p>
+            <img src="https://github.com/user-attachments/assets/ceba01a2-922a-421d-bd6c-c827573c1b30" alt="Molenez II Render">
+            <img src="https://github.com/user-attachments/assets/db25fa33-8740-48de-9531-691ed062cc27" alt="Molenez II Sail plan">
+            <img src="https://github.com/user-attachments/assets/e0e79c12-b445-46c4-895b-0544a536c75d" alt="Molenez II Stability">
+        </td>
+        <td width="33%" valign="top">
+            <p align="center">
+                NEREUS - Fast humanitarian aid vessel (tested in Centrale Nantes' towing tank)
+            </p>
+            <img src="https://github.com/user-attachments/assets/d63d57ea-cb07-4af6-bede-40f578e1951e" alt="Nereus render">
+            <img src="https://github.com/user-attachments/assets/9f410fe0-0764-407c-9208-8b29de3075d3" alt="Nereus towing tank">
+            <img src="https://github.com/user-attachments/assets/ea89a466-430e-4abe-b30e-adcf57495677" alt="Nereus Stability">
+        </td>
+        <td width="33%" valign="top">
+            <p align="center">
+                PAKI'AKA - Radical and high-performance bamboo 18ft skiff
+            </p>
+            <img src="https://github.com/user-attachments/assets/1d9cca6a-bce4-4243-a564-03f7da629c61" alt="Paki'aka render 1">
+            <img src="https://github.com/user-attachments/assets/cd04bdaa-1c12-40e7-ba01-869ccf1edff9" alt="Paki'aka render 1">
+        </td>
+    </tr>
+    <!-- PLACEHOLDER: new projects. Copy this row inside the table, one <td> per project (three per row), and uncomment.
+    <tr>
+        <td width="33%" valign="top">
+            <p align="center">
+                PROJECT NAME - One line on the boat
+            </p>
+            <img src="SCREENSHOT URL OR media/your_image.png" alt="Project name, what the image shows">
+        </td>
+    </tr>
+    -->
+</table>
+
+Used Archibald on a boat of yours? [Tell us about it](https://github.com/julesricheux/Archibald/issues).
+
 ## What can you do with it?
 
 Click an image to open the script that produced it.
 
 ### Stability
 <!-- PLACEHOLDER: rename to "Stability and foiling" when the foiling figure below is added. -->
-
+<!--
 <table>
     <tr>
         <td width="50%" valign="top">
             <a href="examples/02%20-%20Geometry/molenez_gz_curve.py"><img src="media/molenez_gz_curve.png" alt="Righting arm GZ against heel from 0 to 90 degrees for the Molenez in its containers load case"></a>
             <p align="center"><b>Righting arm curves from the mesh.</b> Heel sweep with immersion and trim solved at every point. The hull is taken as watertight, with no downflooding.</p>
         </td>
-        <!-- PLACEHOLDER: foiling figure. Set the image path and uncomment this cell.
+        PLACEHOLDER: foiling figure. Set the image path and uncomment this cell.
         <td width="50%" valign="top">
             <a href="examples/02%20-%20Geometry/49er_foiling.py"><img src="YOUR IMAGE PATH" alt="Three plots against boat speed for a 49er with a T-foil: thrust, ride height, and the share of the weight carried by the hull"></a>
             <p align="center"><b>Foil take-off.</b> The thrust hump, ride height and weight carried by the hull, on a 49er with a placeholder T-foil.</p>
         </td>
-        -->
     </tr>
 </table>
-
+-->
 ### Hull resistance
 
 <table>
@@ -105,50 +148,6 @@ Click an image to open the script that produced it.
      Produce it with boat_sol.draw_vlm(gif_path="media/flow.gif", n_frames=150) from any example (needs imageio), then uncomment:
 <p align="center"><img src="media/flow.gif" alt="Particles following the flow around the sails and appendages"></p>
 -->
-
-## Projects built with Archibald
-
-Archibald 1.0.0 was widely used in the following student projects:
-
-<table>
-    <tr>
-        <td width="33%" valign="top">
-            <p align="center">
-                MOLENEZ II - Sailing general cargo ship for Ponant Islands feeding
-            </p>
-            <img src="https://github.com/user-attachments/assets/ceba01a2-922a-421d-bd6c-c827573c1b30" alt="Molenez II Render">
-            <img src="https://github.com/user-attachments/assets/db25fa33-8740-48de-9531-691ed062cc27" alt="Molenez II Sail plan">
-            <img src="https://github.com/user-attachments/assets/e0e79c12-b445-46c4-895b-0544a536c75d" alt="Molenez II Stability">
-        </td>
-        <td width="33%" valign="top">
-            <p align="center">
-                NEREUS - Fast humanitarian aid vessel (tested in Centrale Nantes' towing tank)
-            </p>
-            <img src="https://github.com/user-attachments/assets/d63d57ea-cb07-4af6-bede-40f578e1951e" alt="Nereus render">
-            <img src="https://github.com/user-attachments/assets/9f410fe0-0764-407c-9208-8b29de3075d3" alt="Nereus towing tank">
-            <img src="https://github.com/user-attachments/assets/ea89a466-430e-4abe-b30e-adcf57495677" alt="Nereus Stability">
-        </td>
-        <td width="33%" valign="top">
-            <p align="center">
-                PAKI'AKA - Radical and high-performance bamboo 18ft skiff
-            </p>
-            <img src="https://github.com/user-attachments/assets/1d9cca6a-bce4-4243-a564-03f7da629c61" alt="Paki'aka render 1">
-            <img src="https://github.com/user-attachments/assets/cd04bdaa-1c12-40e7-ba01-869ccf1edff9" alt="Paki'aka render 1">
-        </td>
-    </tr>
-    <!-- PLACEHOLDER: new projects. Copy this row inside the table, one <td> per project (three per row), and uncomment.
-    <tr>
-        <td width="33%" valign="top">
-            <p align="center">
-                PROJECT NAME - One line on the boat
-            </p>
-            <img src="SCREENSHOT URL OR media/your_image.png" alt="Project name, what the image shows">
-        </td>
-    </tr>
-    -->
-</table>
-
-Used Archibald on a boat of yours? [Tell us about it](https://github.com/julesricheux/Archibald/issues).
 
 ## What's inside
 
@@ -250,10 +249,10 @@ Then pick the folder that fits:
 
 | Folder | What you get |
 |---|---|
-| [`04 - Templates`](examples/04%20-%20Templates/README.md) | **Start here for your own boat.** Fill-in templates for a motor ship, a cruising monohull, a multihull, a planing boat, a foiling motorboat and a foiling racing monohull |
-| [`02 - Geometry`](examples/02%20-%20Geometry/) | Examples on real geometry: the Molenez cargo sailboat, the 49er skiff, the Nacra 15 catamaran |
-| [`03 - Validation`](examples/03%20-%20Validation/README.md) | Each model against published data, with its figures |
-| [`01 - Modeling`](examples/01%20-%20Modeling/) | Fitting and interpolation tools for your own data |
+| [`00 - Templates`](examples/04%20-%20Templates/README.md) | **Start here for your own boat.** Fill-in templates for a motor ship, a cruising monohull, a multihull, a planing boat, a foiling motorboat and a foiling racing monohull |
+| [`01 - Validation`](examples/03%20-%20Validation/README.md) | Each model against published data, with its figures |
+| [`02 - Modeling`](examples/01%20-%20Modeling/) | Fitting and interpolation tools for your own data |
+| [`03 - Geometry`](examples/02%20-%20Geometry/) | Examples on real geometry: the Molenez cargo sailboat, the 49er skiff, the Nacra 15 catamaran |
 
 An operating point takes speeds in knots and angles in degrees. Axes are x forward, y to port, z up, with the water at z = 0.
 
@@ -268,6 +267,10 @@ Tank results, published tables and a number that looks wrong are all welcome, an
 Archibald is forked from [AeroSandbox](https://github.com/peterdsharpe/AeroSandbox) by Peter Sharpe, the source of its optimization framework and vortex lattice core. Section polars come from [NeuralFoil](https://github.com/peterdsharpe/NeuralFoil), also by Peter Sharpe, and the equations are solved with [CasADi](https://github.com/casadi/casadi) and IPOPT. Archibald 2.0 was developed during the author's time at NEOLINE.
 
 The papers behind each method are cited in the docstring of its module.
+
+## Contributing
+
+See how you can [help Archibald evolve](CONTRIBUTING.md).
 
 ## License
 
