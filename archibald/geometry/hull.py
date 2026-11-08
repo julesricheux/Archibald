@@ -5,6 +5,8 @@ Created on Wed May 27 16:23:04 2026
 @author: jrich
 """
 
+import numpy as onp
+
 import archibald.numpy as np
 import archibald.toolbox.units as u
 
@@ -62,6 +64,16 @@ def amidships(
 # takes the same arguments and returns the application point in the hull frame,
 # of shape (1, 3), e.g. ``amidships``. Methods can be combined by passing a list of them, as long as
 # no component is given twice. Sources are in each module.
+# Immersed volume [m^3] under which a hull is dry: its hydrodynamic forces are
+# zero. The methods divide by waterline dimensions that vanish out of the water
+# (DSYHS Rw gave 1.7e16 N, and NaN second derivatives that stop IPOPT), while
+# their forces already tend to 0 above it (Nacra 15 hull: 0.4 N at 2e-5 m^3).
+# A dry hull gives the methods the hydrostatics of a reference immersion
+# (``dry_reference_hydrostatics``) and its result is replaced by zero, so that
+# nothing is evaluated on degenerate inputs, in the values or the derivatives.
+DRY_VOLUME = 1e-9
+
+
 DEFAULT_RESISTANCE_METHODS = {
     "dsyhs": {
         "Rf": dsyhs.compute_Rf_dsyhs,
@@ -333,21 +345,62 @@ class Hull(ArchibaldObject):
         return process
 
 
+    def is_wet(self):
+        """
+        Whether the immersed volume exceeds ``DRY_VOLUME`` (symbolic with the
+        hydrostatics). Hydrostatics must have been computed beforehand.
+        """
+        return self.hydrostatics_data["volume"] > DRY_VOLUME
+
+
+    def dry_reference_hydrostatics(self):
+        """
+        Hydrostatics of the hull upright, immersed to half the depth of its mesh.
+
+        They replace those of a dry hull in the arguments of the hydrodynamic
+        methods, whose result is then set to zero: only the regularity of the
+        evaluation matters, not the values. Computed once per mesh.
+        """
+        vertices = self.mesh.vertices
+        cache = getattr(self, "_dry_reference", None)
+        if cache is None or cache[0] is not vertices:
+            v = onp.asarray(vertices, dtype=float)
+            point = onp.array([[
+                v[:, 0].mean(),
+                v[:, 1].mean(),
+                0.5 * (v[:, 2].min() + v[:, 2].max()),
+            ]])
+            normal = onp.array([[0., 0., 1.]])
+            cache = (vertices, self.mesh.hydrostatics(point, normal))
+            self._dry_reference = cache
+        return cache[1]
+
+
     def get_resistance_parameters(
             self,
             op_point: OperatingPoint,
         ):
         """
         Arguments given to every hydrodynamic method: hydrostatics, environment
-        and state. Hydrostatics must have been computed beforehand.
+        and state. Hydrostatics must have been computed beforehand. A dry hull
+        (``is_wet`` false) gets ``dry_reference_hydrostatics`` instead.
         """
         V = op_point.stw * u.kt
         rho = op_point.environment.water.density
         nu = op_point.environment.water.kinematic_viscosity
         g = op_point.environment.gravity
 
-        Re = V * self.hydrostatics_data["Lwl"] / nu
-        Fr = V / np.sqrt(self.hydrostatics_data["Lwl"] * g + 1e-12)
+        wet = self.is_wet()
+        reference = self.dry_reference_hydrostatics()
+        hydrostatics = {}
+        for key, value in self.hydrostatics_data.items():
+            try:
+                hydrostatics[key] = np.where(wet, value, reference[key])
+            except (KeyError, TypeError, ValueError):
+                hydrostatics[key] = value
+
+        Re = V * hydrostatics["Lwl"] / nu
+        Fr = V / np.sqrt(hydrostatics["Lwl"] * g + 1e-12)
 
         env_params = {
             'g': g,         # m/s^2
@@ -363,7 +416,7 @@ class Hull(ArchibaldObject):
             'Fr': np.softplus(Fr, beta=1e3),
         }
 
-        return {**self.hydrostatics_data, **env_params, **state_params}
+        return {**hydrostatics, **env_params, **state_params}
 
 
     def compute_resistance_components(
@@ -391,10 +444,13 @@ class Hull(ArchibaldObject):
         process = self.resolve_resistance_methods(method)
         params = self.get_resistance_parameters(op_point)
 
+        # A dry hull gets zero, its methods being evaluated on reference hydrostatics
+        wet = self.is_wet()
+
         r = {}
         t = 0.
         for name, (func, _) in process.items():
-            r[name] = func(**params, **kwargs)
+            r[name] = np.where(wet, func(**params, **kwargs), 0.)
             if name.startswith("R"):
                 t = t + r[name]
 

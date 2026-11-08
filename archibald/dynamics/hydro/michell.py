@@ -404,8 +404,11 @@ def compute_dRw_michell(
     )
     s = [1. for _ in range(n)]
     if calibrate and Rw is not None:
+        # Clipping s**2 rather than s keeps the square root positive: an
+        # empirical Rw can be slightly negative for a hull leaving the water
+        # (DSYHS, -0.03 N), and its square root made the interaction NaN.
         s = [
-            smooth_clip(np.sqrt(Rw[i] / (R[i][i] + EPS)), 1. / s_max, s_max)
+            np.sqrt(smooth_clip(Rw[i] / (R[i][i] + EPS), 1. / s_max ** 2, s_max ** 2))
             for i in range(n)
         ]
     return [

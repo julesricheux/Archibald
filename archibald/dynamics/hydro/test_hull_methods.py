@@ -135,3 +135,17 @@ def test_wave_spectrum_energy_and_peak(gamma):
     S = mittendorf.wave_spectrum(w, swh=2., tp=8., gamma=gamma)
     assert onp.trapezoid(S, w) == pytest.approx(2. ** 2 / 16., rel=5e-3 if gamma != 1. else 1e-4)
     assert w[onp.argmax(S)] == pytest.approx(2. * onp.pi / 8., abs=1e-3)
+
+
+def test_dry_hull_has_zero_force_and_finite_derivatives(hull):
+    """Out of the water, the forces are zero and so are their first and second derivatives (no NaN for IPOPT)."""
+    F, M = hull.compute_resistance(OperatingPoint(stw=8., dz=1., leeway=4.), method=["dsyhs", "jones"])
+    assert as_float(F) == pytest.approx(0., abs=1e-12)
+    assert as_float(M) == pytest.approx(0., abs=1e-12)
+
+    x = cas.MX.sym("x", 2)
+    F, M = hull.compute_resistance(OperatingPoint(stw=x[0], dz=1., leeway=x[1]), method=["dsyhs", "jones"])
+    e = cas.sum1(cas.vec(F)) + cas.sum1(cas.vec(M))
+    f = cas.Function("f", [x], [e, cas.jacobian(e, x), cas.hessian(e, x)[0]])
+    for value in f(cas.DM([8., 4.])):
+        assert onp.all(onp.asarray(value) == 0.)
