@@ -25,7 +25,7 @@
 Hull, rig, appendages, foils and propellers all live in one model of the boat, and **any number in it can become an unknown**: a draft, a sail trim, a crew position, a pitch ratio. You choose what is free, which forces count and what must balance, and a gradient-based optimizer does the rest. The same model answers "how fast does she go?" and "what should I change to go faster?".
 
 ```bash
-pip install "archibald-design @ git+https://github.com/julesricheux/Archibald.git"
+pip install archibald-design
 ```
 
 > [!NOTE]
@@ -241,7 +241,7 @@ Add `opti.minimize(...)` and the same script becomes a design optimization: [`mo
 ## Getting started
 
 ```bash
-pip install "archibald-design @ git+https://github.com/julesricheux/Archibald.git"
+pip install archibald-design
 ```
 
 This needs Python 3.11 or later.

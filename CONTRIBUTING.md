@@ -47,7 +47,7 @@ A few minutes here saves a round of questions.
    - Search the [open and closed issues](https://github.com/julesricheux/Archibald/issues?q=is%3Aissue).
 
    If your problem is already there, a comment with your case is still useful: it tells us it matters.
-2. **Note your version.** Run `pip show archibald-vpp`, or `git log -1` if you work from a clone. `archibald.__version__` may print `unknown`; that is a known bug.
+2. **Note your version.** Run `pip show archibald-design`, or `git log -1` if you work from a clone. `archibald.__version__` may print `unknown`; that is a known bug.
 3. **Check the conventions.** Many apparent errors are a sign or a unit. Archibald uses:
 
 | Quantity | Convention |
@@ -80,7 +80,7 @@ You can copy this outline into the issue:
 
 ```markdown
 **Model / method:** e.g. DSYHS residuary resistance, `dsyhs.compute_Rw_dsyhs`
-**Archibald version:** output of `pip show archibald-vpp`
+**Archibald version:** output of `pip show archibald-design`
 **Case:** hull, inputs and operating point, with units (or attach a short script)
 **Archibald gives:** ...
 **Expected:** ... (source: authors, year, page / table / equation)

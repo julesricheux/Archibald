@@ -2,8 +2,8 @@
 
 Sailboat performance (VPP) and design library, forked from AeroSandbox. It models sails, hulls and appendages with differentiable, engineering-level physics, so the same code runs numerically or inside an optimizer.
 
-- PyPI name `archibald-vpp`, import name `archibald`, conventional alias `import archibald as arb`.
-- Version 2.1.x alpha. Python >= 3.11, developed on 3.13.
+- PyPI name `archibald-design`, import name `archibald`, conventional alias `import archibald as arb`.
+- Version 2.1 Python >= 3.11, developed on 3.13.
 - Replaces the old `GEMINI.md` (removed from the repo, last version at `git show 59ab3fc:GEMINI.md`).
 
 ## Layout
